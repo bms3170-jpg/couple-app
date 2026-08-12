@@ -54,6 +54,9 @@ export default function UsSettingsPage() {
   const [loggingOut, setLoggingOut] =
     useState(false);
 
+  const [deletingAccount, setDeletingAccount] =
+    useState(false);
+
   const [uploadingAvatar, setUploadingAvatar] =
     useState(false);
 
@@ -795,6 +798,89 @@ export default function UsSettingsPage() {
   }
 
   // =========================================
+  // 회원 탈퇴
+  // =========================================
+
+  async function handleDeleteAccount() {
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    const firstConfirmed =
+      window.confirm(
+        "정말 회원 탈퇴하시겠어요?\n\n탈퇴하면 내 계정과 개인 데이터가 삭제돼요. 이 작업은 되돌릴 수 없어요."
+      );
+
+    if (!firstConfirmed) {
+      return;
+    }
+
+    const confirmText =
+      window.prompt(
+        '계속하려면 "탈퇴"라고 입력해주세요.'
+      );
+
+    if (confirmText !== "탈퇴") {
+      if (confirmText !== null) {
+        setMessage(
+          '회원 탈퇴가 취소됐어요. "탈퇴"라고 정확히 입력해주세요.'
+        );
+      }
+      return;
+    }
+
+    setDeletingAccount(true);
+    setMessage("");
+
+    const { data, error } =
+      await supabase.rpc(
+        "delete_my_account"
+      );
+
+    if (error) {
+      console.error(
+        "회원 탈퇴 오류:",
+        error
+      );
+
+      setMessage(
+        `회원 탈퇴에 실패했어요: ${error.message}`
+      );
+
+      setDeletingAccount(false);
+      return;
+    }
+
+    const result =
+      data as
+        | {
+            success?: boolean;
+          }
+        | null;
+
+    if (!result?.success) {
+      setMessage(
+        "회원 탈퇴 처리 결과를 확인하지 못했어요."
+      );
+      setDeletingAccount(false);
+      return;
+    }
+
+    try {
+      await supabase.auth.signOut();
+    } catch (signOutError) {
+      console.error(
+        "탈퇴 후 로컬 세션 정리 오류:",
+        signOutError
+      );
+    }
+
+    router.replace("/");
+    router.refresh();
+  }
+
+  // =========================================
   // 로딩
   // =========================================
 
@@ -1268,6 +1354,55 @@ export default function UsSettingsPage() {
             {loggingOut
               ? "로그아웃 중..."
               : "로그아웃"}
+          </button>
+
+        </section>
+
+        {/* =====================================
+            회원 탈퇴
+        ====================================== */}
+
+        <section className="mt-5 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
+
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-xl">
+              ⚠️
+            </div>
+
+            <div>
+              <h2 className="font-bold text-red-500">
+                회원 탈퇴
+              </h2>
+
+              <p className="mt-1 text-sm leading-6 text-gray-400">
+                계정과 내 개인 데이터를 삭제해요.
+                <br />
+                탈퇴 후에는 되돌릴 수 없어요.
+              </p>
+            </div>
+
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-red-50/60 px-4 py-4 text-sm leading-6 text-red-400">
+            상대방이 남아 있으면 둘의 공간과 공동 기록은 유지되고,
+            내 계정과 내 개인 데이터만 정리돼요.
+          </div>
+
+          <button
+            type="button"
+            disabled={
+              deletingAccount ||
+              loggingOut
+            }
+            onClick={
+              handleDeleteAccount
+            }
+            className="mt-4 w-full rounded-2xl border border-red-200 bg-white px-5 py-4 font-semibold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {deletingAccount
+              ? "회원 탈퇴 처리 중..."
+              : "회원 탈퇴"}
           </button>
 
         </section>
