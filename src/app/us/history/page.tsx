@@ -6,7 +6,6 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
@@ -78,9 +77,6 @@ export default function UsHistoryPage() {
     () => createClient(),
     []
   );
-
-  const searchParams =
-    useSearchParams();
 
   const {
     user,
@@ -1103,19 +1099,26 @@ export default function UsHistoryPage() {
   // =========================================
   // 특정 추억 바로 열기
   // /us/history?memory=<id>
+  // Vercel prerender 안전 처리
   // =========================================
 
   useEffect(() => {
-    const memoryId =
-      searchParams.get(
-        "memory"
+    if (
+      typeof window === "undefined" ||
+      levelRewardMemories.length === 0
+    ) {
+      return;
+    }
+
+    const params =
+      new URLSearchParams(
+        window.location.search
       );
 
-    if (
-      !memoryId ||
-      levelRewardMemories.length ===
-        0
-    ) {
+    const memoryId =
+      params.get("memory");
+
+    if (!memoryId) {
       return;
     }
 
@@ -1131,10 +1134,7 @@ export default function UsHistoryPage() {
         targetMemory
       );
     }
-  }, [
-    searchParams,
-    levelRewardMemories,
-  ]);
+  }, [levelRewardMemories]);
 
   // =========================================
   // 로딩
