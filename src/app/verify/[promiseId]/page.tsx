@@ -396,6 +396,18 @@ export default function VerifyPage() {
         ? "pending"
         : "approved";
 
+    // 한국 시간 기준 인증 날짜
+    const verificationDate =
+      new Intl.DateTimeFormat(
+        "en-CA",
+        {
+          timeZone: "Asia/Seoul",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }
+      ).format(new Date());
+
     // =====================================
     // 인증 DB 저장
     // =====================================
@@ -414,6 +426,9 @@ export default function VerifyPage() {
 
         user_id:
           currentUser.id,
+
+        verification_date:
+          verificationDate,
 
         photo_path:
           photoPath,
