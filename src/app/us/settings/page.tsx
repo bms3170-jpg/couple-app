@@ -54,14 +54,20 @@ export default function UsSettingsPage() {
   const [loggingOut, setLoggingOut] =
     useState(false);
 
-  const [deletingAccount, setDeletingAccount] =
-    useState(false);
+  const [
+    deletingAccount,
+    setDeletingAccount,
+  ] = useState(false);
 
-  const [uploadingAvatar, setUploadingAvatar] =
-    useState(false);
+  const [
+    uploadingAvatar,
+    setUploadingAvatar,
+  ] = useState(false);
 
-  const [deletingAvatar, setDeletingAvatar] =
-    useState(false);
+  const [
+    deletingAvatar,
+    setDeletingAvatar,
+  ] = useState(false);
 
   const [message, setMessage] =
     useState("");
@@ -90,6 +96,12 @@ export default function UsSettingsPage() {
     }
 
     if (!user) {
+      // 회원 탈퇴 처리 중에는
+      // 로그인 페이지로 강제 이동하지 않음
+      if (deletingAccount) {
+        return;
+      }
+
       router.replace("/login");
       return;
     }
@@ -350,6 +362,7 @@ export default function UsSettingsPage() {
     user,
     router,
     supabase,
+    deletingAccount,
   ]);
 
   // =========================================
@@ -563,7 +576,10 @@ export default function UsSettingsPage() {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
       setMessage(
         "프로필 사진은 5MB 이하만 올릴 수 있어요."
       );
@@ -573,7 +589,8 @@ export default function UsSettingsPage() {
     const currentMe =
       members.find(
         (member) =>
-          member.user_id === user.id
+          member.user_id ===
+          user.id
       );
 
     const extension =
@@ -589,7 +606,9 @@ export default function UsSettingsPage() {
     setUploadingAvatar(true);
     setMessage("");
 
-    const { error: uploadError } =
+    const {
+      error: uploadError,
+    } =
       await supabase.storage
         .from("avatars")
         .upload(
@@ -604,17 +623,22 @@ export default function UsSettingsPage() {
 
     if (uploadError) {
       setUploadingAvatar(false);
+
       setMessage(
         `사진을 올리지 못했어요: ${uploadError.message}`
       );
+
       return;
     }
 
-    const { error: profileError } =
+    const {
+      error: profileError,
+    } =
       await supabase
         .from("profiles")
         .update({
-          avatar_path: newPath,
+          avatar_path:
+            newPath,
         })
         .eq(
           "id",
@@ -624,30 +648,38 @@ export default function UsSettingsPage() {
     if (profileError) {
       await supabase.storage
         .from("avatars")
-        .remove([newPath]);
+        .remove([
+          newPath,
+        ]);
 
       setUploadingAvatar(false);
+
       setMessage(
         `프로필 사진을 저장하지 못했어요: ${profileError.message}`
       );
+
       return;
     }
 
     const publicUrl =
       supabase.storage
         .from("avatars")
-        .getPublicUrl(newPath)
-        .data.publicUrl;
+        .getPublicUrl(
+          newPath
+        ).data.publicUrl;
 
     setMembers(
       (current) =>
         current.map(
           (member) =>
-            member.user_id === user.id
+            member.user_id ===
+            user.id
               ? {
                   ...member,
-                  avatar_path: newPath,
-                  avatar_url: publicUrl,
+                  avatar_path:
+                    newPath,
+                  avatar_url:
+                    publicUrl,
                 }
               : member
         )
@@ -655,7 +687,8 @@ export default function UsSettingsPage() {
 
     if (
       currentMe?.avatar_path &&
-      currentMe.avatar_path !== newPath
+      currentMe.avatar_path !==
+        newPath
     ) {
       await supabase.storage
         .from("avatars")
@@ -665,11 +698,11 @@ export default function UsSettingsPage() {
     }
 
     setUploadingAvatar(false);
+
     setMessage(
       "프로필 사진을 변경했어요 ♡"
     );
   }
-
   // =========================================
   // 프로필 사진 삭제
   // =========================================
@@ -683,7 +716,8 @@ export default function UsSettingsPage() {
     const currentMe =
       members.find(
         (member) =>
-          member.user_id === user.id
+          member.user_id ===
+          user.id
       );
 
     if (!currentMe?.avatar_path) {
@@ -705,7 +739,9 @@ export default function UsSettingsPage() {
     const oldPath =
       currentMe.avatar_path;
 
-    const { error: profileError } =
+    const {
+      error: profileError,
+    } =
       await supabase
         .from("profiles")
         .update({
@@ -718,16 +754,22 @@ export default function UsSettingsPage() {
 
     if (profileError) {
       setDeletingAvatar(false);
+
       setMessage(
         `프로필 사진을 삭제하지 못했어요: ${profileError.message}`
       );
+
       return;
     }
 
-    const { error: removeError } =
+    const {
+      error: removeError,
+    } =
       await supabase.storage
         .from("avatars")
-        .remove([oldPath]);
+        .remove([
+          oldPath,
+        ]);
 
     if (removeError) {
       console.error(
@@ -740,7 +782,8 @@ export default function UsSettingsPage() {
       (current) =>
         current.map(
           (member) =>
-            member.user_id === user.id
+            member.user_id ===
+            user.id
               ? {
                   ...member,
                   avatar_path: null,
@@ -751,6 +794,7 @@ export default function UsSettingsPage() {
     );
 
     setDeletingAvatar(false);
+
     setMessage(
       "프로필 사진을 삭제했어요."
     );
@@ -824,13 +868,19 @@ export default function UsSettingsPage() {
           '회원 탈퇴가 취소됐어요. "탈퇴"라고 정확히 입력해주세요.'
         );
       }
+
       return;
     }
 
+    // 탈퇴가 시작됐다는 것을 먼저 표시
+    // auth 상태가 사라져도 /login으로 이동하지 않게 함
     setDeletingAccount(true);
     setMessage("");
 
-    const { data, error } =
+    const {
+      data,
+      error,
+    } =
       await supabase.rpc(
         "delete_my_account"
       );
@@ -860,6 +910,7 @@ export default function UsSettingsPage() {
       setMessage(
         "회원 탈퇴 처리 결과를 확인하지 못했어요."
       );
+
       setDeletingAccount(false);
       return;
     }
@@ -873,6 +924,8 @@ export default function UsSettingsPage() {
       );
     }
 
+    // 회원 탈퇴 완료 후
+    // 로그인 화면이 아닌 OurQuest 첫 화면으로 이동
     router.replace("/");
     router.refresh();
   }
@@ -913,9 +966,12 @@ export default function UsSettingsPage() {
 
       <div className="mx-auto w-full max-w-md pb-28">
 
-        {/* 헤더 */}
+        {/* =====================================
+            헤더
+        ====================================== */}
 
         <header>
+
           <Link
             href="/us"
             prefetch={false}
@@ -937,16 +993,21 @@ export default function UsSettingsPage() {
             <br />
             함께한 날짜를 관리해요.
           </p>
+
         </header>
 
-        {/* 커플 프로필 */}
+        {/* =====================================
+            커플 프로필
+        ====================================== */}
 
         <section className="mt-7 rounded-[32px] bg-white p-6 shadow-sm">
 
           <div className="flex items-center gap-4">
 
             <div className="relative h-16 w-20 shrink-0">
+
               <div className="absolute left-0 top-0 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-pink-50 text-2xl shadow-sm">
+
                 {me?.avatar_url ? (
                   <img
                     src={me.avatar_url}
@@ -956,9 +1017,11 @@ export default function UsSettingsPage() {
                 ) : (
                   <span>💗</span>
                 )}
+
               </div>
 
               <div className="absolute right-0 top-2 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-pink-50 text-2xl shadow-sm">
+
                 {partner?.avatar_url ? (
                   <img
                     src={partner.avatar_url}
@@ -968,25 +1031,32 @@ export default function UsSettingsPage() {
                 ) : (
                   <span>♡</span>
                 )}
+
               </div>
+
             </div>
 
             <div>
+
               <p className="text-xs font-semibold text-pink-400">
                 OUR COUPLE
               </p>
 
               <h2 className="mt-1 text-xl font-bold">
-                {me?.nickname ?? "나"} ♡{" "}
+                {me?.nickname ?? "나"}{" "}
+                ♡{" "}
                 {partner?.nickname ?? "파트너"}
               </h2>
+
             </div>
 
           </div>
 
         </section>
 
-        {/* 함께한 날짜 */}
+        {/* =====================================
+            함께한 날짜
+        ====================================== */}
 
         <form
           onSubmit={saveRelationshipDate}
@@ -1000,6 +1070,7 @@ export default function UsSettingsPage() {
             </div>
 
             <div>
+
               <h2 className="font-bold">
                 함께한 날짜
               </h2>
@@ -1007,12 +1078,13 @@ export default function UsSettingsPage() {
               <p className="mt-1 text-sm text-gray-400">
                 우리 사이가 시작된 날
               </p>
+
             </div>
 
           </div>
 
-          {/* iPhone Safari 날짜 입력칸 크기 대응 */}
           <div className="mt-5 w-full min-w-0 overflow-hidden">
+
             <input
               type="date"
               value={relationshipDate}
@@ -1035,6 +1107,7 @@ export default function UsSettingsPage() {
               }}
               className="block w-full min-w-0 max-w-full rounded-2xl border border-pink-100 bg-[#fff8fb] px-4 py-4 text-base outline-none transition focus:border-pink-400"
             />
+
           </div>
 
           <button
@@ -1051,7 +1124,9 @@ export default function UsSettingsPage() {
 
         </form>
 
-        {/* 내 프로필 */}
+        {/* =====================================
+            내 프로필
+        ====================================== */}
 
         <form
           onSubmit={saveNickname}
@@ -1065,6 +1140,7 @@ export default function UsSettingsPage() {
             </div>
 
             <div>
+
               <h2 className="font-bold">
                 내 프로필
               </h2>
@@ -1072,6 +1148,7 @@ export default function UsSettingsPage() {
               <p className="mt-1 text-sm text-gray-400">
                 내 닉네임을 변경할 수 있어요.
               </p>
+
             </div>
 
           </div>
@@ -1079,6 +1156,7 @@ export default function UsSettingsPage() {
           <div className="mt-5 flex flex-col items-center">
 
             <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-pink-50 text-4xl shadow-sm">
+
               {me?.avatar_url ? (
                 <img
                   src={me.avatar_url}
@@ -1088,6 +1166,7 @@ export default function UsSettingsPage() {
               ) : (
                 <span>👤</span>
               )}
+
             </div>
 
             <p className="mt-3 text-xs text-gray-400">
@@ -1098,7 +1177,8 @@ export default function UsSettingsPage() {
 
               <label
                 className={`flex cursor-pointer items-center justify-center rounded-2xl border border-pink-200 bg-white px-4 py-3 text-sm font-semibold text-pink-500 transition hover:bg-pink-50 ${
-                  uploadingAvatar || deletingAvatar
+                  uploadingAvatar ||
+                  deletingAvatar
                     ? "pointer-events-none opacity-50"
                     : ""
                 }`}
@@ -1117,13 +1197,18 @@ export default function UsSettingsPage() {
                     uploadingAvatar ||
                     deletingAvatar
                   }
-                  onChange={handleAvatarChange}
+                  onChange={
+                    handleAvatarChange
+                  }
                 />
+
               </label>
 
               <button
                 type="button"
-                onClick={handleDeleteAvatar}
+                onClick={
+                  handleDeleteAvatar
+                }
                 disabled={
                   !me?.avatar_path ||
                   uploadingAvatar ||
@@ -1137,6 +1222,7 @@ export default function UsSettingsPage() {
               </button>
 
             </div>
+
           </div>
 
           <label className="mt-6 block text-sm font-semibold">
@@ -1157,9 +1243,11 @@ export default function UsSettingsPage() {
           />
 
           <div className="mt-2 flex justify-end">
+
             <p className="text-xs text-gray-400">
               {nickname.length} / 20
             </p>
+
           </div>
 
           <button
@@ -1174,7 +1262,9 @@ export default function UsSettingsPage() {
 
         </form>
 
-        {/* 상대방 프로필 */}
+        {/* =====================================
+            상대방
+        ====================================== */}
 
         <section className="mt-5 rounded-3xl bg-white p-5 shadow-sm">
 
@@ -1185,6 +1275,7 @@ export default function UsSettingsPage() {
             </div>
 
             <div>
+
               <h2 className="font-bold">
                 상대방
               </h2>
@@ -1192,6 +1283,7 @@ export default function UsSettingsPage() {
               <p className="mt-1 text-sm text-gray-400">
                 연결된 파트너 정보
               </p>
+
             </div>
 
           </div>
@@ -1199,6 +1291,7 @@ export default function UsSettingsPage() {
           <div className="mt-5 flex items-center gap-4 rounded-2xl bg-[#fff8fb] px-4 py-4">
 
             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-2xl shadow-sm">
+
               {partner?.avatar_url ? (
                 <img
                   src={partner.avatar_url}
@@ -1208,23 +1301,29 @@ export default function UsSettingsPage() {
               ) : (
                 <span>♡</span>
               )}
+
             </div>
 
             <div>
+
               <p className="text-xs text-gray-400">
                 닉네임
               </p>
 
               <p className="mt-1 font-bold">
-                {partner?.nickname ?? "파트너"}
+                {partner?.nickname ??
+                  "파트너"}
               </p>
+
             </div>
 
           </div>
 
         </section>
 
-        {/* 커플 정보 */}
+        {/* =====================================
+            커플 정보
+        ====================================== */}
 
         <section className="mt-5 rounded-3xl bg-white p-5 shadow-sm">
 
@@ -1235,6 +1334,7 @@ export default function UsSettingsPage() {
             </div>
 
             <div>
+
               <h2 className="font-bold">
                 커플 정보
               </h2>
@@ -1242,6 +1342,7 @@ export default function UsSettingsPage() {
               <p className="mt-1 text-sm text-gray-400">
                 현재 연결된 우리 정보
               </p>
+
             </div>
 
           </div>
@@ -1253,14 +1354,17 @@ export default function UsSettingsPage() {
             </p>
 
             <p className="mt-2 text-xl font-bold tracking-[0.2em]">
-              {couple?.invite_code ?? "-"}
+              {couple?.invite_code ??
+                "-"}
             </p>
 
           </div>
 
         </section>
 
-        {/* 상태 메시지 */}
+        {/* =====================================
+            상태 메시지
+        ====================================== */}
 
         {message && (
           <div className="mt-5 rounded-2xl bg-white px-4 py-3 text-center text-sm text-gray-600 shadow-sm">
@@ -1268,7 +1372,9 @@ export default function UsSettingsPage() {
           </div>
         )}
 
-        {/* 로그아웃 */}
+        {/* =====================================
+            로그아웃
+        ====================================== */}
 
         <section className="mt-5 rounded-3xl bg-white p-5 shadow-sm">
 
@@ -1279,6 +1385,7 @@ export default function UsSettingsPage() {
             </div>
 
             <div>
+
               <h2 className="font-bold">
                 계정
               </h2>
@@ -1286,6 +1393,7 @@ export default function UsSettingsPage() {
               <p className="mt-1 text-sm text-gray-400">
                 현재 계정에서 로그아웃해요.
               </p>
+
             </div>
 
           </div>
@@ -1303,7 +1411,9 @@ export default function UsSettingsPage() {
 
         </section>
 
-        {/* 회원 탈퇴 */}
+        {/* =====================================
+            회원 탈퇴
+        ====================================== */}
 
         <section className="mt-5 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
 
@@ -1314,6 +1424,7 @@ export default function UsSettingsPage() {
             </div>
 
             <div>
+
               <h2 className="font-bold text-red-500">
                 회원 탈퇴
               </h2>
@@ -1323,6 +1434,7 @@ export default function UsSettingsPage() {
                 <br />
                 탈퇴 후에는 되돌릴 수 없어요.
               </p>
+
             </div>
 
           </div>
@@ -1338,7 +1450,9 @@ export default function UsSettingsPage() {
               deletingAccount ||
               loggingOut
             }
-            onClick={handleDeleteAccount}
+            onClick={
+              handleDeleteAccount
+            }
             className="mt-4 w-full rounded-2xl border border-red-200 bg-white px-5 py-4 font-semibold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {deletingAccount
