@@ -7,9 +7,18 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { useAuth } from "@/components/AuthProvider";
+import {
+  useParams,
+  useRouter,
+} from "next/navigation";
+
+import {
+  createClient,
+} from "@/lib/supabase/client";
+
+import {
+  useAuth,
+} from "@/components/AuthProvider";
 
 type PromiseInfo = {
   id: string;
@@ -23,7 +32,11 @@ type PromiseInfo = {
 
 export default function VerifyPage() {
   const router = useRouter();
-  const params = useParams<{ promiseId: string }>();
+
+  const params =
+    useParams<{
+      promiseId: string;
+    }>();
 
   const supabase = useMemo(
     () => createClient(),
@@ -35,31 +48,59 @@ export default function VerifyPage() {
     loading: authLoading,
   } = useAuth();
 
-  const promiseId = params.promiseId;
+  const promiseId =
+    params.promiseId;
 
-  const [promise, setPromise] =
-    useState<PromiseInfo | null>(null);
+  const [
+    promise,
+    setPromise,
+  ] =
+    useState<PromiseInfo | null>(
+      null
+    );
 
-  const [nickname, setNickname] =
-    useState("");
+  const [
+    nickname,
+    setNickname,
+  ] = useState("");
 
-  const [file, setFile] =
-    useState<File | null>(null);
+  const [
+    file,
+    setFile,
+  ] =
+    useState<File | null>(
+      null
+    );
 
-  const [previewUrl, setPreviewUrl] =
-    useState("");
+  const [
+    previewUrl,
+    setPreviewUrl,
+  ] = useState("");
 
-  const [message, setMessage] =
-    useState("");
+  const [
+    photoMenuOpen,
+    setPhotoMenuOpen,
+  ] = useState(false);
 
-  const [notice, setNotice] =
-    useState("");
+  const [
+    message,
+    setMessage,
+  ] = useState("");
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    notice,
+    setNotice,
+  ] = useState("");
 
-  const [uploading, setUploading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    uploading,
+    setUploading,
+  ] = useState(false);
 
   // =========================================
   // 페이지 정보 불러오기
@@ -71,31 +112,44 @@ export default function VerifyPage() {
     }
 
     if (!user) {
-      router.replace("/login");
+      router.replace(
+        "/login"
+      );
       return;
     }
 
-    const currentUser = user;
+    const currentUser =
+      user;
 
-    let cancelled = false;
+    let cancelled =
+      false;
 
     async function loadPage() {
       const {
-        data: promiseData,
-        error: promiseError,
-      } = await supabase
-        .from("promises")
-        .select(`
-          id,
-          couple_id,
-          title,
-          assigned_to,
-          is_joint,
-          photo_required,
-          partner_approval_required
-        `)
-        .eq("id", promiseId)
-        .maybeSingle();
+        data:
+          promiseData,
+
+        error:
+          promiseError,
+      } =
+        await supabase
+          .from(
+            "promises"
+          )
+          .select(`
+            id,
+            couple_id,
+            title,
+            assigned_to,
+            is_joint,
+            photo_required,
+            partner_approval_required
+          `)
+          .eq(
+            "id",
+            promiseId
+          )
+          .maybeSingle();
 
       if (cancelled) {
         return;
@@ -114,7 +168,10 @@ export default function VerifyPage() {
           "약속을 찾을 수 없어요."
         );
 
-        setLoading(false);
+        setLoading(
+          false
+        );
+
         return;
       }
 
@@ -124,24 +181,36 @@ export default function VerifyPage() {
       // 공동 약속: 같은 커플의 두 사람 모두
       // =====================================
 
-      if (promiseData.is_joint) {
+      if (
+        promiseData.is_joint
+      ) {
         const {
-          data: currentMember,
-          error: memberError,
-        } = await supabase
-          .from("couple_members")
-          .select("user_id")
-          .eq(
-            "couple_id",
-            promiseData.couple_id
-          )
-          .eq(
-            "user_id",
-            currentUser.id
-          )
-          .maybeSingle();
+          data:
+            currentMember,
 
-        if (cancelled) {
+          error:
+            memberError,
+        } =
+          await supabase
+            .from(
+              "couple_members"
+            )
+            .select(
+              "user_id"
+            )
+            .eq(
+              "couple_id",
+              promiseData.couple_id
+            )
+            .eq(
+              "user_id",
+              currentUser.id
+            )
+            .maybeSingle();
+
+        if (
+          cancelled
+        ) {
           return;
         }
 
@@ -158,7 +227,10 @@ export default function VerifyPage() {
             "이 공동 약속을 인증할 권한이 없어요."
           );
 
-          setLoading(false);
+          setLoading(
+            false
+          );
+
           return;
         }
       } else if (
@@ -169,7 +241,10 @@ export default function VerifyPage() {
           "이 약속은 담당자만 인증할 수 있어요."
         );
 
-        setLoading(false);
+        setLoading(
+          false
+        );
+
         return;
       }
 
@@ -178,22 +253,32 @@ export default function VerifyPage() {
       // =====================================
 
       const {
-        data: profile,
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .select("nickname")
-        .eq(
-          "id",
-          currentUser.id
-        )
-        .maybeSingle();
+        data:
+          profile,
+
+        error:
+          profileError,
+      } =
+        await supabase
+          .from(
+            "profiles"
+          )
+          .select(
+            "nickname"
+          )
+          .eq(
+            "id",
+            currentUser.id
+          )
+          .maybeSingle();
 
       if (cancelled) {
         return;
       }
 
-      if (profileError) {
+      if (
+        profileError
+      ) {
         console.error(
           "프로필 조회 오류:",
           profileError
@@ -201,20 +286,24 @@ export default function VerifyPage() {
       }
 
       setNickname(
-        profile?.nickname ?? ""
+        profile?.nickname ??
+          ""
       );
 
       setPromise(
         promiseData as PromiseInfo
       );
 
-      setLoading(false);
+      setLoading(
+        false
+      );
     }
 
     loadPage();
 
     return () => {
-      cancelled = true;
+      cancelled =
+        true;
     };
   }, [
     authLoading,
@@ -230,25 +319,36 @@ export default function VerifyPage() {
 
   useEffect(() => {
     return () => {
-      if (previewUrl) {
+      if (
+        previewUrl
+      ) {
         URL.revokeObjectURL(
           previewUrl
         );
       }
     };
-  }, [previewUrl]);
+  }, [
+    previewUrl,
+  ]);
 
   // =========================================
   // 사진 선택
   // =========================================
 
   function handleFileChange(
-    e: ChangeEvent<HTMLInputElement>
+    e:
+      ChangeEvent<HTMLInputElement>
   ) {
     const selectedFile =
       e.target.files?.[0];
 
-    if (!selectedFile) {
+    // 같은 사진을 다시 선택할 수 있게 초기화
+    e.target.value =
+      "";
+
+    if (
+      !selectedFile
+    ) {
       return;
     }
 
@@ -264,10 +364,12 @@ export default function VerifyPage() {
       return;
     }
 
-    // 6MB 이하로 제한
+    // 6MB 이하 제한
     if (
       selectedFile.size >
-      6 * 1024 * 1024
+      6 *
+        1024 *
+        1024
     ) {
       setNotice(
         "사진은 6MB 이하로 선택해주세요."
@@ -276,7 +378,9 @@ export default function VerifyPage() {
       return;
     }
 
-    if (previewUrl) {
+    if (
+      previewUrl
+    ) {
       URL.revokeObjectURL(
         previewUrl
       );
@@ -287,13 +391,61 @@ export default function VerifyPage() {
         selectedFile
       );
 
-    setFile(selectedFile);
+    setFile(
+      selectedFile
+    );
 
     setPreviewUrl(
       newPreviewUrl
     );
 
     setNotice("");
+
+    setPhotoMenuOpen(
+      false
+    );
+  }
+
+  // =========================================
+  // 갤러리 열기
+  // =========================================
+
+  function openGalleryPicker() {
+    setPhotoMenuOpen(
+      false
+    );
+
+    setTimeout(
+      () => {
+        document
+          .getElementById(
+            "gallery-photo-input"
+          )
+          ?.click();
+      },
+      50
+    );
+  }
+
+  // =========================================
+  // 카메라 열기
+  // =========================================
+
+  function openCameraPicker() {
+    setPhotoMenuOpen(
+      false
+    );
+
+    setTimeout(
+      () => {
+        document
+          .getElementById(
+            "camera-photo-input"
+          )
+          ?.click();
+      },
+      50
+    );
   }
 
   // =========================================
@@ -321,13 +473,19 @@ export default function VerifyPage() {
     }
 
     if (!user) {
-      router.replace("/login");
+      router.replace(
+        "/login"
+      );
       return;
     }
 
-    const currentUser = user;
+    const currentUser =
+      user;
 
-    setUploading(true);
+    setUploading(
+      true
+    );
+
     setNotice("");
 
     let photoPath:
@@ -353,26 +511,31 @@ export default function VerifyPage() {
         `${promise.couple_id}/${currentUser.id}/${fileName}`;
 
       const {
-        error: uploadError,
-      } = await supabase.storage
-        .from(
-          "verification-images"
-        )
-        .upload(
-          photoPath,
-          file,
-          {
-            cacheControl:
-              "3600",
+        error:
+          uploadError,
+      } =
+        await supabase.storage
+          .from(
+            "verification-images"
+          )
+          .upload(
+            photoPath,
+            file,
+            {
+              cacheControl:
+                "3600",
 
-            upsert: false,
+              upsert:
+                false,
 
-            contentType:
-              file.type,
-          }
-        );
+              contentType:
+                file.type,
+            }
+          );
 
-      if (uploadError) {
+      if (
+        uploadError
+      ) {
         console.error(
           "사진 업로드 오류:",
           uploadError
@@ -382,7 +545,10 @@ export default function VerifyPage() {
           `사진 업로드에 실패했어요: ${uploadError.message}`
         );
 
-        setUploading(false);
+        setUploading(
+          false
+        );
+
         return;
       }
     }
@@ -396,74 +562,91 @@ export default function VerifyPage() {
         ? "pending"
         : "approved";
 
-    // 한국 시간 기준 인증 날짜
     const verificationDate =
       new Intl.DateTimeFormat(
         "en-CA",
         {
-          timeZone: "Asia/Seoul",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
+          timeZone:
+            "Asia/Seoul",
+
+          year:
+            "numeric",
+
+          month:
+            "2-digit",
+
+          day:
+            "2-digit",
         }
-      ).format(new Date());
+      ).format(
+        new Date()
+      );
 
     // =====================================
     // 인증 DB 저장
     // =====================================
 
     const {
-      data: insertedVerification,
-      error: verificationError,
-    } = await supabase
-      .from("verifications")
-      .insert({
-        couple_id:
-          promise.couple_id,
+      data:
+        insertedVerification,
 
-        promise_id:
-          promise.id,
+      error:
+        verificationError,
+    } =
+      await supabase
+        .from(
+          "verifications"
+        )
+        .insert({
+          couple_id:
+            promise.couple_id,
 
-        user_id:
-          currentUser.id,
+          promise_id:
+            promise.id,
 
-        verification_date:
-          verificationDate,
+          user_id:
+            currentUser.id,
 
-        photo_path:
-          photoPath,
+          verification_date:
+            verificationDate,
 
-        message:
-          message.trim() ||
-          null,
+          photo_path:
+            photoPath,
 
-        status,
+          message:
+            message.trim() ||
+            null,
 
-        reviewed_by:
-          promise.partner_approval_required
-            ? null
-            : currentUser.id,
+          status,
 
-        reviewed_at:
-          promise.partner_approval_required
-            ? null
-            : new Date().toISOString(),
-      })
-      .select(`
-        id,
-        created_at,
-        status
-      `)
-      .single();
+          reviewed_by:
+            promise.partner_approval_required
+              ? null
+              : currentUser.id,
 
-    if (verificationError) {
+          reviewed_at:
+            promise.partner_approval_required
+              ? null
+              : new Date().toISOString(),
+        })
+        .select(`
+          id,
+          created_at,
+          status
+        `)
+        .single();
+
+    if (
+      verificationError
+    ) {
       console.error(
         "인증 저장 오류:",
         verificationError
       );
 
-      // DB 저장 실패 시 업로드한 사진도 정리
-      if (photoPath) {
+      if (
+        photoPath
+      ) {
         await supabase.storage
           .from(
             "verification-images"
@@ -486,7 +669,10 @@ export default function VerifyPage() {
         );
       }
 
-      setUploading(false);
+      setUploading(
+        false
+      );
+
       return;
     }
 
@@ -496,40 +682,50 @@ export default function VerifyPage() {
     // =====================================
 
     if (
-      status === "approved" &&
+      status ===
+        "approved" &&
       insertedVerification
     ) {
       const {
-        data: firstApproved,
-        error: firstApprovedError,
-      } = await supabase
-        .from("verifications")
-        .select(`
-          id,
-          created_at
-        `)
-        .eq(
-          "couple_id",
-          promise.couple_id
-        )
-        .eq(
-          "promise_id",
-          promise.id
-        )
-        .eq(
-          "status",
-          "approved"
-        )
-        .order(
-          "created_at",
-          {
-            ascending: true,
-          }
-        )
-        .limit(1)
-        .maybeSingle();
+        data:
+          firstApproved,
 
-      if (firstApprovedError) {
+        error:
+          firstApprovedError,
+      } =
+        await supabase
+          .from(
+            "verifications"
+          )
+          .select(`
+            id,
+            created_at
+          `)
+          .eq(
+            "couple_id",
+            promise.couple_id
+          )
+          .eq(
+            "promise_id",
+            promise.id
+          )
+          .eq(
+            "status",
+            "approved"
+          )
+          .order(
+            "created_at",
+            {
+              ascending:
+                true,
+            }
+          )
+          .limit(1)
+          .maybeSingle();
+
+      if (
+        firstApprovedError
+      ) {
         console.error(
           "첫 인증 확인 오류:",
           firstApprovedError
@@ -539,33 +735,43 @@ export default function VerifyPage() {
         insertedVerification.id
       ) {
         const {
-          error: timelineError,
-        } = await supabase
-          .from(
-            "couple_timeline_events"
-          )
-          .insert({
-            couple_id:
-              promise.couple_id,
-            user_id:
-              currentUser.id,
-            event_type:
-              "first_verification",
-            title:
-              "📸 첫 인증을 성공했어요",
-            description:
-              message.trim()
-                ? `${promise.title} · ${message.trim()}`
-                : promise.title,
-            related_id:
-              insertedVerification.id,
-            image_path:
-              photoPath,
-            event_date:
-              insertedVerification.created_at,
-            source_key:
-              `first_verification:${promise.id}`,
-          });
+          error:
+            timelineError,
+        } =
+          await supabase
+            .from(
+              "couple_timeline_events"
+            )
+            .insert({
+              couple_id:
+                promise.couple_id,
+
+              user_id:
+                currentUser.id,
+
+              event_type:
+                "first_verification",
+
+              title:
+                "📸 첫 인증을 성공했어요",
+
+              description:
+                message.trim()
+                  ? `${promise.title} · ${message.trim()}`
+                  : promise.title,
+
+              related_id:
+                insertedVerification.id,
+
+              image_path:
+                photoPath,
+
+              event_date:
+                insertedVerification.created_at,
+
+              source_key:
+                `first_verification:${promise.id}`,
+            });
 
         if (
           timelineError &&
@@ -580,12 +786,16 @@ export default function VerifyPage() {
       }
     }
 
-    setUploading(false);
+    setUploading(
+      false
+    );
 
-    router.push("/couple");
+    router.push(
+      "/couple"
+    );
+
     router.refresh();
   }
-
   // =========================================
   // 로딩
   // =========================================
@@ -611,11 +821,11 @@ export default function VerifyPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff8fb] px-5 py-10 text-[#2b2b2b]">
         <div className="w-full max-w-md">
+
           <section className="rounded-[34px] border border-dashed border-pink-200 bg-white/90 px-6 py-10 shadow-sm">
 
-            {/* 아이콘 */}
-
             <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-[32px] bg-pink-50">
+
               <div className="relative flex h-20 w-20 items-center justify-center rounded-[24px] bg-white text-4xl shadow-md">
                 🔒
 
@@ -627,11 +837,11 @@ export default function VerifyPage() {
                   ♡
                 </span>
               </div>
+
             </div>
 
-            {/* 제목 */}
-
             <div className="mt-8 text-center">
+
               <p className="text-sm font-semibold tracking-[0.2em] text-pink-400">
                 OURQUEST
               </p>
@@ -646,6 +856,7 @@ export default function VerifyPage() {
               </h1>
 
               <div className="mx-auto mt-6 flex max-w-[220px] items-center gap-3">
+
                 <div className="h-px flex-1 bg-pink-100" />
 
                 <span className="text-xl text-pink-300">
@@ -653,18 +864,21 @@ export default function VerifyPage() {
                 </span>
 
                 <div className="h-px flex-1 bg-pink-100" />
+
               </div>
+
             </div>
 
-            {/* 안내 */}
-
             <div className="mt-7 rounded-2xl border border-pink-50 bg-white p-5 shadow-sm">
+
               <div className="flex items-start gap-4">
+
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
                   🔐
                 </div>
 
                 <div>
+
                   <p className="font-semibold">
                     약속한 사람의 인증이 필요해요
                   </p>
@@ -675,11 +889,12 @@ export default function VerifyPage() {
                     <br />
                     상대방의 인증을 기다려주세요 ♡
                   </p>
-                </div>
-              </div>
-            </div>
 
-            {/* 버튼 */}
+                </div>
+
+              </div>
+
+            </div>
 
             <button
               type="button"
@@ -692,6 +907,7 @@ export default function VerifyPage() {
             </button>
 
           </section>
+
         </div>
       </main>
     );
@@ -703,6 +919,7 @@ export default function VerifyPage() {
 
   return (
     <main className="min-h-screen bg-[#fff8fb] text-[#2b2b2b]">
+
       <div className="mx-auto min-h-screen max-w-md px-6 py-8">
 
         <button
@@ -716,7 +933,9 @@ export default function VerifyPage() {
         </button>
 
         <div className="flex items-end justify-between gap-4">
+
           <div>
+
             <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
               TODAY VERIFY
             </p>
@@ -726,22 +945,25 @@ export default function VerifyPage() {
             </h1>
 
             <p className="mt-2 text-sm leading-6 text-gray-500">
-              {promise?.is_joint
+              {promise.is_joint
                 ? "둘이 함께 지키는 오늘의 퀘스트를 인증해요 ♡"
                 : nickname
                 ? `${nickname}님의 오늘 퀘스트를 인증해요 ♡`
                 : "오늘의 퀘스트를 인증해요 ♡"}
             </p>
+
           </div>
 
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
             📸
           </div>
+
         </div>
 
         {/* 오늘 퀘스트 */}
 
         <section className="mt-7 rounded-[28px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/60 p-5 shadow-sm">
+
           <p className="text-xs font-semibold text-pink-400">
             TODAY QUEST
           </p>
@@ -771,6 +993,7 @@ export default function VerifyPage() {
             )}
 
           </div>
+
         </section>
 
         <form
@@ -782,40 +1005,40 @@ export default function VerifyPage() {
 
           {promise.photo_required && (
             <div>
+
               <p className="mb-3 font-semibold">
                 인증 사진
               </p>
 
               {!previewUrl ? (
-                <label className="flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-pink-200 bg-white px-6 text-center shadow-sm transition hover:bg-pink-50/50">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPhotoMenuOpen(
+                      true
+                    )
+                  }
+                  className="flex min-h-64 w-full flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-pink-200 bg-white px-6 text-center shadow-sm transition hover:bg-pink-50/50"
+                >
 
                   <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-pink-50 text-3xl">
                     📷
                   </div>
 
                   <p className="mt-4 font-semibold">
-                    사진 선택 또는 촬영
+                    사진 추가
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-gray-400">
-                    휴대폰에서는 카메라로
+                    갤러리에서 선택하거나
                     <br />
-                    바로 촬영할 수도 있어요.
+                    카메라로 바로 촬영할 수 있어요.
                   </p>
 
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={
-                      handleFileChange
-                    }
-                    className="hidden"
-                  />
-
-                </label>
+                </button>
               ) : (
                 <div>
+
                   <div className="overflow-hidden rounded-[28px] border border-pink-100 bg-white shadow-sm">
 
                     <img
@@ -828,35 +1051,175 @@ export default function VerifyPage() {
 
                   </div>
 
-                  <label className="mt-3 block cursor-pointer rounded-2xl border border-pink-200 bg-white px-4 py-3 text-center font-semibold text-pink-500 shadow-sm transition hover:bg-pink-50">
-
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPhotoMenuOpen(
+                        true
+                      )
+                    }
+                    className="mt-3 block w-full rounded-2xl border border-pink-200 bg-white px-4 py-3 text-center font-semibold text-pink-500 shadow-sm transition hover:bg-pink-50"
+                  >
                     다른 사진 선택
+                  </button>
 
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={
-                        handleFileChange
-                      }
-                      className="hidden"
-                    />
-
-                  </label>
                 </div>
               )}
+
+              {/* 갤러리용 input */}
+
+              <input
+                id="gallery-photo-input"
+                type="file"
+                accept="image/*"
+                onChange={
+                  handleFileChange
+                }
+                className="hidden"
+              />
+
+              {/* 카메라용 input */}
+
+              <input
+                id="camera-photo-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={
+                  handleFileChange
+                }
+                className="hidden"
+              />
+
+              {/* 갤러리 / 카메라 선택창 */}
+
+              {photoMenuOpen && (
+                <div
+                  className="fixed inset-0 z-[100] flex items-end justify-center bg-black/30 px-4 pb-6"
+                  onClick={() =>
+                    setPhotoMenuOpen(
+                      false
+                    )
+                  }
+                >
+
+                  <div
+                    className="w-full max-w-md"
+                    onClick={(e) =>
+                      e.stopPropagation()
+                    }
+                  >
+
+                    <div className="overflow-hidden rounded-[28px] bg-white shadow-xl">
+
+                      <div className="px-5 pb-4 pt-5 text-center">
+
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50 text-2xl">
+                          📸
+                        </div>
+
+                        <p className="mt-3 font-bold">
+                          사진을 어떻게 추가할까요?
+                        </p>
+
+                        <p className="mt-1 text-sm text-gray-400">
+                          원하는 방법을 선택해주세요.
+                        </p>
+
+                      </div>
+
+                      <div className="border-t border-gray-100">
+
+                        <button
+                          type="button"
+                          onClick={
+                            openGalleryPicker
+                          }
+                          className="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-pink-50 active:bg-pink-50"
+                        >
+
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+                            🖼️
+                          </div>
+
+                          <div>
+
+                            <p className="font-semibold">
+                              갤러리에서 선택
+                            </p>
+
+                            <p className="mt-1 text-xs text-gray-400">
+                              저장된 사진을 선택해요.
+                            </p>
+
+                          </div>
+
+                        </button>
+
+                        <div className="mx-5 border-t border-gray-100" />
+
+                        <button
+                          type="button"
+                          onClick={
+                            openCameraPicker
+                          }
+                          className="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-pink-50 active:bg-pink-50"
+                        >
+
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+                            📷
+                          </div>
+
+                          <div>
+
+                            <p className="font-semibold">
+                              카메라로 촬영
+                            </p>
+
+                            <p className="mt-1 text-xs text-gray-400">
+                              지금 바로 사진을 찍어요.
+                            </p>
+
+                          </div>
+
+                        </button>
+
+                      </div>
+
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPhotoMenuOpen(
+                          false
+                        )
+                      }
+                      className="mt-3 w-full rounded-[22px] bg-white px-5 py-4 font-semibold text-gray-500 shadow-lg"
+                    >
+                      취소
+                    </button>
+
+                  </div>
+
+                </div>
+              )}
+
             </div>
           )}
 
           {/* 오늘 한마디 */}
 
           <div>
+
             <label className="mb-3 block font-semibold">
               오늘 한마디
             </label>
 
             <textarea
-              value={message}
+              value={
+                message
+              }
               onChange={(e) =>
                 setMessage(
                   e.target.value
@@ -871,9 +1234,10 @@ export default function VerifyPage() {
             <p className="mt-2 text-right text-xs text-gray-400">
               {message.length} / 300
             </p>
+
           </div>
 
-          {/* 메시지 */}
+          {/* 안내 메시지 */}
 
           {notice && (
             <div className="rounded-2xl border border-pink-100 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm">
@@ -881,11 +1245,13 @@ export default function VerifyPage() {
             </div>
           )}
 
-          {/* 저장 */}
+          {/* 인증 제출 */}
 
           <button
             type="submit"
-            disabled={uploading}
+            disabled={
+              uploading
+            }
             className="w-full rounded-2xl bg-pink-500 px-5 py-4 text-lg font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99] disabled:opacity-50"
           >
             {uploading
@@ -896,6 +1262,7 @@ export default function VerifyPage() {
           </button>
 
         </form>
+
       </div>
     </main>
   );
