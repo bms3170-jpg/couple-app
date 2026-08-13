@@ -150,27 +150,19 @@ export default function CouplePage() {
     loading: authLoading,
   } = useAuth();
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [
-    couple,
-    setCouple,
-  ] = useState<CoupleInfo | null>(
-    null
-  );
+  const [couple, setCouple] =
+    useState<CoupleInfo | null>(
+      null
+    );
 
-  const [
-    members,
-    setMembers,
-  ] = useState<Member[]>([]);
+  const [members, setMembers] =
+    useState<Member[]>([]);
 
-  const [
-    promises,
-    setPromises,
-  ] = useState<PromiseItem[]>([]);
+  const [promises, setPromises] =
+    useState<PromiseItem[]>([]);
 
   const [
     todayVerifications,
@@ -283,8 +275,12 @@ export default function CouplePage() {
         data: membership,
         error: membershipError,
       } = await supabase
-        .from("couple_members")
-        .select("couple_id")
+        .from(
+          "couple_members"
+        )
+        .select(
+          "couple_id"
+        )
         .eq(
           "user_id",
           user.id
@@ -375,7 +371,9 @@ export default function CouplePage() {
         data: coupleData,
         error: coupleError,
       } = await supabase
-        .from("couples")
+        .from(
+          "couples"
+        )
         .select(
           "level, xp"
         )
@@ -740,7 +738,9 @@ export default function CouplePage() {
                           row.item_id
                       );
 
-                    if (!item) {
+                    if (
+                      !item
+                    ) {
                       return null;
                     }
 
@@ -776,7 +776,9 @@ export default function CouplePage() {
         error:
           rewardCountError,
       } = await supabase
-        .from("rewards")
+        .from(
+          "rewards"
+        )
         .select("*", {
           count: "exact",
           head: true,
@@ -855,7 +857,9 @@ export default function CouplePage() {
         data: recentRewardData,
         error: recentRewardError,
       } = await supabase
-        .from("rewards")
+        .from(
+          "rewards"
+        )
         .select(`
           id,
           title,
@@ -910,7 +914,9 @@ export default function CouplePage() {
         data: promiseRows,
         error: promiseError,
       } = await supabase
-        .from("promises")
+        .from(
+          "promises"
+        )
         .select(`
           id,
           title,
@@ -1122,7 +1128,9 @@ export default function CouplePage() {
         `"${title}" 약속의 삭제를 상대방에게 요청할까요?`
       );
 
-    if (!confirmed) {
+    if (
+      !confirmed
+    ) {
       return;
     }
 
@@ -1144,10 +1152,13 @@ export default function CouplePage() {
       null
     );
 
-    if (error) {
+    if (
+      error
+    ) {
       alert(
         error.message
       );
+
       return;
     }
 
@@ -1167,7 +1178,9 @@ export default function CouplePage() {
         "이 약속을 삭제하는 데 동의할까요?\n\n앱에서는 더 이상 표시되지 않아요."
       );
 
-    if (!confirmed) {
+    if (
+      !confirmed
+    ) {
       return;
     }
 
@@ -1191,10 +1204,13 @@ export default function CouplePage() {
       null
     );
 
-    if (error) {
+    if (
+      error
+    ) {
       alert(
         error.message
       );
+
       return;
     }
 
@@ -1236,10 +1252,13 @@ export default function CouplePage() {
       }
     );
 
-    if (error) {
+    if (
+      error
+    ) {
       alert(
         error.message
       );
+
       return;
     }
 
@@ -1263,10 +1282,13 @@ export default function CouplePage() {
       }
     );
 
-    if (error) {
+    if (
+      error
+    ) {
       alert(
         error.message
       );
+
       return;
     }
 
@@ -1296,11 +1318,14 @@ export default function CouplePage() {
         rewardNotification.id
       );
 
-    if (error) {
+    if (
+      error
+    ) {
       console.error(
         "보상 알림 확인 오류:",
         error
       );
+
       return;
     }
 
@@ -1314,7 +1339,9 @@ export default function CouplePage() {
       | EquippedStoreItem
       | undefined
   ) {
-    if (!item) {
+    if (
+      !item
+    ) {
       return null;
     }
 
@@ -1459,11 +1486,14 @@ export default function CouplePage() {
     );
 
   const characterDisplayWidth =
-    characterImageLevel === 1
+    characterImageLevel ===
+    1
       ? 105
-      : characterImageLevel === 2
+      : characterImageLevel ===
+        2
       ? 116
-      : characterImageLevel === 3
+      : characterImageLevel ===
+        3
       ? 128
       : 140;
 
@@ -1591,10 +1621,12 @@ export default function CouplePage() {
       | undefined,
     index: number
   ) {
-    if (!member) {
+    if (
+      !member
+    ) {
       return (
         <div className="flex w-[46%] items-center justify-center">
-          <span className="text-4xl opacity-30">
+          <span className="pointer-events-none text-4xl opacity-30">
             🐾
           </span>
         </div>
@@ -1695,11 +1727,14 @@ export default function CouplePage() {
                   className="pointer-events-none absolute left-1/2 top-1 z-30 -translate-x-1/2 drop-shadow-sm"
                   style={{
                     fontSize:
-                      characterImageLevel === 1
+                      characterImageLevel ===
+                      1
                         ? "24px"
-                        : characterImageLevel === 2
+                        : characterImageLevel ===
+                          2
                         ? "28px"
-                        : characterImageLevel === 3
+                        : characterImageLevel ===
+                          3
                         ? "31px"
                         : "34px",
                   }}
@@ -1713,11 +1748,14 @@ export default function CouplePage() {
                   className="pointer-events-none absolute bottom-0 left-1/2 z-30 -translate-x-1/2 drop-shadow-sm"
                   style={{
                     fontSize:
-                      characterImageLevel === 1
+                      characterImageLevel ===
+                      1
                         ? "22px"
-                        : characterImageLevel === 2
+                        : characterImageLevel ===
+                          2
                         ? "25px"
-                        : characterImageLevel === 3
+                        : characterImageLevel ===
+                          3
                         ? "28px"
                         : "31px",
                   }}
@@ -1741,9 +1779,15 @@ export default function CouplePage() {
             </>
           ) : (
 
-            <div className="absolute inset-x-2 bottom-1 top-2 flex items-center justify-center rounded-[24px] border border-dashed border-pink-200 bg-white/60 text-4xl">
+            <button
+              type="button"
+              disabled
+              tabIndex={-1}
+              aria-label="캐릭터 미선택"
+              className="pointer-events-none absolute inset-x-2 bottom-1 top-2 flex cursor-default items-center justify-center rounded-[24px] border border-dashed border-pink-200 bg-white/60 text-4xl"
+            >
               🐾
-            </div>
+            </button>
 
           )}
 
@@ -1867,7 +1911,7 @@ export default function CouplePage() {
               <Link
                 href="/character"
                 prefetch={false}
-                className="mt-3 block rounded-2xl bg-pink-500 px-4 py-3 text-center text-xs font-bold text-white"
+                className="relative z-20 mt-3 block rounded-2xl bg-pink-500 px-4 py-3 text-center text-xs font-bold text-white"
               >
                 우리 캐릭터 선택하기
               </Link>
@@ -1897,22 +1941,27 @@ export default function CouplePage() {
                 </p>
 
                 <p className="mt-1 text-xl font-bold text-pink-500">
+
                   {xp}
 
                   <span className="ml-1 text-xs font-semibold text-gray-300">
                     / {xpForNextLevel}
                   </span>
+
                 </p>
 
               </div>
 
               <p className="text-xs font-semibold text-pink-500">
+
                 다음 레벨까지{" "}
+
                 {Math.max(
                   xpForNextLevel -
                     xp,
                   0
                 )} XP
+
               </p>
 
             </div>
@@ -1976,11 +2025,13 @@ export default function CouplePage() {
               </p>
 
               <p className="mt-1 text-3xl font-bold tracking-tight">
+
                 {promises.length}
 
                 <span className="ml-1 text-sm font-semibold text-gray-400">
                   개
                 </span>
+
               </p>
 
               <p className="mt-2 text-[11px] leading-5 text-gray-400">
@@ -2085,12 +2136,16 @@ export default function CouplePage() {
                   </p>
 
                   <p className="mt-1 truncate text-xs text-gray-400">
+
                     {recentReward.promises
                       ?.title ??
                       "약속"}{" "}
+
                     ·{" "}
+
                     {recentReward.required_days}
                     일 달성
+
                   </p>
 
                 </div>
@@ -2147,9 +2202,11 @@ export default function CouplePage() {
                   </p>
 
                   <p className="mt-1 text-sm font-semibold text-gray-700">
+
                     {isTodayAllCompleted
                       ? "🎉 오늘 약속을 모두 지켰어요!"
                       : `오늘 ${todayCompletedCount} / ${todayTotalCount} 완료`}
+
                   </p>
 
                 </div>
@@ -2330,6 +2387,7 @@ export default function CouplePage() {
                               promise.is_joint
                                 ? members.map(
                                     (member) => {
+
                                       const verification =
                                         todayVerifications.find(
                                           (item) =>
@@ -2342,10 +2400,12 @@ export default function CouplePage() {
                                       return {
                                         userId:
                                           member.user_id,
+
                                         nickname:
                                           member.profiles
                                             ?.nickname ??
                                           "파트너",
+
                                         status:
                                           verification?.status ??
                                           null,
@@ -2355,6 +2415,7 @@ export default function CouplePage() {
                                 : [];
 
                             return (
+
                               <article
                                 key={
                                   promise.id
@@ -2375,9 +2436,11 @@ export default function CouplePage() {
                                         </span>
 
                                         <span className="text-[11px] text-gray-400">
+
                                           {promise.is_joint
                                             ? "💕 서로의 약속"
                                             : `${assigneeName}님의 약속`}
+
                                         </span>
 
                                       </div>
@@ -2405,6 +2468,7 @@ export default function CouplePage() {
                                   <div className="mt-4 rounded-2xl bg-[#fff8fb] px-4 py-3">
 
                                     <p className="text-xs font-medium text-gray-500">
+
                                       🔥 현재 {promise.current_streak}일
 
                                       <span className="mx-2 text-pink-200">
@@ -2418,6 +2482,7 @@ export default function CouplePage() {
                                       </span>
 
                                       ✓ 성공 {promise.total_success}일
+
                                     </p>
 
                                   </div>
@@ -2460,15 +2525,19 @@ export default function CouplePage() {
                                               : "text-gray-400";
 
                                           return (
+
                                             <span
                                               key={
                                                 memberStatus.userId
                                               }
                                               className={`font-semibold ${statusClass}`}
                                             >
+
                                               {memberStatus.nickname}{" "}
                                               {statusLabel}
+
                                             </span>
+
                                           );
                                         }
                                       )}
@@ -2486,9 +2555,11 @@ export default function CouplePage() {
                                       </p>
 
                                       <p className="mt-2 text-sm leading-6 text-red-400">
+
                                         {myVerification.rejection_reason?.trim()
                                           ? myVerification.rejection_reason
                                           : "상대방이 반려 이유를 남기지 않았어요."}
+
                                       </p>
 
                                     </div>
@@ -2630,6 +2701,7 @@ export default function CouplePage() {
                                 </div>
 
                               </article>
+
                             );
                           }
                         )}
@@ -2774,11 +2846,13 @@ export default function CouplePage() {
               </p>
 
               <p className="mt-1 text-3xl font-bold">
+
                 {promises.length}
 
                 <span className="ml-1 text-sm text-gray-400">
                   개
                 </span>
+
               </p>
 
             </div>
@@ -2794,11 +2868,13 @@ export default function CouplePage() {
               </p>
 
               <p className="mt-1 text-3xl font-bold">
+
                 {unlockedRewardCount}
 
                 <span className="ml-1 text-sm text-gray-400">
                   개
                 </span>
+
               </p>
 
             </div>
@@ -2826,17 +2902,23 @@ export default function CouplePage() {
             </p>
 
             <h2 className="mt-3 text-2xl font-bold">
+
               🔥{" "}
+
               {rewardNotification.rewards
                 ?.required_days ??
                 0}
+
               일 달성!
+
             </h2>
 
             <p className="mt-2 text-sm text-gray-400">
+
               {rewardNotification.promises
                 ?.title ??
                 "약속"}
+
             </p>
 
             <div className="mt-6 rounded-[24px] bg-[#fff8fb] p-5">
@@ -2846,9 +2928,11 @@ export default function CouplePage() {
               </p>
 
               <p className="mt-2 text-xl font-bold text-pink-500">
+
                 {rewardNotification.rewards
                   ?.title ??
                   "새로운 보상"}
+
               </p>
 
             </div>
