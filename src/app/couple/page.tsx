@@ -16,8 +16,15 @@ type CoupleInfo = {
   xp: number;
 };
 
+type CharacterColor =
+  | "original"
+  | "gray"
+  | "brown"
+  | "black";
+
 type Member = {
   user_id: string;
+  character_color: CharacterColor | null;
 
   profiles: {
     nickname: string | null;
@@ -549,7 +556,7 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 커플 멤버
+      // 커플 멤버 + 개인 캐릭터 색상
       // =====================================
 
       const {
@@ -559,9 +566,10 @@ export default function CouplePage() {
         .from(
           "couple_members"
         )
-        .select(
-          "user_id"
-        )
+        .select(`
+          user_id,
+          character_color
+        `)
         .eq(
           "couple_id",
           coupleId
@@ -638,18 +646,27 @@ export default function CouplePage() {
 
       const combinedMembers:
         Member[] =
-        userIds.map(
-          (userId) => {
+        (
+          memberRows ??
+          []
+        ).map(
+          (member) => {
             const profile =
               profileRows?.find(
                 (item) =>
                   item.id ===
-                  userId
+                  member.user_id
               );
 
             return {
               user_id:
-                userId,
+                member.user_id,
+
+              character_color:
+                (
+                  member.character_color ??
+                  null
+                ) as CharacterColor | null,
 
               profiles: {
                 nickname:
@@ -1596,8 +1613,8 @@ export default function CouplePage() {
 
   // =========================================
   // 실제 캐릭터 이미지
-  // LV.1 ~ LV.4
-  // LV.5 이상은 LV.4 이미지 유지
+  // 종류 + 개인 색상 + 커플 레벨
+  // LV.5 이상은 LV.4 유지
   // =========================================
 
   const characterImageLevel =
@@ -1609,24 +1626,33 @@ export default function CouplePage() {
       4
     );
 
-  const characterImagePath =
-    character
-      ?.character_type
-      ? `/characters/${character.character_type}/lv${characterImageLevel}.png`
-      : null;
-
-  // 레벨마다 실제 화면 크기도 조금씩 성장
   const characterDisplayWidth =
     characterImageLevel ===
     1
-      ? 82
+      ? 105
       : characterImageLevel ===
         2
-      ? 92
+      ? 116
       : characterImageLevel ===
         3
-      ? 103
-      : 114;
+      ? 128
+      : 140;
+
+  function getCharacterImagePath(
+    member:
+      | Member
+      | undefined
+  ) {
+    if (
+      !member ||
+      !character?.character_type ||
+      !member.character_color
+    ) {
+      return null;
+    }
+
+    return `/characters/${character.character_type}/${member.character_color}/lv${characterImageLevel}.png`;
+  }
 
   // =========================================
   // 각 사람별 착용 아이템
@@ -1752,7 +1778,7 @@ export default function CouplePage() {
       !member
     ) {
       return (
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex w-[46%] items-center justify-center">
           <span className="text-4xl opacity-30">
             🐾
           </span>
@@ -1818,10 +1844,15 @@ export default function CouplePage() {
       member.user_id ===
       currentUserId;
 
-    return (
-      <div className="relative flex min-w-0 flex-1 flex-col items-center">
+    const characterImagePath =
+      getCharacterImagePath(
+        member
+      );
 
-        <div className="relative flex h-[130px] w-full items-end justify-center">
+    return (
+      <div className="relative flex w-[46%] min-w-0 flex-col items-center">
+
+        <div className="relative flex h-[145px] w-full items-end justify-center">
 
           {characterImagePath ? (
             <>
@@ -1843,7 +1874,7 @@ export default function CouplePage() {
                   width:
                     `${characterDisplayWidth}px`,
                   maxHeight:
-                    "120px",
+                    "135px",
                 }}
               />
 
@@ -1896,7 +1927,7 @@ export default function CouplePage() {
               {/* 액세서리 */}
 
               {accessoryEmoji && (
-                <div className="pointer-events-none absolute bottom-7 right-2 z-40 text-[22px]">
+                <div className="pointer-events-none absolute bottom-7 right-1 z-40 text-[22px]">
                   {accessoryEmoji}
                 </div>
               )}
@@ -1904,7 +1935,7 @@ export default function CouplePage() {
               {/* 커플 아이템 */}
 
               {coupleEmoji && (
-                <div className="pointer-events-none absolute right-2 top-6 z-40 text-[20px]">
+                <div className="pointer-events-none absolute right-1 top-6 z-40 text-[20px]">
                   {coupleEmoji}
                 </div>
               )}
@@ -2035,7 +2066,7 @@ export default function CouplePage() {
               ♡
             </div>
 
-            <div className="flex items-end justify-center gap-1">
+            <div className="flex items-end justify-center -space-x-3">
 
               {renderUserCharacter(
                 members[0],
