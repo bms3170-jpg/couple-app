@@ -26,6 +26,63 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"error" | "success">("error");
 
+  // 이미 로그인되어 있으면 로그인 화면을 건너뛰고 /home으로 이동
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkSession() {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        if (error) {
+          console.error("세션 확인 오류:", error);
+          setCheckingSession(false);
+          return;
+        }
+
+        if (session) {
+          router.replace("/home");
+          router.refresh();
+          return;
+        }
+
+        setCheckingSession(false);
+      } catch (error) {
+        console.error("세션 확인 중 오류:", error);
+
+        if (mounted) {
+          setCheckingSession(false);
+        }
+      }
+    }
+
+    checkSession();
+
+    // 로그인/로그아웃 상태가 바뀌는 경우에도 처리
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+
+      if (session) {
+        router.replace("/home");
+        router.refresh();
+      } else {
+        setCheckingSession(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router, supabase]);
+
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
 
@@ -47,28 +104,33 @@ export default function LoginPage() {
       return;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: trimmedEmail,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
+      });
 
-    setLoading(false);
+      if (error) {
+        console.error(
+          `로그인 오류 | message=${error.message} | status=${error.status ?? ""} | code=${error.code ?? ""}`
+        );
+        setMessage(`로그인 오류: ${error.message}`);
+        return;
+      }
 
-    if (error) {
-      console.error(
-        `로그인 오류 | message=${error.message} | status=${error.status ?? ""} | code=${error.code ?? ""}`
-      );
-      setMessage(`로그인 오류: ${error.message}`);
-      return;
+      if (!data.session) {
+        setMessage("로그인 세션을 만들지 못했어요.");
+        return;
+      }
+
+      router.replace("/home");
+      router.refresh();
+    } catch (error) {
+      console.error("로그인 처리 중 오류:", error);
+      setMessage("로그인 중 문제가 발생했어요. 다시 시도해주세요.");
+    } finally {
+      setLoading(false);
     }
-
-    if (!data.session) {
-      setMessage("로그인 세션을 만들지 못했어요.");
-      return;
-    }
-
-    router.replace("/home");
-    router.refresh();
   }
 
   async function handlePasswordReset() {
