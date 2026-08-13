@@ -1,1 +1,1132 @@
+"use client";
 
+import Link from "next/link";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useRouter } from "next/navigation";
+
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
+
+type StoreItem = {
+  id: string;
+  item_key: string;
+  name: string;
+  description: string | null;
+  category: string;
+  price: number;
+  required_level: number;
+  rarity: string;
+  image_path: string | null;
+  is_active: boolean;
+  sort_order: number;
+};
+
+type InventoryItem = {
+  id: string;
+  item_id: string;
+  purchased_price: number;
+  purchased_at: string;
+};
+
+type CoupleInfo = {
+  level: number;
+};
+
+type CoinWallet = {
+  coins: number;
+  total_earned: number;
+  total_spent: number;
+};
+
+type PurchaseResult = {
+  success?: boolean;
+  inventory_id?: string;
+  item_id?: string;
+  item_name?: string;
+  price?: number;
+  remaining_coins?: number;
+};
+
+type CategoryFilter =
+  | "all"
+  | "hat"
+  | "clothes"
+  | "accessory"
+  | "background"
+  | "furniture"
+  | "couple";
+
+export default function StorePage() {
+  const router = useRouter();
+
+  const supabase = useMemo(
+    () => createClient(),
+    []
+  );
+
+  const {
+    user,
+    loading: authLoading,
+  } = useAuth();
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [items, setItems] =
+    useState<StoreItem[]>([]);
+
+  const [inventory, setInventory] =
+    useState<InventoryItem[]>([]);
+
+  const [coupleId, setCoupleId] =
+    useState("");
+
+  const [level, setLevel] =
+    useState(1);
+
+  const [wallet, setWallet] =
+    useState<CoinWallet>({
+      coins: 0,
+      total_earned: 0,
+      total_spent: 0,
+    });
+
+  const [selectedCategory, setSelectedCategory] =
+    useState<CategoryFilter>("all");
+
+  const [processingItemId, setProcessingItemId] =
+    useState<string | null>(null);
+
+  const [notice, setNotice] =
+    useState("");
+
+  // =========================================
+  // 상점 데이터 불러오기
+  // =========================================
+
+  const loadStore = useCallback(
+    async () => {
+      if (authLoading) {
+        return;
+      }
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      setLoading(true);
+      setNotice("");
+
+      // =====================================
+      // 내가 속한 커플
+      // =====================================
+
+      const {
+        data: membership,
+        error: membershipError,
+      } = await supabase
+        .from("couple_members")
+        .select("couple_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (
+        membershipError ||
+        !membership
+      ) {
+        console.error(
+          "커플 조회 오류:",
+          membershipError
+        );
+
+        setNotice(
+          "커플 정보를 찾을 수 없어요."
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      const currentCoupleId =
+        membership.couple_id;
+
+      setCoupleId(
+        currentCoupleId
+      );
+
+      // =====================================
+      // 현재 커플 레벨
+      // =====================================
+
+      const {
+        data: coupleData,
+        error: coupleError,
+      } = await supabase
+        .from("couples")
+        .select("level")
+        .eq(
+          "id",
+          currentCoupleId
+        )
+        .maybeSingle();
+
+      if (coupleError) {
+        console.error(
+          "커플 레벨 조회 오류:",
+          coupleError
+        );
+      }
+
+      const currentLevel =
+        (coupleData as CoupleInfo | null)
+          ?.level ?? 1;
+
+      setLevel(
+        currentLevel
+      );
+
+      // =====================================
+      // 내 코인 지갑
+      // =====================================
+
+      const {
+        data: walletData,
+        error: walletError,
+      } = await supabase
+        .from("user_coin_wallets")
+        .select(`
+          coins,
+          total_earned,
+          total_spent
+        `)
+        .eq(
+          "couple_id",
+          currentCoupleId
+        )
+        .eq(
+          "user_id",
+          user.id
+        )
+        .maybeSingle();
+
+      if (walletError) {
+        console.error(
+          "코인 지갑 조회 오류:",
+          walletError
+        );
+      }
+
+      setWallet(
+        walletData
+          ? (walletData as CoinWallet)
+          : {
+              coins: 0,
+              total_earned: 0,
+              total_spent: 0,
+            }
+      );
+
+      // =====================================
+      // 상점 아이템
+      // =====================================
+
+      const {
+        data: storeRows,
+        error: storeError,
+      } = await supabase
+        .from("store_items")
+        .select(`
+          id,
+          item_key,
+          name,
+          description,
+          category,
+          price,
+          required_level,
+          rarity,
+          image_path,
+          is_active,
+          sort_order
+        `)
+        .eq(
+          "is_active",
+          true
+        )
+        .order(
+          "sort_order",
+          {
+            ascending: true,
+          }
+        );
+
+      if (storeError) {
+        console.error(
+          "상점 아이템 조회 오류:",
+          storeError
+        );
+
+        setNotice(
+          "상점 아이템을 불러오지 못했어요."
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      setItems(
+        (storeRows ?? []) as StoreItem[]
+      );
+
+      // =====================================
+      // 내 커플 인벤토리
+      // =====================================
+
+      const {
+        data: inventoryRows,
+        error: inventoryError,
+      } = await supabase
+        .from("couple_inventory")
+        .select(`
+          id,
+          item_id,
+          purchased_price,
+          purchased_at
+        `)
+        .eq(
+          "couple_id",
+          currentCoupleId
+        );
+
+      if (inventoryError) {
+        console.error(
+          "인벤토리 조회 오류:",
+          inventoryError
+        );
+
+        setNotice(
+          "보유 아이템을 불러오지 못했어요."
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      setInventory(
+        (inventoryRows ?? []) as InventoryItem[]
+      );
+
+      setLoading(false);
+    },
+    [
+      authLoading,
+      user,
+      router,
+      supabase,
+    ]
+  );
+
+  useEffect(() => {
+    void loadStore();
+  }, [loadStore]);
+
+  // =========================================
+  // 아이템 구매
+  // =========================================
+
+  async function handlePurchase(
+    item: StoreItem
+  ) {
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    if (!coupleId) {
+      setNotice(
+        "커플 정보를 찾을 수 없어요."
+      );
+      return;
+    }
+
+    const alreadyOwned =
+      inventory.some(
+        (inventoryItem) =>
+          inventoryItem.item_id ===
+          item.id
+      );
+
+    if (alreadyOwned) {
+      setNotice(
+        "이미 보유 중인 아이템이에요."
+      );
+      return;
+    }
+
+    if (
+      level <
+      item.required_level
+    ) {
+      setNotice(
+        `LV.${item.required_level}부터 구매할 수 있어요.`
+      );
+      return;
+    }
+
+    if (
+      wallet.coins <
+      item.price
+    ) {
+      setNotice(
+        `코인이 부족해요. ${item.price - wallet.coins}코인이 더 필요해요.`
+      );
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `"${item.name}"을 ${item.price}코인에 구매할까요?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setProcessingItemId(
+      item.id
+    );
+
+    setNotice("");
+
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
+      "purchase_store_item",
+      {
+        p_item_id:
+          item.id,
+      }
+    );
+
+    setProcessingItemId(
+      null
+    );
+
+    if (error) {
+      console.error(
+        "아이템 구매 오류:",
+        error
+      );
+
+      setNotice(
+        error.message ||
+          "아이템을 구매하지 못했어요."
+      );
+
+      return;
+    }
+
+    const result =
+      data as PurchaseResult | null;
+
+    if (!result?.success) {
+      setNotice(
+        "구매 결과를 확인하지 못했어요."
+      );
+      return;
+    }
+
+    setWallet(
+      (current) => ({
+        ...current,
+
+        coins:
+          result.remaining_coins ??
+          Math.max(
+            current.coins -
+              item.price,
+            0
+          ),
+
+        total_spent:
+          current.total_spent +
+          item.price,
+      })
+    );
+
+    if (
+      result.inventory_id
+    ) {
+      setInventory(
+        (current) => [
+          ...current,
+          {
+            id:
+              result.inventory_id!,
+
+            item_id:
+              item.id,
+
+            purchased_price:
+              item.price,
+
+            purchased_at:
+              new Date().toISOString(),
+          },
+        ]
+      );
+    } else {
+      await loadStore();
+    }
+
+    setNotice(
+      `${item.name} 구매 완료! ♡`
+    );
+  }
+
+  // =========================================
+  // 카테고리
+  // =========================================
+
+  const categories: {
+    value: CategoryFilter;
+    label: string;
+    emoji: string;
+  }[] = [
+    {
+      value: "all",
+      label: "전체",
+      emoji: "✨",
+    },
+    {
+      value: "hat",
+      label: "모자",
+      emoji: "🎩",
+    },
+    {
+      value: "clothes",
+      label: "옷",
+      emoji: "👕",
+    },
+    {
+      value: "accessory",
+      label: "액세서리",
+      emoji: "🎀",
+    },
+    {
+      value: "background",
+      label: "배경",
+      emoji: "🌷",
+    },
+    {
+      value: "furniture",
+      label: "가구",
+      emoji: "🛋️",
+    },
+    {
+      value: "couple",
+      label: "커플",
+      emoji: "💕",
+    },
+  ];
+
+  const visibleItems =
+    selectedCategory === "all"
+      ? items
+      : items.filter(
+          (item) =>
+            item.category ===
+            selectedCategory
+        );
+
+  // =========================================
+  // 표시용
+  // =========================================
+
+  function getItemEmoji(
+    item: StoreItem
+  ) {
+    const emojiMap:
+      Record<string, string> = {
+      basic_hat: "🧢",
+      beret: "🎨",
+      ribbon_hat: "🎀",
+      knight_helmet: "🪖",
+      royal_crown: "👑",
+      magic_hat: "🪄",
+      couple_crown: "👑",
+      cozy_sofa: "🛋️",
+    };
+
+    if (
+      emojiMap[item.item_key]
+    ) {
+      return emojiMap[
+        item.item_key
+      ];
+    }
+
+    if (
+      item.category === "hat"
+    ) {
+      return "🎩";
+    }
+
+    if (
+      item.category ===
+      "clothes"
+    ) {
+      return "👕";
+    }
+
+    if (
+      item.category ===
+      "accessory"
+    ) {
+      return "🎀";
+    }
+
+    if (
+      item.category ===
+      "background"
+    ) {
+      return "🌸";
+    }
+
+    if (
+      item.category ===
+      "furniture"
+    ) {
+      return "🛋️";
+    }
+
+    if (
+      item.category ===
+      "couple"
+    ) {
+      return "💕";
+    }
+
+    return "🎁";
+  }
+
+  function getRarityLabel(
+    rarity: string
+  ) {
+    if (
+      rarity === "basic"
+    ) {
+      return "BASIC";
+    }
+
+    if (
+      rarity === "normal"
+    ) {
+      return "NORMAL";
+    }
+
+    if (
+      rarity === "rare"
+    ) {
+      return "RARE";
+    }
+
+    if (
+      rarity === "special"
+    ) {
+      return "SPECIAL";
+    }
+
+    if (
+      rarity === "premium"
+    ) {
+      return "PREMIUM";
+    }
+
+    return rarity.toUpperCase();
+  }
+
+  function getRarityClass(
+    rarity: string
+  ) {
+    if (
+      rarity === "basic"
+    ) {
+      return "bg-gray-50 text-gray-500";
+    }
+
+    if (
+      rarity === "normal"
+    ) {
+      return "bg-green-50 text-green-600";
+    }
+
+    if (
+      rarity === "rare"
+    ) {
+      return "bg-blue-50 text-blue-500";
+    }
+
+    if (
+      rarity === "special"
+    ) {
+      return "bg-purple-50 text-purple-500";
+    }
+
+    if (
+      rarity === "premium"
+    ) {
+      return "bg-amber-50 text-amber-600";
+    }
+
+    return "bg-pink-50 text-pink-500";
+  }
+
+  // =========================================
+  // 로딩
+  // =========================================
+
+  if (
+    authLoading ||
+    loading
+  ) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
+        <p className="text-sm text-gray-500">
+          상점 불러오는 중...
+        </p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
+
+      <div className="mx-auto max-w-md pb-16">
+
+        {/* =====================================
+            상단
+        ====================================== */}
+
+        <header>
+
+          <Link
+            href="/couple"
+            prefetch={false}
+            className="inline-block text-sm font-semibold text-gray-500"
+          >
+            ← 돌아가기
+          </Link>
+
+          <div className="mt-8 flex items-end justify-between gap-4">
+
+            <div>
+
+              <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
+                OUR STORE
+              </p>
+
+              <h1 className="mt-2 text-3xl font-bold">
+                우리 상점 ♡
+              </h1>
+
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                함께 모은 코인으로
+                <br />
+                우리 캐릭터를 꾸며봐요.
+              </p>
+
+            </div>
+
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-white text-2xl shadow-sm">
+              🛍️
+            </div>
+
+          </div>
+
+        </header>
+
+        {/* =====================================
+            코인 / 레벨
+        ====================================== */}
+
+        <section className="mt-7 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/70 p-5 shadow-sm">
+
+          <div className="flex items-center justify-between gap-4">
+
+            <div>
+
+              <p className="text-xs font-semibold tracking-[0.16em] text-pink-400">
+                MY COIN
+              </p>
+
+              <p className="mt-2 text-3xl font-bold">
+                🪙 {wallet.coins}
+                <span className="ml-1 text-base font-semibold text-gray-400">
+                  개
+                </span>
+              </p>
+
+            </div>
+
+            <div className="rounded-2xl bg-white/90 px-4 py-3 text-center shadow-sm">
+
+              <p className="text-[10px] text-gray-400">
+                우리 레벨
+              </p>
+
+              <p className="mt-1 text-lg font-bold text-pink-500">
+                LV.{level}
+              </p>
+
+            </div>
+
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2">
+
+            <div className="rounded-2xl bg-white/70 px-4 py-3">
+
+              <p className="text-[10px] text-gray-400">
+                지금까지 획득
+              </p>
+
+              <p className="mt-1 text-sm font-bold text-gray-700">
+                {wallet.total_earned} 코인
+              </p>
+
+            </div>
+
+            <div className="rounded-2xl bg-white/70 px-4 py-3">
+
+              <p className="text-[10px] text-gray-400">
+                지금까지 사용
+              </p>
+
+              <p className="mt-1 text-sm font-bold text-gray-700">
+                {wallet.total_spent} 코인
+              </p>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* =====================================
+            카테고리
+        ====================================== */}
+
+        <section className="mt-6">
+
+          <div className="-mx-5 overflow-x-auto px-5">
+
+            <div className="flex w-max gap-2 pb-1">
+
+              {categories.map(
+                (category) => {
+
+                  const selected =
+                    selectedCategory ===
+                    category.value;
+
+                  return (
+                    <button
+                      key={
+                        category.value
+                      }
+                      type="button"
+                      onClick={() =>
+                        setSelectedCategory(
+                          category.value
+                        )
+                      }
+                      className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
+                        selected
+                          ? "border-pink-500 bg-pink-500 text-white shadow-sm"
+                          : "border-pink-100 bg-white text-gray-500"
+                      }`}
+                    >
+                      {category.emoji}{" "}
+                      {category.label}
+                    </button>
+                  );
+                }
+              )}
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* =====================================
+            안내 메시지
+        ====================================== */}
+
+        {notice && (
+
+          <div className="mt-5 rounded-2xl border border-pink-100 bg-white px-4 py-3 text-center text-sm text-gray-600 shadow-sm">
+            {notice}
+          </div>
+
+        )}
+
+        {/* =====================================
+            상품
+        ====================================== */}
+
+        <section className="mt-6">
+
+          <div className="mb-3 flex items-end justify-between">
+
+            <div>
+
+              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+                ITEMS
+              </p>
+
+              <h2 className="mt-1 text-lg font-bold">
+                아이템 둘러보기
+              </h2>
+
+            </div>
+
+            <span className="text-[11px] text-gray-400">
+              {visibleItems.length}개
+            </span>
+
+          </div>
+
+          {visibleItems.length ===
+          0 ? (
+
+            <div className="rounded-[28px] border border-dashed border-pink-200 bg-white px-6 py-12 text-center">
+
+              <div className="text-4xl">
+                🎁
+              </div>
+
+              <p className="mt-4 font-bold">
+                아직 아이템이 없어요
+              </p>
+
+            </div>
+
+          ) : (
+
+            <div className="grid grid-cols-2 gap-3">
+
+              {visibleItems.map(
+                (item) => {
+
+                  const owned =
+                    inventory.some(
+                      (
+                        inventoryItem
+                      ) =>
+                        inventoryItem.item_id ===
+                        item.id
+                    );
+
+                  const locked =
+                    level <
+                    item.required_level;
+
+                  const notEnoughCoins =
+                    wallet.coins <
+                    item.price;
+
+                  const processing =
+                    processingItemId ===
+                    item.id;
+
+                  return (
+
+                    <article
+                      key={
+                        item.id
+                      }
+                      className={`relative overflow-hidden rounded-[26px] border bg-white p-4 shadow-sm ${
+                        owned
+                          ? "border-green-100"
+                          : locked
+                          ? "border-gray-100"
+                          : "border-pink-100"
+                      }`}
+                    >
+
+                      {/* 아이템 이미지 */}
+
+                      <div className="relative">
+
+                        <div className="flex aspect-square w-full items-center justify-center rounded-[22px] bg-[#fff8fb] text-6xl">
+
+                          {getItemEmoji(
+                            item
+                          )}
+
+                        </div>
+
+                        {locked && (
+
+                          <div className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-white/70 backdrop-blur-[1px]">
+
+                            <div className="text-center">
+
+                              <div className="text-2xl">
+                                🔒
+                              </div>
+
+                              <p className="mt-1 text-xs font-bold text-gray-500">
+                                LV.{item.required_level}
+                              </p>
+
+                            </div>
+
+                          </div>
+
+                        )}
+
+                      </div>
+
+                      {/* 등급 */}
+
+                      <div className="mt-3">
+
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-bold tracking-[0.1em] ${getRarityClass(
+                            item.rarity
+                          )}`}
+                        >
+                          {getRarityLabel(
+                            item.rarity
+                          )}
+                        </span>
+
+                      </div>
+
+                      {/* 이름 */}
+
+                      <h3 className="mt-2 min-h-[48px] break-words text-base font-bold leading-6">
+                        {item.name}
+                      </h3>
+
+                      {/* 설명 */}
+
+                      <p className="mt-1 line-clamp-2 min-h-[40px] text-xs leading-5 text-gray-400">
+                        {item.description ??
+                          "우리 캐릭터를 꾸며주는 아이템이에요."}
+                      </p>
+
+                      {/* 가격 */}
+
+                      <div className="mt-3 flex items-center justify-between">
+
+                        <p className="font-bold text-amber-500">
+                          🪙 {item.price}
+                        </p>
+
+                        <p className="text-[10px] text-gray-400">
+                          LV.{item.required_level}
+                        </p>
+
+                      </div>
+
+                      {/* 버튼 */}
+
+                      {owned ? (
+
+                        <div className="mt-3 rounded-2xl border border-green-100 bg-green-50 px-3 py-3 text-center text-sm font-semibold text-green-600">
+                          ✓ 보유 중
+                        </div>
+
+                      ) : locked ? (
+
+                        <div className="mt-3 rounded-2xl bg-gray-50 px-3 py-3 text-center text-sm font-semibold text-gray-400">
+                          🔒 레벨 잠금
+                        </div>
+
+                      ) : (
+
+                        <button
+                          type="button"
+                          disabled={
+                            processing ||
+                            notEnoughCoins
+                          }
+                          onClick={() =>
+                            handlePurchase(
+                              item
+                            )
+                          }
+                          className={`mt-3 w-full rounded-2xl px-3 py-3 text-sm font-semibold transition ${
+                            notEnoughCoins
+                              ? "cursor-not-allowed bg-gray-100 text-gray-400"
+                              : "bg-pink-500 text-white shadow-sm hover:bg-pink-600 active:scale-[0.99]"
+                          } disabled:opacity-60`}
+                        >
+                          {processing
+                            ? "구매 중..."
+                            : notEnoughCoins
+                            ? "코인 부족"
+                            : "구매하기"}
+                        </button>
+
+                      )}
+
+                    </article>
+
+                  );
+                }
+              )}
+
+            </div>
+
+          )}
+
+        </section>
+
+        {/* =====================================
+            하단 안내
+        ====================================== */}
+
+        <section className="mt-6 rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm">
+
+          <div className="flex items-start gap-3">
+
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+              💡
+            </div>
+
+            <div>
+
+              <p className="font-bold">
+                상점 이용 안내
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                아이템은 한 번 구매하면
+                우리 인벤토리에 계속 남아요.
+                <br />
+                레벨이 오를수록 더 특별한
+                아이템을 구매할 수 있어요.
+              </p>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </main>
+  );
+}
