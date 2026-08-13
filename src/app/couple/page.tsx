@@ -556,7 +556,7 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 커플 멤버 + 각자 색상
+      // 커플 멤버 + 각자 캐릭터 색상
       // =====================================
 
       const {
@@ -791,8 +791,10 @@ export default function CouplePage() {
                     return {
                       user_id:
                         row.user_id,
+
                       slot:
                         row.slot,
+
                       item,
                     };
                   }
@@ -816,7 +818,7 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 해금 보상
+      // 해금된 보상 수
       // =====================================
 
       const {
@@ -861,7 +863,7 @@ export default function CouplePage() {
       );
 
       // =====================================
-      // 상대방 인증 대기
+      // 상대방 인증 확인 대기
       // =====================================
 
       const {
@@ -1054,10 +1056,13 @@ export default function CouplePage() {
             {
               timeZone:
                 "Asia/Seoul",
+
               year:
                 "numeric",
+
               month:
                 "2-digit",
+
               day:
                 "2-digit",
             }
@@ -1200,7 +1205,7 @@ export default function CouplePage() {
   ]);
 
   // =========================================
-  // 삭제 협의
+  // 삭제 요청
   // =========================================
 
   async function requestDelete(
@@ -1242,6 +1247,7 @@ export default function CouplePage() {
       alert(
         error.message
       );
+
       return;
     }
 
@@ -1278,6 +1284,7 @@ export default function CouplePage() {
       {
         p_request_id:
           requestId,
+
         p_action:
           "approve",
       }
@@ -1293,6 +1300,7 @@ export default function CouplePage() {
       alert(
         error.message
       );
+
       return;
     }
 
@@ -1329,6 +1337,7 @@ export default function CouplePage() {
       {
         p_request_id:
           requestId,
+
         p_action:
           "reject",
       }
@@ -1340,6 +1349,7 @@ export default function CouplePage() {
       alert(
         error.message
       );
+
       return;
     }
 
@@ -1369,6 +1379,7 @@ export default function CouplePage() {
       alert(
         error.message
       );
+
       return;
     }
 
@@ -1376,7 +1387,7 @@ export default function CouplePage() {
   }
 
   // =========================================
-  // 보상 알림 닫기
+  // 보상 팝업 닫기
   // =========================================
 
   async function closeRewardNotification() {
@@ -1394,6 +1405,7 @@ export default function CouplePage() {
       )
       .update({
         seen: true,
+
         seen_at:
           new Date().toISOString(),
       })
@@ -1419,7 +1431,7 @@ export default function CouplePage() {
   }
 
   // =========================================
-  // 착용 아이템 이모지
+  // 아이템 이모지
   // =========================================
 
   function getItemEmoji(
@@ -1440,36 +1452,49 @@ export default function CouplePage() {
       > = {
       basic_hat:
         "🧢",
+
       straw_hat:
         "👒",
+
       beret:
         "🎨",
+
       ribbon_hat:
         "🎀",
+
       knight_helmet:
         "🪖",
+
       royal_crown:
         "👑",
+
       magic_hat:
         "🎩",
+
       party_hat:
         "🥳",
+
       couple_crown:
         "👑",
 
       hoodie:
         "🧥",
+
       pink_clothes:
         "👚",
+
       blue_clothes:
         "👕",
+
       couple_hoodie:
         "🧥",
 
       heart_necklace:
         "💗",
+
       necklace:
         "📿",
+
       ribbon_accessory:
         "🎀",
     };
@@ -1515,6 +1540,10 @@ export default function CouplePage() {
     return "✨";
   }
 
+  // =========================================
+  // 로딩
+  // =========================================
+
   if (
     authLoading
   ) {
@@ -1540,7 +1569,7 @@ export default function CouplePage() {
   }
 
   // =========================================
-  // 기본 값
+  // 기본 표시값
   // =========================================
 
   const first =
@@ -1587,6 +1616,27 @@ export default function CouplePage() {
     "아기";
 
   // =========================================
+  // 현재 로그인한 사람의 캐릭터 선택 상태
+  // =========================================
+
+  const currentMember =
+    members.find(
+      (member) =>
+        member.user_id ===
+        currentUserId
+    ) ??
+    null;
+
+  const hasSelectedMyColor =
+    !!currentMember
+      ?.character_color;
+
+  const needsCharacterSetup =
+    !character
+      ?.character_type ||
+    !hasSelectedMyColor;
+
+  // =========================================
   // 캐릭터 자동 성장
   // =========================================
 
@@ -1615,15 +1665,21 @@ export default function CouplePage() {
     return `/characters/${character.character_type}/${member.character_color}/lv${characterImageLevel}.png`;
   }
 
-  // 캐릭터가 성장하면서 화면 크기도 살짝 증가
   const characterDisplayWidth =
-    characterImageLevel === 1
+    characterImageLevel ===
+    1
       ? 105
-      : characterImageLevel === 2
+      : characterImageLevel ===
+        2
       ? 116
-      : characterImageLevel === 3
+      : characterImageLevel ===
+        3
       ? 128
       : 140;
+
+  // =========================================
+  // 착용 아이템 찾기
+  // =========================================
 
   function getUserItem(
     userId: string,
@@ -1639,7 +1695,7 @@ export default function CouplePage() {
   }
 
   // =========================================
-  // 오늘 완료 여부
+  // 오늘 약속 완료 여부
   // =========================================
 
   const isPromiseCompletedToday = (
@@ -1732,7 +1788,7 @@ export default function CouplePage() {
       todayTotalCount;
 
   // =========================================
-  // 캐릭터 한 마리 렌더링
+  // 캐릭터 한 마리
   // =========================================
 
   function renderUserCharacter(
@@ -1837,6 +1893,7 @@ export default function CouplePage() {
                 style={{
                   width:
                     `${characterDisplayWidth}px`,
+
                   maxHeight:
                     "135px",
                 }}
@@ -1899,15 +1956,12 @@ export default function CouplePage() {
             </>
           ) : (
 
-            <button
-              type="button"
-              disabled
-              tabIndex={-1}
+            <div
               aria-label="캐릭터 미선택"
-              className="pointer-events-none absolute inset-x-2 bottom-1 top-2 flex cursor-default items-center justify-center rounded-[24px] border border-dashed border-pink-200 bg-white/60 text-4xl"
+              className="pointer-events-none absolute inset-x-2 bottom-1 top-2 flex select-none items-center justify-center rounded-[24px] border border-dashed border-pink-200 bg-white/60 text-4xl"
             >
               🐾
-            </button>
+            </div>
 
           )}
 
@@ -2038,14 +2092,23 @@ export default function CouplePage() {
 
             </div>
 
-            {!character?.character_type ? (
+            {/* =================================
+                캐릭터 선택 버튼
+            ================================= */}
+
+            {needsCharacterSetup ? (
 
               <Link
                 href="/character"
                 prefetch={false}
                 className="relative z-20 mt-3 block rounded-2xl bg-pink-500 px-4 py-3 text-center text-xs font-bold text-white"
               >
-                우리 캐릭터 선택하기
+
+                {!character
+                  ?.character_type
+                  ? "우리 캐릭터 선택하기"
+                  : "내 캐릭터 색상 선택하기"}
+
               </Link>
 
             ) : (
