@@ -171,7 +171,9 @@ export default function StorePage() {
         .from(
           "couple_members"
         )
-        .select("couple_id")
+        .select(
+          "couple_id"
+        )
         .eq(
           "user_id",
           user.id
@@ -289,7 +291,9 @@ export default function StorePage() {
         data: storeRows,
         error: storeError,
       } = await supabase
-        .from("store_items")
+        .from(
+          "store_items"
+        )
         .select(`
           id,
           item_key,
@@ -334,7 +338,7 @@ export default function StorePage() {
       );
 
       // =====================================
-      // 내 커플 인벤토리
+      // 인벤토리
       // =====================================
 
       const {
@@ -377,7 +381,7 @@ export default function StorePage() {
       );
 
       // =====================================
-      // 현재 착용 중인 아이템
+      // 현재 착용 중 아이템
       // =====================================
 
       const {
@@ -435,7 +439,7 @@ export default function StorePage() {
   }, [loadStore]);
 
   // =========================================
-  // 아이템 구매
+  // 구매
   // =========================================
 
   async function handlePurchase(
@@ -512,13 +516,14 @@ export default function StorePage() {
     const {
       data,
       error,
-    } = await supabase.rpc(
-      "purchase_store_item",
-      {
-        p_item_id:
-          item.id,
-      }
-    );
+    } =
+      await supabase.rpc(
+        "purchase_store_item",
+        {
+          p_item_id:
+            item.id,
+        }
+      );
 
     setProcessingItemId(
       null
@@ -550,6 +555,10 @@ export default function StorePage() {
       return;
     }
 
+    // =====================================
+    // 코인 즉시 반영
+    // =====================================
+
     setWallet(
       (current) => ({
         ...current,
@@ -567,6 +576,10 @@ export default function StorePage() {
           item.price,
       })
     );
+
+    // =====================================
+    // 인벤토리 즉시 반영
+    // =====================================
 
     if (
       result.inventory_id
@@ -599,7 +612,7 @@ export default function StorePage() {
   }
 
   // =========================================
-  // 아이템 착용
+  // 착용
   // =========================================
 
   async function handleEquip(
@@ -646,7 +659,11 @@ export default function StorePage() {
       return;
     }
 
-    const currentSameSlot =
+    // =====================================
+    // 같은 종류 아이템 교체 확인
+    // =====================================
+
+    const sameSlotEquipment =
       equipment.find(
         (
           equipmentItem
@@ -655,10 +672,8 @@ export default function StorePage() {
           item.category
       );
 
-    let confirmed = true;
-
     if (
-      currentSameSlot
+      sameSlotEquipment
     ) {
       const oldItem =
         items.find(
@@ -666,19 +681,19 @@ export default function StorePage() {
             storeItem
           ) =>
             storeItem.id ===
-            currentSameSlot.item_id
+            sameSlotEquipment.item_id
         );
 
-      confirmed =
+      const confirmed =
         window.confirm(
           oldItem
             ? `"${oldItem.name}" 대신 "${item.name}"을 착용할까요?`
             : `"${item.name}"을 착용할까요?`
         );
-    }
 
-    if (!confirmed) {
-      return;
+      if (!confirmed) {
+        return;
+      }
     }
 
     setEquippingItemId(
@@ -690,13 +705,14 @@ export default function StorePage() {
     const {
       data,
       error,
-    } = await supabase.rpc(
-      "equip_character_item",
-      {
-        p_item_id:
-          item.id,
-      }
-    );
+    } =
+      await supabase.rpc(
+        "equip_character_item",
+        {
+          p_item_id:
+            item.id,
+        }
+      );
 
     setEquippingItemId(
       null
@@ -728,8 +744,11 @@ export default function StorePage() {
       return;
     }
 
-    // 같은 슬롯 장비 제거 후
-    // 방금 착용한 아이템으로 화면 즉시 변경
+    // =====================================
+    // 같은 슬롯 기존 아이템 제거 후
+    // 새 장비 즉시 반영
+    // =====================================
+
     setEquipment(
       (current) => [
         ...current.filter(
@@ -820,7 +839,7 @@ export default function StorePage() {
         );
 
   // =========================================
-  // 표시용
+  // 아이템 이모지
   // =========================================
 
   function getItemEmoji(
@@ -896,6 +915,10 @@ export default function StorePage() {
     return "🎁";
   }
 
+  // =========================================
+  // 희귀도
+  // =========================================
+
   function getRarityLabel(
     rarity: string
   ) {
@@ -967,10 +990,6 @@ export default function StorePage() {
 
     return "bg-pink-50 text-pink-500";
   }
-
-  // =========================================
-  // 현재 장착 개수
-  // =========================================
 
   const equippedCount =
     equipment.length;
@@ -1173,7 +1192,7 @@ export default function StorePage() {
         </section>
 
         {/* =====================================
-            메시지
+            안내 메시지
         ====================================== */}
 
         {notice && (
@@ -1283,7 +1302,7 @@ export default function StorePage() {
                       }`}
                     >
 
-                      {/* 이미지 */}
+                      {/* 아이템 이미지 */}
 
                       <div className="relative">
 
@@ -1375,7 +1394,7 @@ export default function StorePage() {
                       {equipped ? (
 
                         <div className="mt-3 rounded-2xl border border-pink-200 bg-pink-50 px-3 py-3 text-center text-sm font-semibold text-pink-500">
-                          ✓ 착용 중
+                          ✓ 착용중
                         </div>
 
                       ) : owned ? (
@@ -1464,13 +1483,12 @@ export default function StorePage() {
               </p>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                구매한 아이템은 계속 보관돼요.
+                구매하면 가격만큼 내 코인이 차감돼요.
+                <br />
+                구매한 아이템은 언제든 다시 착용할 수 있어요.
                 <br />
                 같은 종류의 아이템을 새로 착용하면
                 기존 아이템은 자동으로 교체돼요.
-                <br />
-                언제든 보유 중인 다른 아이템으로
-                다시 바꿀 수 있어요.
               </p>
 
             </div>
