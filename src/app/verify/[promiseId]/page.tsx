@@ -30,6 +30,17 @@ type PromiseInfo = {
   partner_approval_required: boolean;
 };
 
+type ExistingVerification = {
+  id: string;
+  photo_path: string | null;
+  message: string | null;
+  status:
+    | "pending"
+    | "approved"
+    | "rejected";
+  rejection_reason: string | null;
+};
+
 export default function VerifyPage() {
   const router = useRouter();
 
@@ -38,10 +49,11 @@ export default function VerifyPage() {
       promiseId: string;
     }>();
 
-  const supabase = useMemo(
-    () => createClient(),
-    []
-  );
+  const supabase =
+    useMemo(
+      () => createClient(),
+      []
+    );
 
   const {
     user,
@@ -56,6 +68,14 @@ export default function VerifyPage() {
     setPromise,
   ] =
     useState<PromiseInfo | null>(
+      null
+    );
+
+  const [
+    existingVerification,
+    setExistingVerification,
+  ] =
+    useState<ExistingVerification | null>(
       null
     );
 
@@ -102,6 +122,26 @@ export default function VerifyPage() {
     setUploading,
   ] = useState(false);
 
+  const today =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone:
+          "Asia/Seoul",
+
+        year:
+          "numeric",
+
+        month:
+          "2-digit",
+
+        day:
+          "2-digit",
+      }
+    ).format(
+      new Date()
+    );
+
   // =========================================
   // 페이지 정보 불러오기
   // =========================================
@@ -115,6 +155,7 @@ export default function VerifyPage() {
       router.replace(
         "/login"
       );
+
       return;
     }
 
@@ -177,8 +218,6 @@ export default function VerifyPage() {
 
       // =====================================
       // 인증 권한 확인
-      // 일반 약속: 지정된 담당자만
-      // 공동 약속: 같은 커플의 두 사람 모두
       // =====================================
 
       if (
@@ -285,6 +324,96 @@ export default function VerifyPage() {
         );
       }
 
+      // =====================================
+      // 오늘 내 인증 확인
+      // =====================================
+
+      const {
+        data:
+          verificationData,
+
+        error:
+          verificationError,
+      } =
+        await supabase
+          .from(
+            "verifications"
+          )
+          .select(`
+            id,
+            photo_path,
+            message,
+            status,
+            rejection_reason
+          `)
+          .eq(
+            "promise_id",
+            promiseData.id
+          )
+          .eq(
+            "user_id",
+            currentUser.id
+          )
+          .eq(
+            "verification_date",
+            today
+          )
+          .maybeSingle();
+
+      if (cancelled) {
+        return;
+      }
+
+      if (
+        verificationError
+      ) {
+        console.error(
+          "오늘 인증 조회 오류:",
+          verificationError
+        );
+      }
+
+      const existing =
+        verificationData as
+          | ExistingVerification
+          | null;
+
+      // pending 또는 approved 상태면
+      // 중복 인증 화면으로 들어오지 못하게 함
+      if (
+        existing &&
+        existing.status !==
+          "rejected"
+      ) {
+        router.replace(
+          "/couple"
+        );
+
+        return;
+      }
+
+      // 반려된 인증이면
+      // 이전 내용과 반려 이유 표시
+      if (
+        existing?.status ===
+        "rejected"
+      ) {
+        setExistingVerification(
+          existing
+        );
+
+        setMessage(
+          existing.message ??
+            ""
+        );
+
+        setNotice(
+          existing.rejection_reason
+            ? `반려 이유: ${existing.rejection_reason}`
+            : "인증이 반려되었어요. 수정해서 다시 인증해주세요."
+        );
+      }
+
       setNickname(
         profile?.nickname ??
           ""
@@ -311,6 +440,7 @@ export default function VerifyPage() {
     promiseId,
     router,
     supabase,
+    today,
   ]);
 
   // =========================================
@@ -342,7 +472,6 @@ export default function VerifyPage() {
     const selectedFile =
       e.target.files?.[0];
 
-    // 같은 사진을 다시 선택할 수 있게 초기화
     e.target.value =
       "";
 
@@ -364,7 +493,6 @@ export default function VerifyPage() {
       return;
     }
 
-    // 6MB 이하 제한
     if (
       selectedFile.size >
       6 *
@@ -407,7 +535,7 @@ export default function VerifyPage() {
   }
 
   // =========================================
-  // 갤러리 열기
+  // 사진 보관함 열기
   // =========================================
 
   function openGalleryPicker() {
@@ -415,7 +543,7 @@ export default function VerifyPage() {
       false
     );
 
-    setTimeout(
+    window.setTimeout(
       () => {
         document
           .getElementById(
@@ -436,7 +564,7 @@ export default function VerifyPage() {
       false
     );
 
-    setTimeout(
+    window.setTimeout(
       () => {
         document
           .getElementById(
@@ -461,21 +589,26 @@ export default function VerifyPage() {
       return;
     }
 
-    if (
-      promise.photo_required &&
-      !file
-    ) {
-      setNotice(
-        "인증 사진을 선택해주세요."
+    if (!user) {
+      router.replace(
+        "/login"
       );
 
       return;
     }
 
-    if (!user) {
-      router.replace(
-        "/login"
+    // 새 인증은 사진 필수
+    // 반려 후 재인증은 기존 사진이 있으면
+    // 사진을 다시 선택하지 않아도 제출 가능
+    if (
+      promise.photo_required &&
+      !file &&
+      !existingVerification?.photo_path
+    ) {
+      setNotice(
+        "인증 사진을 선택해주세요."
       );
+
       return;
     }
 
@@ -488,12 +621,17 @@ export default function VerifyPage() {
 
     setNotice("");
 
-    let photoPath:
+    let photoPath =
+      existingVerification?.photo_path ??
+      null;
+
+    let uploadedNewPhotoPath:
       | string
-      | null = null;
+      | null =
+        null;
 
     // =====================================
-    // 사진 업로드
+    // 새 사진 업로드
     // =====================================
 
     if (file) {
@@ -507,7 +645,7 @@ export default function VerifyPage() {
       const fileName =
         `${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
-      photoPath =
+      uploadedNewPhotoPath =
         `${promise.couple_id}/${currentUser.id}/${fileName}`;
 
       const {
@@ -519,7 +657,7 @@ export default function VerifyPage() {
             "verification-images"
           )
           .upload(
-            photoPath,
+            uploadedNewPhotoPath,
             file,
             {
               cacheControl:
@@ -551,10 +689,13 @@ export default function VerifyPage() {
 
         return;
       }
+
+      photoPath =
+        uploadedNewPhotoPath;
     }
 
     // =====================================
-    // 승인 상태
+    // 인증 상태
     // =====================================
 
     const status =
@@ -562,79 +703,141 @@ export default function VerifyPage() {
         ? "pending"
         : "approved";
 
-    const verificationDate =
-      new Intl.DateTimeFormat(
-        "en-CA",
-        {
-          timeZone:
-            "Asia/Seoul",
-
-          year:
-            "numeric",
-
-          month:
-            "2-digit",
-
-          day:
-            "2-digit",
+    let insertedVerification:
+      | {
+          id: string;
+          created_at: string;
+          status: string;
         }
-      ).format(
-        new Date()
-      );
+      | null =
+        null;
+
+    let verificationError:
+      | {
+          message: string;
+          code?: string;
+        }
+      | null =
+        null;
 
     // =====================================
-    // 인증 DB 저장
+    // 반려된 인증은 기존 row 업데이트
     // =====================================
 
-    const {
-      data:
-        insertedVerification,
+    if (
+      existingVerification?.status ===
+      "rejected"
+    ) {
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from(
+            "verifications"
+          )
+          .update({
+            photo_path:
+              photoPath,
 
-      error:
-        verificationError,
-    } =
-      await supabase
-        .from(
-          "verifications"
-        )
-        .insert({
-          couple_id:
-            promise.couple_id,
+            message:
+              message.trim() ||
+              null,
 
-          promise_id:
-            promise.id,
+            status,
 
-          user_id:
-            currentUser.id,
+            reviewed_by:
+              promise.partner_approval_required
+                ? null
+                : currentUser.id,
 
-          verification_date:
-            verificationDate,
+            reviewed_at:
+              promise.partner_approval_required
+                ? null
+                : new Date().toISOString(),
 
-          photo_path:
-            photoPath,
+            rejection_reason:
+              null,
+          })
+          .eq(
+            "id",
+            existingVerification.id
+          )
+          .select(`
+            id,
+            created_at,
+            status
+          `)
+          .single();
 
-          message:
-            message.trim() ||
-            null,
+      insertedVerification =
+        data;
 
-          status,
+      verificationError =
+        error;
+    } else {
 
-          reviewed_by:
-            promise.partner_approval_required
-              ? null
-              : currentUser.id,
+      // =====================================
+      // 첫 인증은 새 row 생성
+      // =====================================
 
-          reviewed_at:
-            promise.partner_approval_required
-              ? null
-              : new Date().toISOString(),
-        })
-        .select(`
-          id,
-          created_at,
-          status
-        `)
-        .single();
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from(
+            "verifications"
+          )
+          .insert({
+            couple_id:
+              promise.couple_id,
+
+            promise_id:
+              promise.id,
+
+            user_id:
+              currentUser.id,
+
+            verification_date:
+              today,
+
+            photo_path:
+              photoPath,
+
+            message:
+              message.trim() ||
+              null,
+
+            status,
+
+            reviewed_by:
+              promise.partner_approval_required
+                ? null
+                : currentUser.id,
+
+            reviewed_at:
+              promise.partner_approval_required
+                ? null
+                : new Date().toISOString(),
+          })
+          .select(`
+            id,
+            created_at,
+            status
+          `)
+          .single();
+
+      insertedVerification =
+        data;
+
+      verificationError =
+        error;
+    }
+
+    // =====================================
+    // 인증 저장 오류
+    // =====================================
 
     if (
       verificationError
@@ -645,29 +848,20 @@ export default function VerifyPage() {
       );
 
       if (
-        photoPath
+        uploadedNewPhotoPath
       ) {
         await supabase.storage
           .from(
             "verification-images"
           )
           .remove([
-            photoPath,
+            uploadedNewPhotoPath,
           ]);
       }
 
-      if (
-        verificationError.code ===
-        "23505"
-      ) {
-        setNotice(
-          "오늘은 이미 이 약속을 인증했어요."
-        );
-      } else {
-        setNotice(
-          `인증 저장에 실패했어요: ${verificationError.message}`
-        );
-      }
+      setNotice(
+        `인증 저장에 실패했어요: ${verificationError.message}`
+      );
 
       setUploading(
         false
@@ -676,6 +870,25 @@ export default function VerifyPage() {
       return;
     }
 
+    // =====================================
+    // 새 사진으로 교체했다면
+    // 기존 반려 사진 삭제
+    // =====================================
+
+    if (
+      uploadedNewPhotoPath &&
+      existingVerification?.photo_path &&
+      existingVerification.photo_path !==
+        uploadedNewPhotoPath
+    ) {
+      await supabase.storage
+        .from(
+          "verification-images"
+        )
+        .remove([
+          existingVerification.photo_path,
+        ]);
+    }
     // =====================================
     // 상대 확인이 필요 없는 경우
     // 첫 성공 인증이면 타임라인 자동 등록
@@ -796,6 +1009,7 @@ export default function VerifyPage() {
 
     router.refresh();
   }
+
   // =========================================
   // 로딩
   // =========================================
@@ -836,6 +1050,7 @@ export default function VerifyPage() {
                 <span className="absolute -right-5 bottom-1 text-xl">
                   ♡
                 </span>
+
               </div>
 
             </div>
@@ -941,7 +1156,10 @@ export default function VerifyPage() {
             </p>
 
             <h1 className="mt-2 text-3xl font-bold">
-              오늘 인증하기
+              {existingVerification?.status ===
+              "rejected"
+                ? "다시 인증하기"
+                : "오늘 인증하기"}
             </h1>
 
             <p className="mt-2 text-sm leading-6 text-gray-500">
@@ -960,7 +1178,55 @@ export default function VerifyPage() {
 
         </div>
 
-        {/* 오늘 퀘스트 */}
+        {/* =====================================
+            반려 안내
+        ====================================== */}
+
+        {existingVerification?.status ===
+          "rejected" && (
+
+          <section className="mt-6 rounded-[24px] border border-red-100 bg-red-50/70 p-4">
+
+            <div className="flex items-start gap-3">
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
+                ↻
+              </div>
+
+              <div className="min-w-0 flex-1">
+
+                <p className="font-bold text-red-500">
+                  이전 인증이 반려되었어요
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-red-400">
+                  아래 내용을 확인하고 다시 인증해주세요.
+                </p>
+
+                <div className="mt-3 rounded-2xl bg-white px-4 py-3">
+
+                  <p className="text-[10px] font-semibold tracking-[0.12em] text-gray-400">
+                    반려 이유
+                  </p>
+
+                  <p className="mt-1.5 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-gray-700">
+                    {existingVerification.rejection_reason?.trim()
+                      ? existingVerification.rejection_reason
+                      : "상대방이 반려 이유를 남기지 않았어요."}
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+        )}
+
+        {/* =====================================
+            오늘 퀘스트
+        ====================================== */}
 
         <section className="mt-7 rounded-[28px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/60 p-5 shadow-sm">
 
@@ -1001,9 +1267,12 @@ export default function VerifyPage() {
           className="mt-7 space-y-6"
         >
 
-          {/* 인증 사진 */}
+          {/* =====================================
+              인증 사진
+          ====================================== */}
 
           {promise.photo_required && (
+
             <div>
 
               <p className="mb-3 font-semibold">
@@ -1011,6 +1280,7 @@ export default function VerifyPage() {
               </p>
 
               {!previewUrl ? (
+
                 <button
                   type="button"
                   onClick={() =>
@@ -1026,17 +1296,27 @@ export default function VerifyPage() {
                   </div>
 
                   <p className="mt-4 font-semibold">
-                    사진 추가
+                    {existingVerification?.photo_path
+                      ? "새 사진으로 변경"
+                      : "사진 추가"}
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-gray-400">
-                    갤러리에서 선택하거나
+                    사진 보관함에서 선택하거나
                     <br />
                     카메라로 바로 촬영할 수 있어요.
                   </p>
 
+                  {existingVerification?.photo_path && (
+                    <p className="mt-3 text-xs font-medium text-pink-400">
+                      새 사진을 고르지 않으면 기존 사진으로 다시 인증돼요.
+                    </p>
+                  )}
+
                 </button>
+
               ) : (
+
                 <div>
 
                   <div className="overflow-hidden rounded-[28px] border border-pink-100 bg-white shadow-sm">
@@ -1066,7 +1346,9 @@ export default function VerifyPage() {
                 </div>
               )}
 
-              {/* 갤러리용 input */}
+              {/* =================================
+                  사진 보관함용 input
+              ================================= */}
 
               <input
                 id="gallery-photo-input"
@@ -1078,7 +1360,9 @@ export default function VerifyPage() {
                 className="hidden"
               />
 
-              {/* 카메라용 input */}
+              {/* =================================
+                  카메라용 input
+              ================================= */}
 
               <input
                 id="camera-photo-input"
@@ -1091,9 +1375,12 @@ export default function VerifyPage() {
                 className="hidden"
               />
 
-              {/* 갤러리 / 카메라 선택창 */}
+              {/* =================================
+                  사진 선택창
+              ================================= */}
 
               {photoMenuOpen && (
+
                 <div
                   className="fixed inset-0 z-[100] flex items-end justify-center bg-black/30 px-4 pb-6"
                   onClick={() =>
@@ -1130,6 +1417,8 @@ export default function VerifyPage() {
 
                       <div className="border-t border-gray-100">
 
+                        {/* 사진 보관함 */}
+
                         <button
                           type="button"
                           onClick={
@@ -1145,7 +1434,7 @@ export default function VerifyPage() {
                           <div>
 
                             <p className="font-semibold">
-                              갤러리에서 선택
+                              사진 보관함
                             </p>
 
                             <p className="mt-1 text-xs text-gray-400">
@@ -1157,6 +1446,8 @@ export default function VerifyPage() {
                         </button>
 
                         <div className="mx-5 border-t border-gray-100" />
+
+                        {/* 카메라 */}
 
                         <button
                           type="button"
@@ -1208,7 +1499,9 @@ export default function VerifyPage() {
             </div>
           )}
 
-          {/* 오늘 한마디 */}
+          {/* =====================================
+              오늘 한마디
+          ====================================== */}
 
           <div>
 
@@ -1237,15 +1530,21 @@ export default function VerifyPage() {
 
           </div>
 
-          {/* 안내 메시지 */}
+          {/* =====================================
+              안내 메시지
+          ====================================== */}
 
           {notice && (
-            <div className="rounded-2xl border border-pink-100 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm">
+
+            <div className="rounded-2xl border border-pink-100 bg-white px-4 py-3 text-sm leading-6 text-gray-600 shadow-sm">
               {notice}
             </div>
+
           )}
 
-          {/* 인증 제출 */}
+          {/* =====================================
+              인증 제출
+          ====================================== */}
 
           <button
             type="submit"
@@ -1256,6 +1555,9 @@ export default function VerifyPage() {
           >
             {uploading
               ? "인증 올리는 중..."
+              : existingVerification?.status ===
+                "rejected"
+              ? "↻ 다시 인증 보내기 ♡"
               : promise.partner_approval_required
               ? "인증 보내기 ♡"
               : "오늘 인증 완료"}
@@ -1264,6 +1566,7 @@ export default function VerifyPage() {
         </form>
 
       </div>
+
     </main>
   );
 }
