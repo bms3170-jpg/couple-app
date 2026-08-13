@@ -33,6 +33,14 @@ type InventoryItem = {
   purchased_at: string;
 };
 
+type EquipmentItem = {
+  id: string;
+  couple_id: string;
+  slot: string;
+  item_id: string;
+  equipped_at: string;
+};
+
 type CoupleInfo = {
   level: number;
 };
@@ -50,6 +58,12 @@ type PurchaseResult = {
   item_name?: string;
   price?: number;
   remaining_coins?: number;
+};
+
+type EquipResult = {
+  success?: boolean;
+  item_id?: string;
+  slot?: string;
 };
 
 type CategoryFilter =
@@ -83,6 +97,9 @@ export default function StorePage() {
   const [inventory, setInventory] =
     useState<InventoryItem[]>([]);
 
+  const [equipment, setEquipment] =
+    useState<EquipmentItem[]>([]);
+
   const [coupleId, setCoupleId] =
     useState("");
 
@@ -96,11 +113,29 @@ export default function StorePage() {
       total_spent: 0,
     });
 
-  const [selectedCategory, setSelectedCategory] =
-    useState<CategoryFilter>("all");
+  const [
+    selectedCategory,
+    setSelectedCategory,
+  ] =
+    useState<CategoryFilter>(
+      "all"
+    );
 
-  const [processingItemId, setProcessingItemId] =
-    useState<string | null>(null);
+  const [
+    processingItemId,
+    setProcessingItemId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    equippingItemId,
+    setEquippingItemId,
+  ] =
+    useState<string | null>(
+      null
+    );
 
   const [notice, setNotice] =
     useState("");
@@ -116,7 +151,9 @@ export default function StorePage() {
       }
 
       if (!user) {
-        router.replace("/login");
+        router.replace(
+          "/login"
+        );
         return;
       }
 
@@ -131,9 +168,14 @@ export default function StorePage() {
         data: membership,
         error: membershipError,
       } = await supabase
-        .from("couple_members")
+        .from(
+          "couple_members"
+        )
         .select("couple_id")
-        .eq("user_id", user.id)
+        .eq(
+          "user_id",
+          user.id
+        )
         .maybeSingle();
 
       if (
@@ -184,8 +226,11 @@ export default function StorePage() {
       }
 
       const currentLevel =
-        (coupleData as CoupleInfo | null)
-          ?.level ?? 1;
+        (
+          coupleData as
+            | CoupleInfo
+            | null
+        )?.level ?? 1;
 
       setLevel(
         currentLevel
@@ -199,7 +244,9 @@ export default function StorePage() {
         data: walletData,
         error: walletError,
       } = await supabase
-        .from("user_coin_wallets")
+        .from(
+          "user_coin_wallets"
+        )
         .select(`
           coins,
           total_earned,
@@ -224,7 +271,9 @@ export default function StorePage() {
 
       setWallet(
         walletData
-          ? (walletData as CoinWallet)
+          ? (
+              walletData as CoinWallet
+            )
           : {
               coins: 0,
               total_earned: 0,
@@ -280,7 +329,8 @@ export default function StorePage() {
       }
 
       setItems(
-        (storeRows ?? []) as StoreItem[]
+        (storeRows ??
+          []) as StoreItem[]
       );
 
       // =====================================
@@ -291,7 +341,9 @@ export default function StorePage() {
         data: inventoryRows,
         error: inventoryError,
       } = await supabase
-        .from("couple_inventory")
+        .from(
+          "couple_inventory"
+        )
         .select(`
           id,
           item_id,
@@ -303,7 +355,9 @@ export default function StorePage() {
           currentCoupleId
         );
 
-      if (inventoryError) {
+      if (
+        inventoryError
+      ) {
         console.error(
           "인벤토리 조회 오류:",
           inventoryError
@@ -318,7 +372,52 @@ export default function StorePage() {
       }
 
       setInventory(
-        (inventoryRows ?? []) as InventoryItem[]
+        (inventoryRows ??
+          []) as InventoryItem[]
+      );
+
+      // =====================================
+      // 현재 착용 중인 아이템
+      // =====================================
+
+      const {
+        data: equipmentRows,
+        error: equipmentError,
+      } = await supabase
+        .from(
+          "character_equipment"
+        )
+        .select(`
+          id,
+          couple_id,
+          slot,
+          item_id,
+          equipped_at
+        `)
+        .eq(
+          "couple_id",
+          currentCoupleId
+        );
+
+      if (
+        equipmentError
+      ) {
+        console.error(
+          "착용 아이템 조회 오류:",
+          equipmentError
+        );
+
+        setNotice(
+          "착용 정보를 불러오지 못했어요."
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      setEquipment(
+        (equipmentRows ??
+          []) as EquipmentItem[]
       );
 
       setLoading(false);
@@ -343,7 +442,9 @@ export default function StorePage() {
     item: StoreItem
   ) {
     if (!user) {
-      router.replace("/login");
+      router.replace(
+        "/login"
+      );
       return;
     }
 
@@ -356,7 +457,9 @@ export default function StorePage() {
 
     const alreadyOwned =
       inventory.some(
-        (inventoryItem) =>
+        (
+          inventoryItem
+        ) =>
           inventoryItem.item_id ===
           item.id
       );
@@ -383,7 +486,10 @@ export default function StorePage() {
       item.price
     ) {
       setNotice(
-        `코인이 부족해요. ${item.price - wallet.coins}코인이 더 필요해요.`
+        `코인이 부족해요. ${
+          item.price -
+          wallet.coins
+        }코인이 더 필요해요.`
       );
       return;
     }
@@ -433,7 +539,9 @@ export default function StorePage() {
     }
 
     const result =
-      data as PurchaseResult | null;
+      data as
+        | PurchaseResult
+        | null;
 
     if (!result?.success) {
       setNotice(
@@ -486,7 +594,172 @@ export default function StorePage() {
     }
 
     setNotice(
-      `${item.name} 구매 완료! ♡`
+      `${item.name} 구매 완료! 이제 착용할 수 있어요 ♡`
+    );
+  }
+
+  // =========================================
+  // 아이템 착용
+  // =========================================
+
+  async function handleEquip(
+    item: StoreItem
+  ) {
+    if (!user) {
+      router.replace(
+        "/login"
+      );
+      return;
+    }
+
+    const owned =
+      inventory.some(
+        (
+          inventoryItem
+        ) =>
+          inventoryItem.item_id ===
+          item.id
+      );
+
+    if (!owned) {
+      setNotice(
+        "먼저 아이템을 구매해주세요."
+      );
+      return;
+    }
+
+    const alreadyEquipped =
+      equipment.some(
+        (
+          equipmentItem
+        ) =>
+          equipmentItem.item_id ===
+          item.id
+      );
+
+    if (
+      alreadyEquipped
+    ) {
+      setNotice(
+        "이미 착용 중인 아이템이에요."
+      );
+      return;
+    }
+
+    const currentSameSlot =
+      equipment.find(
+        (
+          equipmentItem
+        ) =>
+          equipmentItem.slot ===
+          item.category
+      );
+
+    let confirmed = true;
+
+    if (
+      currentSameSlot
+    ) {
+      const oldItem =
+        items.find(
+          (
+            storeItem
+          ) =>
+            storeItem.id ===
+            currentSameSlot.item_id
+        );
+
+      confirmed =
+        window.confirm(
+          oldItem
+            ? `"${oldItem.name}" 대신 "${item.name}"을 착용할까요?`
+            : `"${item.name}"을 착용할까요?`
+        );
+    }
+
+    if (!confirmed) {
+      return;
+    }
+
+    setEquippingItemId(
+      item.id
+    );
+
+    setNotice("");
+
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
+      "equip_character_item",
+      {
+        p_item_id:
+          item.id,
+      }
+    );
+
+    setEquippingItemId(
+      null
+    );
+
+    if (error) {
+      console.error(
+        "아이템 착용 오류:",
+        error
+      );
+
+      setNotice(
+        error.message ||
+          "아이템을 착용하지 못했어요."
+      );
+
+      return;
+    }
+
+    const result =
+      data as
+        | EquipResult
+        | null;
+
+    if (!result?.success) {
+      setNotice(
+        "착용 결과를 확인하지 못했어요."
+      );
+      return;
+    }
+
+    // 같은 슬롯 장비 제거 후
+    // 방금 착용한 아이템으로 화면 즉시 변경
+    setEquipment(
+      (current) => [
+        ...current.filter(
+          (
+            equipmentItem
+          ) =>
+            equipmentItem.slot !==
+            item.category
+        ),
+        {
+          id:
+            `temp-${item.id}`,
+
+          couple_id:
+            coupleId,
+
+          slot:
+            item.category,
+
+          item_id:
+            item.id,
+
+          equipped_at:
+            new Date().toISOString(),
+        },
+      ]
+    );
+
+    setNotice(
+      `${item.name} 착용 완료! ♡`
     );
   }
 
@@ -537,7 +810,8 @@ export default function StorePage() {
   ];
 
   const visibleItems =
-    selectedCategory === "all"
+    selectedCategory ===
+    "all"
       ? items
       : items.filter(
           (item) =>
@@ -553,7 +827,10 @@ export default function StorePage() {
     item: StoreItem
   ) {
     const emojiMap:
-      Record<string, string> = {
+      Record<
+        string,
+        string
+      > = {
       basic_hat: "🧢",
       beret: "🎨",
       ribbon_hat: "🎀",
@@ -565,7 +842,9 @@ export default function StorePage() {
     };
 
     if (
-      emojiMap[item.item_key]
+      emojiMap[
+        item.item_key
+      ]
     ) {
       return emojiMap[
         item.item_key
@@ -573,7 +852,8 @@ export default function StorePage() {
     }
 
     if (
-      item.category === "hat"
+      item.category ===
+      "hat"
     ) {
       return "🎩";
     }
@@ -689,6 +969,13 @@ export default function StorePage() {
   }
 
   // =========================================
+  // 현재 장착 개수
+  // =========================================
+
+  const equippedCount =
+    equipment.length;
+
+  // =========================================
   // 로딩
   // =========================================
 
@@ -768,6 +1055,7 @@ export default function StorePage() {
 
               <p className="mt-2 text-3xl font-bold">
                 🪙 {wallet.coins}
+
                 <span className="ml-1 text-base font-semibold text-gray-400">
                   개
                 </span>
@@ -775,15 +1063,31 @@ export default function StorePage() {
 
             </div>
 
-            <div className="rounded-2xl bg-white/90 px-4 py-3 text-center shadow-sm">
+            <div className="flex gap-2">
 
-              <p className="text-[10px] text-gray-400">
-                우리 레벨
-              </p>
+              <div className="rounded-2xl bg-white/90 px-3 py-3 text-center shadow-sm">
 
-              <p className="mt-1 text-lg font-bold text-pink-500">
-                LV.{level}
-              </p>
+                <p className="text-[10px] text-gray-400">
+                  착용 중
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-pink-500">
+                  {equippedCount}
+                </p>
+
+              </div>
+
+              <div className="rounded-2xl bg-white/90 px-3 py-3 text-center shadow-sm">
+
+                <p className="text-[10px] text-gray-400">
+                  우리 레벨
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-pink-500">
+                  LV.{level}
+                </p>
+
+              </div>
 
             </div>
 
@@ -830,7 +1134,9 @@ export default function StorePage() {
             <div className="flex w-max gap-2 pb-1">
 
               {categories.map(
-                (category) => {
+                (
+                  category
+                ) => {
 
                   const selected =
                     selectedCategory ===
@@ -867,7 +1173,7 @@ export default function StorePage() {
         </section>
 
         {/* =====================================
-            안내 메시지
+            메시지
         ====================================== */}
 
         {notice && (
@@ -935,6 +1241,15 @@ export default function StorePage() {
                         item.id
                     );
 
+                  const equipped =
+                    equipment.some(
+                      (
+                        equipmentItem
+                      ) =>
+                        equipmentItem.item_id ===
+                        item.id
+                    );
+
                   const locked =
                     level <
                     item.required_level;
@@ -947,6 +1262,10 @@ export default function StorePage() {
                     processingItemId ===
                     item.id;
 
+                  const equipping =
+                    equippingItemId ===
+                    item.id;
+
                   return (
 
                     <article
@@ -954,7 +1273,9 @@ export default function StorePage() {
                         item.id
                       }
                       className={`relative overflow-hidden rounded-[26px] border bg-white p-4 shadow-sm ${
-                        owned
+                        equipped
+                          ? "border-pink-300 ring-2 ring-pink-100"
+                          : owned
                           ? "border-green-100"
                           : locked
                           ? "border-gray-100"
@@ -962,7 +1283,7 @@ export default function StorePage() {
                       }`}
                     >
 
-                      {/* 아이템 이미지 */}
+                      {/* 이미지 */}
 
                       <div className="relative">
 
@@ -973,6 +1294,14 @@ export default function StorePage() {
                           )}
 
                         </div>
+
+                        {equipped && (
+
+                          <div className="absolute right-2 top-2 rounded-full bg-pink-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
+                            착용 중
+                          </div>
+
+                        )}
 
                         {locked && (
 
@@ -1021,8 +1350,10 @@ export default function StorePage() {
                       {/* 설명 */}
 
                       <p className="mt-1 line-clamp-2 min-h-[40px] text-xs leading-5 text-gray-400">
+
                         {item.description ??
                           "우리 캐릭터를 꾸며주는 아이템이에요."}
+
                       </p>
 
                       {/* 가격 */}
@@ -1041,11 +1372,30 @@ export default function StorePage() {
 
                       {/* 버튼 */}
 
-                      {owned ? (
+                      {equipped ? (
 
-                        <div className="mt-3 rounded-2xl border border-green-100 bg-green-50 px-3 py-3 text-center text-sm font-semibold text-green-600">
-                          ✓ 보유 중
+                        <div className="mt-3 rounded-2xl border border-pink-200 bg-pink-50 px-3 py-3 text-center text-sm font-semibold text-pink-500">
+                          ✓ 착용 중
                         </div>
+
+                      ) : owned ? (
+
+                        <button
+                          type="button"
+                          disabled={
+                            equipping
+                          }
+                          onClick={() =>
+                            handleEquip(
+                              item
+                            )
+                          }
+                          className="mt-3 w-full rounded-2xl border border-pink-200 bg-white px-3 py-3 text-sm font-semibold text-pink-500 shadow-sm transition hover:bg-pink-50 active:scale-[0.99] disabled:opacity-50"
+                        >
+                          {equipping
+                            ? "착용 중..."
+                            : "착용하기"}
+                        </button>
 
                       ) : locked ? (
 
@@ -1072,11 +1422,13 @@ export default function StorePage() {
                               : "bg-pink-500 text-white shadow-sm hover:bg-pink-600 active:scale-[0.99]"
                           } disabled:opacity-60`}
                         >
+
                           {processing
                             ? "구매 중..."
                             : notEnoughCoins
                             ? "코인 부족"
                             : "구매하기"}
+
                         </button>
 
                       )}
@@ -1094,7 +1446,7 @@ export default function StorePage() {
         </section>
 
         {/* =====================================
-            하단 안내
+            안내
         ====================================== */}
 
         <section className="mt-6 rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm">
@@ -1112,11 +1464,13 @@ export default function StorePage() {
               </p>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                아이템은 한 번 구매하면
-                우리 인벤토리에 계속 남아요.
+                구매한 아이템은 계속 보관돼요.
                 <br />
-                레벨이 오를수록 더 특별한
-                아이템을 구매할 수 있어요.
+                같은 종류의 아이템을 새로 착용하면
+                기존 아이템은 자동으로 교체돼요.
+                <br />
+                언제든 보유 중인 다른 아이템으로
+                다시 바꿀 수 있어요.
               </p>
 
             </div>
