@@ -169,9 +169,12 @@ export default function VerificationsPage() {
           "user_id",
           currentUser.id
         )
-        .order("created_at", {
-          ascending: false,
-        });
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          }
+        );
 
       if (verificationError) {
         console.error(
@@ -217,7 +220,9 @@ export default function VerificationsPage() {
       } = promiseIds.length
         ? await supabase
             .from("promises")
-            .select("id, title, is_joint")
+            .select(
+              "id, title, is_joint"
+            )
             .in(
               "id",
               promiseIds
@@ -235,7 +240,9 @@ export default function VerificationsPage() {
       } = userIds.length
         ? await supabase
             .from("profiles")
-            .select("id, nickname")
+            .select(
+              "id, nickname"
+            )
             .in(
               "id",
               userIds
@@ -356,19 +363,15 @@ export default function VerificationsPage() {
       combined.sort(
         (a, b) => {
           if (
-            a.status ===
-              "pending" &&
-            b.status !==
-              "pending"
+            a.status === "pending" &&
+            b.status !== "pending"
           ) {
             return -1;
           }
 
           if (
-            a.status !==
-              "pending" &&
-            b.status ===
-              "pending"
+            a.status !== "pending" &&
+            b.status === "pending"
           ) {
             return 1;
           }
@@ -377,8 +380,13 @@ export default function VerificationsPage() {
         }
       );
 
-      setItems(combined);
-      setLoading(false);
+      setItems(
+        combined
+      );
+
+      setLoading(
+        false
+      );
     },
     [
       authLoading,
@@ -423,7 +431,8 @@ export default function VerificationsPage() {
       return;
     }
 
-    const currentUser = user;
+    const currentUser =
+      user;
 
     const targetVerification =
       items.find(
@@ -441,11 +450,15 @@ export default function VerificationsPage() {
 
     // =====================================
     // 승인 전 현재 커플 레벨 확인
-    // 레벨 조회가 실패해도 인증 승인은 계속 진행해요.
     // =====================================
 
-    let beforeLevel: number | null = null;
-    let coupleId: string | null = null;
+    let beforeLevel:
+      | number
+      | null = null;
+
+    let coupleId:
+      | string
+      | null = null;
 
     const {
       data: membershipBefore,
@@ -453,7 +466,10 @@ export default function VerificationsPage() {
     } = await supabase
       .from("couple_members")
       .select("couple_id")
-      .eq("user_id", currentUser.id)
+      .eq(
+        "user_id",
+        currentUser.id
+      )
       .maybeSingle();
 
     if (
@@ -469,7 +485,10 @@ export default function VerificationsPage() {
       } = await supabase
         .from("couples")
         .select("level")
-        .eq("id", coupleId)
+        .eq(
+          "id",
+          coupleId
+        )
         .maybeSingle();
 
       if (
@@ -477,9 +496,14 @@ export default function VerificationsPage() {
         coupleBefore
       ) {
         beforeLevel =
-          coupleBefore.level ?? 1;
+          coupleBefore.level ??
+          1;
       }
     }
+
+    // =====================================
+    // 인증 승인
+    // =====================================
 
     const {
       data,
@@ -498,9 +522,11 @@ export default function VerificationsPage() {
       }
     );
 
-    setProcessingId(null);
-
     if (error) {
+      setProcessingId(
+        null
+      );
+
       console.error(
         "승인 오류:",
         error
@@ -552,7 +578,9 @@ export default function VerificationsPage() {
         .limit(1)
         .maybeSingle();
 
-      if (firstApprovedError) {
+      if (
+        firstApprovedError
+      ) {
         console.error(
           "첫 성공 인증 확인 오류:",
           firstApprovedError
@@ -570,22 +598,30 @@ export default function VerificationsPage() {
           .insert({
             couple_id:
               coupleId,
+
             user_id:
               targetVerification.user_id,
+
             event_type:
               "first_verification",
+
             title:
               "📸 첫 인증을 성공했어요",
+
             description:
               targetVerification.message
                 ? `${targetVerification.promise_title} · ${targetVerification.message}`
                 : targetVerification.promise_title,
+
             related_id:
               verificationId,
+
             image_path:
               targetVerification.photo_path,
+
             event_date:
               firstApproved.created_at,
+
             source_key:
               `first_verification:${targetVerification.promise_id}`,
           });
@@ -602,13 +638,12 @@ export default function VerificationsPage() {
         }
       }
     }
-
     // =====================================
     // 승인 후 레벨 확인
-    // XP 트리거에 의해 레벨이 올랐는지 감지해요.
     // =====================================
 
-    let detectedLevelUp = false;
+    let detectedLevelUp =
+      false;
 
     if (
       coupleId &&
@@ -620,7 +655,10 @@ export default function VerificationsPage() {
       } = await supabase
         .from("couples")
         .select("level")
-        .eq("id", coupleId)
+        .eq(
+          "id",
+          coupleId
+        )
         .maybeSingle();
 
       if (
@@ -631,18 +669,27 @@ export default function VerificationsPage() {
           coupleAfter.level ??
           beforeLevel;
 
-        if (afterLevel > beforeLevel) {
+        if (
+          afterLevel >
+          beforeLevel
+        ) {
           const nextRequiredXp =
             100 +
-            (afterLevel - 1) * 50;
+            (afterLevel - 1) *
+              50;
 
           setLevelUpPopup({
-            fromLevel: beforeLevel,
-            toLevel: afterLevel,
+            fromLevel:
+              beforeLevel,
+
+            toLevel:
+              afterLevel,
+
             nextRequiredXp,
           });
 
-          detectedLevelUp = true;
+          detectedLevelUp =
+            true;
         }
       }
     }
@@ -652,7 +699,7 @@ export default function VerificationsPage() {
         []) as UnlockedReward[];
 
     // =====================================
-    // 커플 레벨업 → 타임라인 자동 등록
+    // 커플 레벨업 타임라인 자동 등록
     // =====================================
 
     if (
@@ -661,8 +708,11 @@ export default function VerificationsPage() {
       beforeLevel !== null
     ) {
       const {
-        data: latestCouple,
-        error: latestCoupleError,
+        data:
+          latestCouple,
+
+        error:
+          latestCoupleError,
       } = await supabase
         .from("couples")
         .select("level")
@@ -672,7 +722,9 @@ export default function VerificationsPage() {
         )
         .maybeSingle();
 
-      if (latestCoupleError) {
+      if (
+        latestCoupleError
+      ) {
         console.error(
           "레벨업 타임라인용 커플 레벨 조회 오류:",
           latestCoupleError
@@ -686,7 +738,8 @@ export default function VerificationsPage() {
           latestCouple.level;
 
         const {
-          error: levelTimelineError,
+          error:
+            levelTimelineError,
         } = await supabase
           .from(
             "couple_timeline_events"
@@ -694,20 +747,28 @@ export default function VerificationsPage() {
           .insert({
             couple_id:
               coupleId,
+
             user_id:
               currentUser.id,
+
             event_type:
               "level_up",
+
             title:
               "🎉 우리 레벨이 올랐어요!",
+
             description:
               `LV.${beforeLevel} → LV.${newLevel}`,
+
             related_id:
               null,
+
             image_path:
               null,
+
             event_date:
               new Date().toISOString(),
+
             source_key:
               `level_up:${newLevel}`,
           });
@@ -725,8 +786,13 @@ export default function VerificationsPage() {
       }
     }
 
+    // =====================================
+    // 보상 해금 처리
+    // =====================================
+
     if (
-      unlockedRewards.length > 0
+      unlockedRewards.length >
+      0
     ) {
       setRewardPopup(
         unlockedRewards[0]
@@ -736,13 +802,42 @@ export default function VerificationsPage() {
         data?.promise_title ??
           ""
       );
-    } else if (!detectedLevelUp) {
+    } else if (
+      !detectedLevelUp
+    ) {
       setNotice(
         "인증을 승인했어요! 🎉"
       );
     }
 
+    setProcessingId(
+      null
+    );
+
+    // =====================================
+    // 인증 목록 다시 불러오기
+    // =====================================
+
     await loadVerifications();
+
+    // =====================================
+    // 홈 화면 완전 새로고침
+    //
+    // 다시 인증 → 승인된 상태를
+    // /couple 화면에서 즉시 다시 조회하도록 함
+    //
+    // 보상/레벨업 팝업이 있는 경우에는
+    // 팝업을 먼저 보여줘야 하므로 바로 이동하지 않음
+    // =====================================
+
+    if (
+      unlockedRewards.length ===
+        0 &&
+      !detectedLevelUp
+    ) {
+      window.location.href =
+        "/couple";
+    }
   }
 
   // =========================================
@@ -753,7 +848,10 @@ export default function VerificationsPage() {
     verificationId: string
   ) {
     if (!user) {
-      router.replace("/login");
+      router.replace(
+        "/login"
+      );
+
       return;
     }
 
@@ -762,7 +860,9 @@ export default function VerificationsPage() {
         "반려 이유를 입력해주세요.\n비워도 괜찮아요."
       );
 
-    if (reason === null) {
+    if (
+      reason === null
+    ) {
       return;
     }
 
@@ -772,23 +872,26 @@ export default function VerificationsPage() {
 
     setNotice("");
 
-    const { error } =
-      await supabase.rpc(
-        "review_verification",
-        {
-          p_verification_id:
-            verificationId,
+    const {
+      error,
+    } = await supabase.rpc(
+      "review_verification",
+      {
+        p_verification_id:
+          verificationId,
 
-          p_action:
-            "reject",
+        p_action:
+          "reject",
 
-          p_rejection_reason:
-            reason.trim() ||
-            null,
-        }
-      );
+        p_rejection_reason:
+          reason.trim() ||
+          null,
+      }
+    );
 
-    setProcessingId(null);
+    setProcessingId(
+      null
+    );
 
     if (error) {
       console.error(
@@ -854,7 +957,9 @@ export default function VerificationsPage() {
         ================================= */}
 
         <header className="flex items-end justify-between gap-4">
+
           <div>
+
             <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
               VERIFICATIONS
             </p>
@@ -866,11 +971,13 @@ export default function VerificationsPage() {
             <p className="mt-2 text-sm leading-6 text-gray-500">
               파트너가 보내온 오늘의 인증을 확인해주세요 ♡
             </p>
+
           </div>
 
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
             📸
           </div>
+
         </header>
 
         {/* =================================
@@ -878,13 +985,17 @@ export default function VerificationsPage() {
         ================================= */}
 
         <section className="mt-7 overflow-hidden rounded-[28px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/70 shadow-sm">
+
           <div className="flex items-center justify-between p-5">
+
             <div>
+
               <p className="text-xs font-semibold tracking-[0.16em] text-pink-400">
                 VERIFICATION STATUS
               </p>
 
               <div className="mt-2 flex items-end gap-2">
+
                 <p className="text-3xl font-bold tracking-tight">
                   {pendingCount}
                 </p>
@@ -892,17 +1003,21 @@ export default function VerificationsPage() {
                 <p className="pb-1 text-sm font-semibold text-gray-400">
                   개 확인 대기
                 </p>
+
               </div>
 
               <p className="mt-2 text-xs text-gray-400">
                 확인이 필요한 인증만 먼저 보여드려요.
               </p>
+
             </div>
 
             <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white text-2xl shadow-sm">
               💌
             </div>
+
           </div>
+
         </section>
 
         {/* =================================
@@ -910,9 +1025,11 @@ export default function VerificationsPage() {
         ================================= */}
 
         {notice && (
+
           <div className="mt-4 rounded-2xl border border-pink-100 bg-white/80 px-4 py-3 text-center text-xs text-gray-500 shadow-sm">
             {notice}
           </div>
+
         )}
 
         {/* =================================
@@ -943,14 +1060,22 @@ export default function VerificationsPage() {
           </section>
 
         ) : (
+
           <>
-            {/* 확인 대기 인증 */}
+
+            {/* =================================
+                확인 대기 인증
+            ================================= */}
 
             {pendingItems.length >
               0 && (
+
               <section className="mt-6">
+
                 <div className="mb-3 flex items-end justify-between">
+
                   <div>
+
                     <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
                       WAITING LIST
                     </p>
@@ -958,52 +1083,74 @@ export default function VerificationsPage() {
                     <h2 className="mt-1 text-lg font-bold">
                       확인이 필요한 인증
                     </h2>
+
                   </div>
 
                   <span className="rounded-full bg-pink-50 px-3 py-1.5 text-xs font-semibold text-pink-500">
                     {pendingItems.length}개
                   </span>
+
                 </div>
 
                 <div className="space-y-5">
+
                   {pendingItems.map(
                     (item) => {
+
                       const isProcessing =
                         processingId ===
                         item.id;
 
                       return (
                         <article
-                          key={item.id}
+                          key={
+                            item.id
+                          }
                           className="overflow-hidden rounded-[30px] border border-pink-100 bg-white shadow-sm"
                         >
+
                           <div className="p-3 pb-0">
+
                             {item.photo_url ? (
+
                               <img
-                                src={item.photo_url}
+                                src={
+                                  item.photo_url
+                                }
                                 alt="인증 사진"
                                 className="max-h-[520px] w-full rounded-[22px] object-cover"
                               />
+
                             ) : (
+
                               <div className="flex h-48 items-center justify-center rounded-[22px] bg-[#fff8fb] text-sm text-gray-400">
                                 사진 없음
                               </div>
+
                             )}
+
                           </div>
 
                           <div className="p-5">
+
                             <div className="flex items-start justify-between gap-4">
+
                               <div>
+
                                 <div className="flex flex-wrap items-center gap-2">
+
                                   {item.is_joint && (
+
                                     <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-semibold text-pink-500">
                                       💕 서로의 약속
                                     </span>
+
                                   )}
 
                                   <span className="text-xs font-medium text-gray-400">
                                     {item.nickname}님의 인증
                                   </span>
+
                                 </div>
 
                                 <h2 className="mt-2 text-xl font-bold">
@@ -1013,15 +1160,19 @@ export default function VerificationsPage() {
                                 <p className="mt-2 text-xs text-gray-400">
                                   {item.verification_date}
                                 </p>
+
                               </div>
 
                               <span className="shrink-0 rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-600">
                                 ● 확인 대기
                               </span>
+
                             </div>
 
                             {item.message && (
+
                               <div className="mt-4 rounded-[20px] border border-pink-100 bg-[#fff8fb] px-4 py-3">
+
                                 <p className="text-xs text-gray-400">
                                   오늘 한마디
                                 </p>
@@ -1029,13 +1180,18 @@ export default function VerificationsPage() {
                                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
                                   “{item.message}”
                                 </p>
+
                               </div>
+
                             )}
 
                             <div className="mt-5 grid grid-cols-[0.85fr_1.15fr] gap-3">
+
                               <button
                                 type="button"
-                                disabled={isProcessing}
+                                disabled={
+                                  isProcessing
+                                }
                                 onClick={() =>
                                   handleReject(
                                     item.id
@@ -1048,7 +1204,9 @@ export default function VerificationsPage() {
 
                               <button
                                 type="button"
-                                disabled={isProcessing}
+                                disabled={
+                                  isProcessing
+                                }
                                 onClick={() =>
                                   handleApprove(
                                     item.id
@@ -1060,21 +1218,30 @@ export default function VerificationsPage() {
                                   ? "처리 중..."
                                   : "♡ 승인"}
                               </button>
+
                             </div>
+
                           </div>
+
                         </article>
                       );
                     }
                   )}
+
                 </div>
+
               </section>
             )}
 
-            {/* 완료된 인증 묶음 */}
+            {/* =================================
+                완료된 인증
+            ================================= */}
 
             {completedItems.length >
               0 && (
+
               <section className="mt-6">
+
                 <button
                   type="button"
                   onClick={() =>
@@ -1089,13 +1256,17 @@ export default function VerificationsPage() {
                       : "border-pink-100 bg-white hover:bg-pink-50/40"
                   }`}
                 >
+
                   <div className="flex items-center gap-3">
+
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-50 text-xl">
                       ✅
                     </div>
 
                     <div>
+
                       <div className="flex items-center gap-2">
+
                         <p className="font-bold">
                           완료된 인증
                         </p>
@@ -1103,12 +1274,15 @@ export default function VerificationsPage() {
                         <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-pink-500">
                           {completedItems.length}
                         </span>
+
                       </div>
 
                       <p className="mt-1 text-xs text-gray-400">
                         승인·반려가 끝난 인증을 모아봤어요.
                       </p>
+
                     </div>
+
                   </div>
 
                   <span
@@ -1120,83 +1294,118 @@ export default function VerificationsPage() {
                   >
                     ⌄
                   </span>
-                </button>
 
+                </button>
                 {showCompleted && (
                   <div className="mt-3 space-y-2 rounded-[24px] bg-pink-50/35 p-2">
+
                     {completedItems.map(
                       (item) => (
+
                         <article
                           key={item.id}
                           className="overflow-hidden rounded-[22px] border border-pink-100 bg-white shadow-sm"
                         >
+
                           <div className="flex gap-3 p-3.5">
+
                             {item.photo_url ? (
+
                               <img
-                                src={item.photo_url}
+                                src={
+                                  item.photo_url
+                                }
                                 alt="인증 사진"
                                 className="h-14 w-14 shrink-0 rounded-2xl object-cover"
                               />
+
                             ) : (
+
                               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#fff8fb] text-lg">
                                 📷
                               </div>
+
                             )}
 
                             <div className="min-w-0 flex-1">
+
                               <div className="flex items-start justify-between gap-2">
+
                                 <div className="min-w-0">
+
                                   <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+
                                     <p className="min-w-0 truncate font-bold">
                                       {item.promise_title}
                                     </p>
 
                                     {item.is_joint && (
+
                                       <span className="shrink-0 rounded-full bg-pink-50 px-2 py-0.5 text-[9px] font-semibold text-pink-500">
                                         💕 서로
                                       </span>
+
                                     )}
+
                                   </div>
 
                                   <p className="mt-1 text-xs text-gray-400">
                                     {item.nickname} · {item.verification_date}
                                   </p>
+
                                 </div>
 
                                 {item.status ===
-                                  "approved" ? (
+                                "approved" ? (
+
                                   <span className="shrink-0 rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-semibold text-green-600">
                                     ✓ 승인
                                   </span>
+
                                 ) : (
+
                                   <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-red-500">
                                     반려
                                   </span>
+
                                 )}
+
                               </div>
 
                               {item.message && (
+
                                 <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">
                                   “{item.message}”
                                 </p>
+
                               )}
 
                               {item.status ===
                                 "rejected" &&
                                 item.rejection_reason && (
+
                                   <p className="mt-2 line-clamp-2 text-xs leading-5 text-red-500">
                                     반려 이유: {item.rejection_reason}
                                   </p>
+
                                 )}
+
                             </div>
+
                           </div>
+
                         </article>
+
                       )
                     )}
+
                   </div>
                 )}
+
               </section>
+
             )}
+
           </>
         )}
 
@@ -1206,6 +1415,7 @@ export default function VerificationsPage() {
 
         <Link
           href="/couple"
+          prefetch={false}
           className="mt-6 block w-full rounded-2xl border border-pink-100 bg-white/70 px-4 py-3 text-center text-xs font-semibold text-gray-400 transition hover:bg-pink-50 hover:text-pink-500"
         >
           홈으로 돌아가기
@@ -1224,6 +1434,7 @@ export default function VerificationsPage() {
       ===================================== */}
 
       {rewardPopup && (
+
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
 
           <div className="relative w-full max-w-sm overflow-hidden rounded-[34px] border border-pink-100 bg-white p-6 text-center shadow-2xl">
@@ -1238,16 +1449,12 @@ export default function VerificationsPage() {
 
             <h2 className="mt-3 text-2xl font-bold">
               🔥{" "}
-              {
-                rewardPopup.required_days
-              }
+              {rewardPopup.required_days}
               일 달성!
             </h2>
 
             <p className="mt-2 text-sm text-gray-400">
-              {
-                rewardPromiseTitle
-              }
+              {rewardPromiseTitle}
             </p>
 
             {/* 보상 */}
@@ -1259,9 +1466,7 @@ export default function VerificationsPage() {
               </p>
 
               <p className="mt-2 text-xl font-bold text-pink-500">
-                {
-                  rewardPopup.title
-                }
+                {rewardPopup.title}
               </p>
 
             </div>
@@ -1284,6 +1489,7 @@ export default function VerificationsPage() {
 
             <Link
               href="/rewards"
+              prefetch={false}
               className="mt-6 block w-full rounded-2xl bg-pink-500 px-5 py-4 font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99]"
             >
               🎁 보상 보러가기
@@ -1291,27 +1497,35 @@ export default function VerificationsPage() {
 
             <button
               type="button"
-              onClick={() =>
-                setRewardPopup(null)
-              }
+              onClick={() => {
+                setRewardPopup(
+                  null
+                );
+
+                // 보상 확인 후 홈을 새로 불러오기
+                window.location.href =
+                  "/couple";
+              }}
               className="mt-3 w-full rounded-2xl px-5 py-3 text-sm font-semibold text-gray-400"
             >
-              계속 인증 확인하기
+              계속하기
             </button>
 
           </div>
 
         </div>
+
       )}
 
       {/* =====================================
           레벨업 팝업
-          보상 팝업이 있으면 보상을 먼저 보여준 뒤 표시
       ===================================== */}
 
       {levelUpPopup &&
         !rewardPopup && (
+
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
+
             <div className="relative w-full max-w-sm overflow-hidden rounded-[34px] border border-pink-100 bg-white p-6 text-center shadow-2xl">
 
               <div className="text-6xl">
@@ -1327,11 +1541,13 @@ export default function VerificationsPage() {
               </h2>
 
               <div className="mt-6 rounded-[24px] border border-pink-100 bg-[#fff8fb] p-5">
+
                 <p className="text-xs text-gray-400">
                   새로운 우리 레벨
                 </p>
 
                 <div className="mt-3 flex items-center justify-center gap-4">
+
                   <span className="text-xl font-bold text-gray-400">
                     LV.{levelUpPopup.fromLevel}
                   </span>
@@ -1343,10 +1559,13 @@ export default function VerificationsPage() {
                   <span className="text-3xl font-bold text-pink-500">
                     LV.{levelUpPopup.toLevel}
                   </span>
+
                 </div>
+
               </div>
 
               <div className="mt-5 rounded-2xl bg-pink-50 px-4 py-3">
+
                 <p className="text-sm text-gray-500">
                   다음 레벨까지
                 </p>
@@ -1354,6 +1573,7 @@ export default function VerificationsPage() {
                 <p className="mt-1 font-semibold text-pink-500">
                   {levelUpPopup.nextRequiredXp} XP
                 </p>
+
               </div>
 
               <p className="mt-5 text-sm leading-6 text-gray-500">
@@ -1364,18 +1584,25 @@ export default function VerificationsPage() {
 
               <button
                 type="button"
-                onClick={() =>
-                  setLevelUpPopup(null)
-                }
+                onClick={() => {
+                  setLevelUpPopup(
+                    null
+                  );
+
+                  // 레벨업 확인 후 홈을 새로 불러오기
+                  window.location.href =
+                    "/couple";
+                }}
                 className="mt-6 w-full rounded-2xl bg-pink-500 px-5 py-4 font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99]"
               >
                 확인했어요 ♡
               </button>
 
             </div>
-          </div>
-        )}
 
+          </div>
+
+        )}
 
     </main>
   );
