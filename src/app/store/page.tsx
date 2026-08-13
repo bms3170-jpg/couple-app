@@ -28,6 +28,8 @@ type StoreItem = {
 
 type InventoryItem = {
   id: string;
+  couple_id: string;
+  user_id: string;
   item_id: string;
   purchased_price: number;
   purchased_at: string;
@@ -36,6 +38,7 @@ type InventoryItem = {
 type EquipmentItem = {
   id: string;
   couple_id: string;
+  user_id: string;
   slot: string;
   item_id: string;
   equipped_at: string;
@@ -62,7 +65,9 @@ type PurchaseResult = {
 
 type EquipResult = {
   success?: boolean;
+  equipment_id?: string;
   item_id?: string;
+  item_name?: string;
   slot?: string;
 };
 
@@ -76,37 +81,64 @@ type CategoryFilter =
   | "couple";
 
 export default function StorePage() {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const supabase = useMemo(
-    () => createClient(),
-    []
-  );
+  const supabase =
+    useMemo(
+      () =>
+        createClient(),
+      []
+    );
 
   const {
     user,
     loading: authLoading,
   } = useAuth();
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [items, setItems] =
-    useState<StoreItem[]>([]);
+  const [
+    items,
+    setItems,
+  ] =
+    useState<StoreItem[]>(
+      []
+    );
 
-  const [inventory, setInventory] =
-    useState<InventoryItem[]>([]);
+  const [
+    inventory,
+    setInventory,
+  ] =
+    useState<InventoryItem[]>(
+      []
+    );
 
-  const [equipment, setEquipment] =
-    useState<EquipmentItem[]>([]);
+  const [
+    equipment,
+    setEquipment,
+  ] =
+    useState<EquipmentItem[]>(
+      []
+    );
 
-  const [coupleId, setCoupleId] =
-    useState("");
+  const [
+    coupleId,
+    setCoupleId,
+  ] = useState("");
 
-  const [level, setLevel] =
-    useState(1);
+  const [
+    level,
+    setLevel,
+  ] = useState(1);
 
-  const [wallet, setWallet] =
+  const [
+    wallet,
+    setWallet,
+  ] =
     useState<CoinWallet>({
       coins: 0,
       total_earned: 0,
@@ -137,19 +169,24 @@ export default function StorePage() {
       null
     );
 
-  const [notice, setNotice] =
-    useState("");
+  const [
+    notice,
+    setNotice,
+  ] = useState("");
 
   // =========================================
-  // 우리 코인 지갑 새로고침
+  // 내 코인 새로고침
   // =========================================
 
   const refreshWallet =
     useCallback(
       async (
-        targetCoupleId: string
+        currentCoupleId: string
       ) => {
-        if (!targetCoupleId) {
+        if (
+          !user ||
+          !currentCoupleId
+        ) {
           return null;
         }
 
@@ -158,7 +195,7 @@ export default function StorePage() {
           error,
         } = await supabase
           .from(
-            "couple_wallets"
+            "user_coin_wallets"
           )
           .select(`
             coins,
@@ -167,13 +204,17 @@ export default function StorePage() {
           `)
           .eq(
             "couple_id",
-            targetCoupleId
+            currentCoupleId
+          )
+          .eq(
+            "user_id",
+            user.id
           )
           .maybeSingle();
 
         if (error) {
           console.error(
-            "우리 코인 지갑 조회 오류:",
+            "내 코인 조회 오류:",
             error
           );
 
@@ -181,15 +222,14 @@ export default function StorePage() {
         }
 
         const nextWallet:
-          CoinWallet = data
-          ? (
-              data as CoinWallet
-            )
-          : {
-              coins: 0,
-              total_earned: 0,
-              total_spent: 0,
-            };
+          CoinWallet =
+          data
+            ? (data as CoinWallet)
+            : {
+                coins: 0,
+                total_earned: 0,
+                total_spent: 0,
+              };
 
         setWallet(
           nextWallet
@@ -197,271 +237,362 @@ export default function StorePage() {
 
         return nextWallet;
       },
-      [supabase]
+      [
+        supabase,
+        user,
+      ]
+    );
+
+  // =========================================
+  // 내 인벤토리 새로고침
+  // =========================================
+
+  const refreshInventory =
+    useCallback(
+      async (
+        currentCoupleId: string
+      ) => {
+        if (
+          !user ||
+          !currentCoupleId
+        ) {
+          return;
+        }
+
+        const {
+          data,
+          error,
+        } = await supabase
+          .from(
+            "user_inventory"
+          )
+          .select(`
+            id,
+            couple_id,
+            user_id,
+            item_id,
+            purchased_price,
+            purchased_at
+          `)
+          .eq(
+            "couple_id",
+            currentCoupleId
+          )
+          .eq(
+            "user_id",
+            user.id
+          )
+          .order(
+            "purchased_at",
+            {
+              ascending: false,
+            }
+          );
+
+        if (error) {
+          console.error(
+            "내 인벤토리 조회 오류:",
+            error
+          );
+
+          return;
+        }
+
+        setInventory(
+          (data ??
+            []) as InventoryItem[]
+        );
+      },
+      [
+        supabase,
+        user,
+      ]
+    );
+
+  // =========================================
+  // 내 장비 새로고침
+  // =========================================
+
+  const refreshEquipment =
+    useCallback(
+      async (
+        currentCoupleId: string
+      ) => {
+        if (
+          !user ||
+          !currentCoupleId
+        ) {
+          return;
+        }
+
+        const {
+          data,
+          error,
+        } = await supabase
+          .from(
+            "character_equipment"
+          )
+          .select(`
+            id,
+            couple_id,
+            user_id,
+            slot,
+            item_id,
+            equipped_at
+          `)
+          .eq(
+            "couple_id",
+            currentCoupleId
+          )
+          .eq(
+            "user_id",
+            user.id
+          );
+
+        if (error) {
+          console.error(
+            "내 착용 아이템 조회 오류:",
+            error
+          );
+
+          return;
+        }
+
+        setEquipment(
+          (data ??
+            []) as EquipmentItem[]
+        );
+      },
+      [
+        supabase,
+        user,
+      ]
     );
 
   // =========================================
   // 상점 데이터 불러오기
   // =========================================
 
-  const loadStore = useCallback(
-    async () => {
-      if (authLoading) {
-        return;
-      }
+  const loadStore =
+    useCallback(
+      async () => {
+        if (
+          authLoading
+        ) {
+          return;
+        }
 
-      if (!user) {
-        router.replace(
-          "/login"
-        );
-        return;
-      }
+        if (!user) {
+          router.replace(
+            "/login"
+          );
+          return;
+        }
 
-      setLoading(true);
-      setNotice("");
+        setLoading(true);
+        setNotice("");
 
-      // =====================================
-      // 내가 속한 커플
-      // =====================================
+        // =====================================
+        // 내가 속한 커플
+        // =====================================
 
-      const {
-        data: membership,
-        error: membershipError,
-      } = await supabase
-        .from(
-          "couple_members"
-        )
-        .select(
-          "couple_id"
-        )
-        .eq(
-          "user_id",
-          user.id
-        )
-        .maybeSingle();
+        const {
+          data:
+            membership,
+          error:
+            membershipError,
+        } =
+          await supabase
+            .from(
+              "couple_members"
+            )
+            .select(
+              "couple_id"
+            )
+            .eq(
+              "user_id",
+              user.id
+            )
+            .maybeSingle();
 
-      if (
-        membershipError ||
-        !membership
-      ) {
-        console.error(
-          "커플 조회 오류:",
-          membershipError
-        );
+        if (
+          membershipError ||
+          !membership
+        ) {
+          console.error(
+            "커플 조회 오류:",
+            membershipError
+          );
 
-        setNotice(
-          "커플 정보를 찾을 수 없어요."
-        );
+          setNotice(
+            "커플 정보를 찾을 수 없어요."
+          );
 
-        setLoading(false);
-        return;
-      }
+          setLoading(
+            false
+          );
 
-      const currentCoupleId =
-        membership.couple_id;
+          return;
+        }
 
-      setCoupleId(
-        currentCoupleId
-      );
+        const currentCoupleId =
+          membership.couple_id;
 
-      // =====================================
-      // 현재 커플 레벨
-      // =====================================
-
-      const {
-        data: coupleData,
-        error: coupleError,
-      } = await supabase
-        .from("couples")
-        .select("level")
-        .eq(
-          "id",
+        setCoupleId(
           currentCoupleId
-        )
-        .maybeSingle();
+        );
 
-      if (coupleError) {
-        console.error(
-          "커플 레벨 조회 오류:",
+        // =====================================
+        // 우리 레벨
+        // =====================================
+
+        const {
+          data:
+            coupleData,
+          error:
+            coupleError,
+        } =
+          await supabase
+            .from(
+              "couples"
+            )
+            .select(
+              "level"
+            )
+            .eq(
+              "id",
+              currentCoupleId
+            )
+            .maybeSingle();
+
+        if (
           coupleError
-        );
-      }
+        ) {
+          console.error(
+            "커플 레벨 조회 오류:",
+            coupleError
+          );
+        }
 
-      const currentLevel =
-        (
-          coupleData as
-            | CoupleInfo
-            | null
-        )?.level ?? 1;
+        const currentLevel =
+          (
+            coupleData as
+              | CoupleInfo
+              | null
+          )?.level ??
+          1;
 
-      setLevel(
-        currentLevel
-      );
-
-      // =====================================
-      // 우리 코인 지갑
-      // couple_wallets 사용
-      // =====================================
-
-      await refreshWallet(
-        currentCoupleId
-      );
-
-      // =====================================
-      // 상점 아이템
-      // =====================================
-
-      const {
-        data: storeRows,
-        error: storeError,
-      } = await supabase
-        .from(
-          "store_items"
-        )
-        .select(`
-          id,
-          item_key,
-          name,
-          description,
-          category,
-          price,
-          required_level,
-          rarity,
-          image_path,
-          is_active,
-          sort_order
-        `)
-        .eq(
-          "is_active",
-          true
-        )
-        .order(
-          "sort_order",
-          {
-            ascending: true,
-          }
+        setLevel(
+          currentLevel
         );
 
-      if (storeError) {
-        console.error(
-          "상점 아이템 조회 오류:",
+        // =====================================
+        // 내 코인
+        // =====================================
+
+        await refreshWallet(
+          currentCoupleId
+        );
+
+        // =====================================
+        // 상점 아이템
+        // =====================================
+
+        const {
+          data:
+            storeRows,
+          error:
+            storeError,
+        } =
+          await supabase
+            .from(
+              "store_items"
+            )
+            .select(`
+              id,
+              item_key,
+              name,
+              description,
+              category,
+              price,
+              required_level,
+              rarity,
+              image_path,
+              is_active,
+              sort_order
+            `)
+            .eq(
+              "is_active",
+              true
+            )
+            .order(
+              "sort_order",
+              {
+                ascending:
+                  true,
+              }
+            );
+
+        if (
           storeError
+        ) {
+          console.error(
+            "상점 아이템 조회 오류:",
+            storeError
+          );
+
+          setNotice(
+            "상점 아이템을 불러오지 못했어요."
+          );
+
+          setLoading(
+            false
+          );
+
+          return;
+        }
+
+        setItems(
+          (storeRows ??
+            []) as StoreItem[]
         );
 
-        setNotice(
-          "상점 아이템을 불러오지 못했어요."
-        );
+        // =====================================
+        // 내 인벤토리
+        // =====================================
 
-        setLoading(false);
-        return;
-      }
-
-      setItems(
-        (storeRows ??
-          []) as StoreItem[]
-      );
-
-      // =====================================
-      // 커플 공용 인벤토리
-      // =====================================
-
-      const {
-        data: inventoryRows,
-        error: inventoryError,
-      } = await supabase
-        .from(
-          "couple_inventory"
-        )
-        .select(`
-          id,
-          item_id,
-          purchased_price,
-          purchased_at
-        `)
-        .eq(
-          "couple_id",
+        await refreshInventory(
           currentCoupleId
         );
 
-      if (
-        inventoryError
-      ) {
-        console.error(
-          "인벤토리 조회 오류:",
-          inventoryError
-        );
+        // =====================================
+        // 내 착용 아이템
+        // =====================================
 
-        setNotice(
-          "보유 아이템을 불러오지 못했어요."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      setInventory(
-        (inventoryRows ??
-          []) as InventoryItem[]
-      );
-
-      // =====================================
-      // 현재 착용 중 아이템
-      // =====================================
-
-      const {
-        data: equipmentRows,
-        error: equipmentError,
-      } = await supabase
-        .from(
-          "character_equipment"
-        )
-        .select(`
-          id,
-          couple_id,
-          slot,
-          item_id,
-          equipped_at
-        `)
-        .eq(
-          "couple_id",
+        await refreshEquipment(
           currentCoupleId
         );
 
-      if (
-        equipmentError
-      ) {
-        console.error(
-          "착용 아이템 조회 오류:",
-          equipmentError
+        setLoading(
+          false
         );
-
-        setNotice(
-          "착용 정보를 불러오지 못했어요."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      setEquipment(
-        (equipmentRows ??
-          []) as EquipmentItem[]
-      );
-
-      setLoading(false);
-    },
-    [
-      authLoading,
-      user,
-      router,
-      supabase,
-      refreshWallet,
-    ]
-  );
+      },
+      [
+        authLoading,
+        user,
+        router,
+        supabase,
+        refreshWallet,
+        refreshInventory,
+        refreshEquipment,
+      ]
+    );
 
   useEffect(() => {
     void loadStore();
-  }, [loadStore]);
+  }, [
+    loadStore,
+  ]);
 
   // =========================================
   // 구매
@@ -474,6 +605,7 @@ export default function StorePage() {
       router.replace(
         "/login"
       );
+
       return;
     }
 
@@ -481,11 +613,12 @@ export default function StorePage() {
       setNotice(
         "커플 정보를 찾을 수 없어요."
       );
+
       return;
     }
 
     // =====================================
-    // 중복 구매 방지
+    // 이미 내가 구매했는지 확인
     // =====================================
 
     const alreadyOwned =
@@ -497,10 +630,13 @@ export default function StorePage() {
           item.id
       );
 
-    if (alreadyOwned) {
+    if (
+      alreadyOwned
+    ) {
       setNotice(
-        "이미 보유 중인 아이템이에요."
+        "이미 구매한 아이템이에요."
       );
+
       return;
     }
 
@@ -515,11 +651,12 @@ export default function StorePage() {
       setNotice(
         `LV.${item.required_level}부터 구매할 수 있어요.`
       );
+
       return;
     }
 
     // =====================================
-    // 구매 직전 실제 DB 잔액 확인
+    // 실제 내 코인 잔액 재확인
     // =====================================
 
     const latestWallet =
@@ -527,10 +664,13 @@ export default function StorePage() {
         coupleId
       );
 
-    if (!latestWallet) {
+    if (
+      !latestWallet
+    ) {
       setNotice(
-        "우리 코인 정보를 확인하지 못했어요."
+        "내 코인 정보를 확인하지 못했어요."
       );
+
       return;
     }
 
@@ -544,15 +684,18 @@ export default function StorePage() {
           latestWallet.coins
         }코인이 더 필요해요.`
       );
+
       return;
     }
 
     const confirmed =
       window.confirm(
-        `"${item.name}"을 ${item.price}코인에 구매할까요?\n\n우리 코인에서 차감돼요.`
+        `"${item.name}"을 ${item.price}코인에 구매할까요?\n\n내 코인에서 차감돼요.`
       );
 
-    if (!confirmed) {
+    if (
+      !confirmed
+    ) {
       return;
     }
 
@@ -561,15 +704,6 @@ export default function StorePage() {
     );
 
     setNotice("");
-
-    // =====================================
-    // 실제 구매
-    //
-    // 이 RPC 내부에서 반드시
-    // couple_wallets 코인 차감 +
-    // couple_inventory 추가가
-    // 한 번에 처리되어야 함
-    // =====================================
 
     const {
       data,
@@ -584,16 +718,20 @@ export default function StorePage() {
       );
 
     if (error) {
-      setProcessingItemId(
-        null
-      );
-
       console.error(
         "아이템 구매 오류:",
         error
       );
 
+      setProcessingItemId(
+        null
+      );
+
       await refreshWallet(
+        coupleId
+      );
+
+      await refreshInventory(
         coupleId
       );
 
@@ -610,12 +748,18 @@ export default function StorePage() {
         | PurchaseResult
         | null;
 
-    if (!result?.success) {
+    if (
+      !result?.success
+    ) {
       setProcessingItemId(
         null
       );
 
       await refreshWallet(
+        coupleId
+      );
+
+      await refreshInventory(
         coupleId
       );
 
@@ -627,96 +771,25 @@ export default function StorePage() {
     }
 
     // =====================================
-    // 구매 후 couple_wallets 실제 잔액 재조회
+    // DB 실제 상태 다시 조회
     // =====================================
 
-    await refreshWallet(
-      coupleId
-    );
+    await Promise.all([
+      refreshWallet(
+        coupleId
+      ),
 
-    // =====================================
-    // 인벤토리 즉시 반영
-    // =====================================
-
-    if (
-      result.inventory_id
-    ) {
-      setInventory(
-        (current) => {
-
-          const exists =
-            current.some(
-              (
-                inventoryItem
-              ) =>
-                inventoryItem.item_id ===
-                item.id
-            );
-
-          if (exists) {
-            return current;
-          }
-
-          return [
-            ...current,
-            {
-              id:
-                result.inventory_id!,
-
-              item_id:
-                item.id,
-
-              purchased_price:
-                item.price,
-
-              purchased_at:
-                new Date().toISOString(),
-            },
-          ];
-        }
-      );
-    } else {
-      const {
-        data:
-          refreshedInventory,
-        error:
-          refreshedInventoryError,
-      } = await supabase
-        .from(
-          "couple_inventory"
-        )
-        .select(`
-          id,
-          item_id,
-          purchased_price,
-          purchased_at
-        `)
-        .eq(
-          "couple_id",
-          coupleId
-        );
-
-      if (
-        refreshedInventoryError
-      ) {
-        console.error(
-          "구매 후 인벤토리 재조회 오류:",
-          refreshedInventoryError
-        );
-      } else {
-        setInventory(
-          (refreshedInventory ??
-            []) as InventoryItem[]
-        );
-      }
-    }
+      refreshInventory(
+        coupleId
+      ),
+    ]);
 
     setProcessingItemId(
       null
     );
 
     setNotice(
-      `${item.name} 구매 완료! 이제 착용할 수 있어요 ♡`
+      `${item.name} 구매 완료! 이제 내 캐릭터에 착용할 수 있어요 ♡`
     );
   }
 
@@ -731,6 +804,7 @@ export default function StorePage() {
       router.replace(
         "/login"
       );
+
       return;
     }
 
@@ -738,8 +812,13 @@ export default function StorePage() {
       setNotice(
         "커플 정보를 찾을 수 없어요."
       );
+
       return;
     }
+
+    // =====================================
+    // 내 아이템인지 확인
+    // =====================================
 
     const owned =
       inventory.some(
@@ -754,8 +833,13 @@ export default function StorePage() {
       setNotice(
         "먼저 아이템을 구매해주세요."
       );
+
       return;
     }
+
+    // =====================================
+    // 이미 내가 착용 중인지
+    // =====================================
 
     const alreadyEquipped =
       equipment.some(
@@ -772,11 +856,12 @@ export default function StorePage() {
       setNotice(
         "이미 착용 중인 아이템이에요."
       );
+
       return;
     }
 
     // =====================================
-    // 같은 종류 아이템 교체 확인
+    // 같은 슬롯 기존 아이템 확인
     // =====================================
 
     const sameSlotEquipment =
@@ -807,7 +892,9 @@ export default function StorePage() {
             : `"${item.name}"을 착용할까요?`
         );
 
-      if (!confirmed) {
+      if (
+        !confirmed
+      ) {
         return;
       }
     }
@@ -831,13 +918,17 @@ export default function StorePage() {
       );
 
     if (error) {
+      console.error(
+        "아이템 착용 오류:",
+        error
+      );
+
       setEquippingItemId(
         null
       );
 
-      console.error(
-        "아이템 착용 오류:",
-        error
+      await refreshEquipment(
+        coupleId
       );
 
       setNotice(
@@ -853,9 +944,15 @@ export default function StorePage() {
         | EquipResult
         | null;
 
-    if (!result?.success) {
+    if (
+      !result?.success
+    ) {
       setEquippingItemId(
         null
+      );
+
+      await refreshEquipment(
+        coupleId
       );
 
       setNotice(
@@ -866,77 +963,19 @@ export default function StorePage() {
     }
 
     // =====================================
-    // DB 착용 상태 다시 조회
+    // 실제 DB 장비 다시 조회
     // =====================================
 
-    const {
-      data: equipmentRows,
-      error: equipmentError,
-    } = await supabase
-      .from(
-        "character_equipment"
-      )
-      .select(`
-        id,
-        couple_id,
-        slot,
-        item_id,
-        equipped_at
-      `)
-      .eq(
-        "couple_id",
-        coupleId
-      );
-
-    if (
-      equipmentError
-    ) {
-      console.error(
-        "착용 후 장비 재조회 오류:",
-        equipmentError
-      );
-
-      // 재조회 실패 시 화면만 즉시 반영
-      setEquipment(
-        (current) => [
-          ...current.filter(
-            (
-              equipmentItem
-            ) =>
-              equipmentItem.slot !==
-              item.category
-          ),
-          {
-            id:
-              `temp-${item.id}`,
-
-            couple_id:
-              coupleId,
-
-            slot:
-              item.category,
-
-            item_id:
-              item.id,
-
-            equipped_at:
-              new Date().toISOString(),
-          },
-        ]
-      );
-    } else {
-      setEquipment(
-        (equipmentRows ??
-          []) as EquipmentItem[]
-      );
-    }
+    await refreshEquipment(
+      coupleId
+    );
 
     setEquippingItemId(
       null
     );
 
     setNotice(
-      `${item.name} 착용 완료! ♡`
+      `${item.name} 착용 완료! 내 캐릭터에 적용됐어요 ♡`
     );
   }
 
@@ -1008,16 +1047,35 @@ export default function StorePage() {
         string,
         string
       > = {
-      basic_hat: "🧢",
-      straw_hat: "👒",
-      beret: "🎨",
-      ribbon_hat: "🎀",
-      knight_helmet: "🪖",
-      royal_crown: "👑",
-      magic_hat: "🧙",
-      party_hat: "🥳",
-      couple_crown: "👑",
-      cozy_sofa: "🛋️",
+      basic_hat:
+        "🧢",
+
+      straw_hat:
+        "👒",
+
+      beret:
+        "🎨",
+
+      ribbon_hat:
+        "🎀",
+
+      knight_helmet:
+        "🪖",
+
+      royal_crown:
+        "👑",
+
+      magic_hat:
+        "🎩",
+
+      party_hat:
+        "🥳",
+
+      couple_crown:
+        "👑",
+
+      cozy_sofa:
+        "🛋️",
     };
 
     if (
@@ -1083,31 +1141,36 @@ export default function StorePage() {
     rarity: string
   ) {
     if (
-      rarity === "basic"
+      rarity ===
+      "basic"
     ) {
       return "BASIC";
     }
 
     if (
-      rarity === "normal"
+      rarity ===
+      "normal"
     ) {
       return "NORMAL";
     }
 
     if (
-      rarity === "rare"
+      rarity ===
+      "rare"
     ) {
       return "RARE";
     }
 
     if (
-      rarity === "special"
+      rarity ===
+      "special"
     ) {
       return "SPECIAL";
     }
 
     if (
-      rarity === "premium"
+      rarity ===
+      "premium"
     ) {
       return "PREMIUM";
     }
@@ -1119,31 +1182,36 @@ export default function StorePage() {
     rarity: string
   ) {
     if (
-      rarity === "basic"
+      rarity ===
+      "basic"
     ) {
       return "bg-gray-50 text-gray-500";
     }
 
     if (
-      rarity === "normal"
+      rarity ===
+      "normal"
     ) {
       return "bg-green-50 text-green-600";
     }
 
     if (
-      rarity === "rare"
+      rarity ===
+      "rare"
     ) {
       return "bg-blue-50 text-blue-500";
     }
 
     if (
-      rarity === "special"
+      rarity ===
+      "special"
     ) {
       return "bg-purple-50 text-purple-500";
     }
 
     if (
-      rarity === "premium"
+      rarity ===
+      "premium"
     ) {
       return "bg-amber-50 text-amber-600";
     }
@@ -1184,7 +1252,9 @@ export default function StorePage() {
 
           <Link
             href="/couple"
-            prefetch={false}
+            prefetch={
+              false
+            }
             className="inline-block text-sm font-semibold text-gray-500"
           >
             ← 돌아가기
@@ -1195,17 +1265,17 @@ export default function StorePage() {
             <div>
 
               <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
-                OUR STORE
+                MY STORE
               </p>
 
               <h1 className="mt-2 text-3xl font-bold">
-                우리 상점 ♡
+                캐릭터 상점 ♡
               </h1>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                함께 모은 코인으로
+                내가 모은 코인으로
                 <br />
-                우리 캐릭터를 꾸며봐요.
+                내 캐릭터를 꾸며봐요.
               </p>
 
             </div>
@@ -1219,7 +1289,7 @@ export default function StorePage() {
         </header>
 
         {/* =====================================
-            우리 코인 / 레벨
+            내 코인 / 레벨
         ====================================== */}
 
         <section className="mt-7 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/70 p-5 shadow-sm">
@@ -1229,19 +1299,22 @@ export default function StorePage() {
             <div>
 
               <p className="text-xs font-semibold tracking-[0.16em] text-pink-400">
-                OUR COIN
+                MY COIN
               </p>
 
               <p className="mt-2 text-3xl font-bold">
-                🪙 {wallet.coins}
+
+                🪙{" "}
+                {wallet.coins}
 
                 <span className="ml-1 text-base font-semibold text-gray-400">
                   개
                 </span>
+
               </p>
 
               <p className="mt-1 text-[11px] text-gray-400">
-                둘이 함께 사용하는 코인이에요 ♡
+                내가 사용할 수 있는 코인이에요.
               </p>
 
             </div>
@@ -1281,7 +1354,7 @@ export default function StorePage() {
             <div className="rounded-2xl bg-white/70 px-4 py-3">
 
               <p className="text-[10px] text-gray-400">
-                지금까지 함께 획득
+                지금까지 획득
               </p>
 
               <p className="mt-1 text-sm font-bold text-gray-700">
@@ -1293,7 +1366,7 @@ export default function StorePage() {
             <div className="rounded-2xl bg-white/70 px-4 py-3">
 
               <p className="text-[10px] text-gray-400">
-                지금까지 함께 사용
+                지금까지 사용
               </p>
 
               <p className="mt-1 text-sm font-bold text-gray-700">
@@ -1326,6 +1399,7 @@ export default function StorePage() {
                     category.value;
 
                   return (
+
                     <button
                       key={
                         category.value
@@ -1345,6 +1419,7 @@ export default function StorePage() {
                       {category.emoji}{" "}
                       {category.label}
                     </button>
+
                   );
                 }
               )}
@@ -1356,7 +1431,7 @@ export default function StorePage() {
         </section>
 
         {/* =====================================
-            안내 메시지
+            메시지
         ====================================== */}
 
         {notice && (
@@ -1413,7 +1488,9 @@ export default function StorePage() {
             <div className="grid grid-cols-2 gap-3">
 
               {visibleItems.map(
-                (item) => {
+                (
+                  item
+                ) => {
 
                   const owned =
                     inventory.some(
@@ -1466,7 +1543,7 @@ export default function StorePage() {
                       }`}
                     >
 
-                      {/* 아이템 이미지 */}
+                      {/* 이미지 */}
 
                       <div className="relative">
 
@@ -1545,7 +1622,7 @@ export default function StorePage() {
                       <p className="mt-1 line-clamp-2 min-h-[40px] text-xs leading-5 text-gray-400">
 
                         {item.description ??
-                          "우리 캐릭터를 꾸며주는 아이템이에요."}
+                          "내 캐릭터를 꾸며주는 아이템이에요."}
 
                       </p>
 
@@ -1657,14 +1734,14 @@ export default function StorePage() {
               </p>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                구매하면 가격만큼 우리 코인이 차감돼요.
+                구매하면 가격만큼 내 코인이 차감돼요.
                 <br />
-                한 명이 구매하면 둘 모두 같은 아이템을 보유해요.
+                내가 구매한 아이템은 내 캐릭터에만 사용할 수 있어요.
                 <br />
                 구매한 아이템은 언제든 다시 착용할 수 있어요.
                 <br />
                 같은 종류의 아이템을 새로 착용하면
-                기존 아이템은 자동으로 교체돼요.
+                내 기존 아이템만 자동으로 교체돼요.
               </p>
 
             </div>
