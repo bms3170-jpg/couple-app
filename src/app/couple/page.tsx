@@ -413,7 +413,7 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 내 코인
+      // 우리 코인
       // =====================================
 
       const {
@@ -421,7 +421,7 @@ export default function CouplePage() {
         error: walletError,
       } = await supabase
         .from(
-          "user_coin_wallets"
+          "couple_wallets"
         )
         .select(`
           coins,
@@ -432,10 +432,6 @@ export default function CouplePage() {
           "couple_id",
           coupleId
         )
-        .eq(
-          "user_id",
-          user.id
-        )
         .maybeSingle();
 
       if (cancelled) {
@@ -444,7 +440,7 @@ export default function CouplePage() {
 
       if (walletError) {
         console.error(
-          "코인 지갑 조회 오류:",
+          "우리 코인 지갑 조회 오류:",
           walletError
         );
       } else {
@@ -1327,7 +1323,6 @@ export default function CouplePage() {
 
   return (
     <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
-
       <div className="mx-auto max-w-md pb-28">
 
         {/* =================================
@@ -1335,9 +1330,7 @@ export default function CouplePage() {
         ================================= */}
 
         <header className="flex items-end justify-between gap-4">
-
           <div>
-
             <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
               OURQUEST
             </p>
@@ -1349,13 +1342,11 @@ export default function CouplePage() {
             <p className="mt-2 text-sm text-gray-500">
               오늘도 둘만의 퀘스트를 이어가요 ♡
             </p>
-
           </div>
 
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
             💕
           </div>
-
         </header>
 
         {/* =================================
@@ -1367,7 +1358,6 @@ export default function CouplePage() {
           <div className="flex items-start justify-between gap-3">
 
             <div>
-
               <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
                 OUR LEVEL
               </p>
@@ -1375,7 +1365,6 @@ export default function CouplePage() {
               <p className="mt-2 text-4xl font-bold tracking-tight">
                 LV.{level}
               </p>
-
             </div>
 
             <div className="flex items-center gap-2">
@@ -1383,7 +1372,7 @@ export default function CouplePage() {
               <div className="rounded-2xl bg-white/90 px-3 py-2 text-center shadow-sm">
 
                 <p className="text-[10px] text-gray-400">
-                  내 코인
+                  우리 코인
                 </p>
 
                 <p className="mt-0.5 text-sm font-bold text-amber-500">
