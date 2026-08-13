@@ -111,6 +111,8 @@ type GrowthStage = {
 
 type EquipmentRow = {
   id: string;
+  couple_id: string;
+  user_id: string;
   slot: string;
   item_id: string;
   equipped_at: string;
@@ -122,6 +124,12 @@ type EquippedStoreItem = {
   name: string;
   category: string;
   image_path: string | null;
+};
+
+type UserEquippedItem = {
+  user_id: string;
+  slot: string;
+  item: EquippedStoreItem;
 };
 
 export default function CouplePage() {
@@ -217,10 +225,11 @@ export default function CouplePage() {
   const [
     wallet,
     setWallet,
-  ] =
-    useState<CoinWallet | null>(
-      null
-    );
+  ] = useState<CoinWallet>({
+    coins: 0,
+    total_earned: 0,
+    total_spent: 0,
+  });
 
   const [
     growthStage,
@@ -234,7 +243,7 @@ export default function CouplePage() {
     equippedItems,
     setEquippedItems,
   ] = useState<
-    EquippedStoreItem[]
+    UserEquippedItem[]
   >([]);
 
   useEffect(() => {
@@ -298,7 +307,7 @@ export default function CouplePage() {
         membership.couple_id;
 
       // =====================================
-      // 보상 알림
+      // 확인하지 않은 보상 알림
       // =====================================
 
       const {
@@ -377,9 +386,7 @@ export default function CouplePage() {
         )
         .maybeSingle();
 
-      if (
-        cancelled
-      ) {
+      if (cancelled) {
         return;
       }
 
@@ -397,7 +404,9 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 캐릭터
+      // 커플 캐릭터 종류
+      // 현재는 둘이 같은 종류 사용
+      // 예: 고양이 2마리
       // =====================================
 
       const {
@@ -417,9 +426,7 @@ export default function CouplePage() {
         )
         .maybeSingle();
 
-      if (
-        characterError
-      ) {
+      if (characterError) {
         console.error(
           "캐릭터 조회 오류:",
           characterError
@@ -433,7 +440,7 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 우리 코인
+      // 내 개인 코인
       // =====================================
 
       const {
@@ -441,7 +448,7 @@ export default function CouplePage() {
         error: walletError,
       } = await supabase
         .from(
-          "couple_wallets"
+          "user_coin_wallets"
         )
         .select(`
           coins,
@@ -452,13 +459,19 @@ export default function CouplePage() {
           "couple_id",
           coupleId
         )
+        .eq(
+          "user_id",
+          user.id
+        )
         .maybeSingle();
 
-      if (
-        walletError
-      ) {
+      if (cancelled) {
+        return;
+      }
+
+      if (walletError) {
         console.error(
-          "우리 코인 지갑 조회 오류:",
+          "내 코인 지갑 조회 오류:",
           walletError
         );
       } else {
@@ -474,7 +487,7 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 현재 성장 단계
+      // 성장 단계
       // =====================================
 
       const {
@@ -504,11 +517,13 @@ export default function CouplePage() {
         .limit(1)
         .maybeSingle();
 
-      if (
-        growthError
-      ) {
+      if (cancelled) {
+        return;
+      }
+
+      if (growthError) {
         console.error(
-          "성장 단계 조회 오류:",
+          "캐릭터 성장 단계 조회 오류:",
           growthError
         );
       } else {
@@ -520,7 +535,116 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 현재 착용 중 아이템
+      // 커플 멤버
+      // =====================================
+
+      const {
+        data: memberRows,
+        error: memberError,
+      } = await supabase
+        .from(
+          "couple_members"
+        )
+        .select(
+          "user_id"
+        )
+        .eq(
+          "couple_id",
+          coupleId
+        )
+        .order(
+          "joined_at",
+          {
+            ascending: true,
+          }
+        );
+
+      if (cancelled) {
+        return;
+      }
+
+      if (memberError) {
+        console.error(
+          "멤버 조회 오류:",
+          memberError
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      const userIds =
+        memberRows?.map(
+          (member) =>
+            member.user_id
+        ) ?? [];
+
+      // =====================================
+      // 프로필
+      // =====================================
+
+      const {
+        data: profileRows,
+        error: profileError,
+      } =
+        userIds.length > 0
+          ? await supabase
+              .from(
+                "profiles"
+              )
+              .select(
+                "id, nickname"
+              )
+              .in(
+                "id",
+                userIds
+              )
+          : {
+              data: [],
+              error: null,
+            };
+
+      if (cancelled) {
+        return;
+      }
+
+      if (profileError) {
+        console.error(
+          "프로필 조회 오류:",
+          profileError
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      const combinedMembers:
+        Member[] =
+        userIds.map(
+          (userId) => {
+            const profile =
+              profileRows?.find(
+                (item) =>
+                  item.id ===
+                  userId
+              );
+
+            return {
+              user_id:
+                userId,
+
+              profiles: {
+                nickname:
+                  profile?.nickname ??
+                  null,
+              },
+            };
+          }
+        );
+
+      // =====================================
+      // 두 사람의 착용 아이템
+      // user_id 기준으로 분리
       // =====================================
 
       const {
@@ -532,6 +656,8 @@ export default function CouplePage() {
         )
         .select(`
           id,
+          couple_id,
+          user_id,
           slot,
           item_id,
           equipped_at
@@ -541,9 +667,11 @@ export default function CouplePage() {
           coupleId
         );
 
-      if (
-        equipmentError
-      ) {
+      if (cancelled) {
+        return;
+      }
+
+      if (equipmentError) {
         console.error(
           "착용 아이템 조회 오류:",
           equipmentError
@@ -556,20 +684,23 @@ export default function CouplePage() {
           ) as EquipmentRow[];
 
         const itemIds =
-          equipment.map(
-            (item) =>
-              item.item_id
+          Array.from(
+            new Set(
+              equipment.map(
+                (row) =>
+                  row.item_id
+              )
+            )
           );
 
         if (
-          itemIds.length >
-          0
+          itemIds.length > 0
         ) {
           const {
             data:
-              equippedStoreRows,
+              storeItemRows,
             error:
-              equippedStoreError,
+              storeItemError,
           } = await supabase
             .from(
               "store_items"
@@ -587,18 +718,57 @@ export default function CouplePage() {
             );
 
           if (
-            equippedStoreError
+            storeItemError
           ) {
             console.error(
-              "착용 상품 정보 조회 오류:",
-              equippedStoreError
+              "착용 상품 조회 오류:",
+              storeItemError
             );
           } else {
-            setEquippedItems(
+            const storeItems =
               (
-                equippedStoreRows ??
+                storeItemRows ??
                 []
-              ) as EquippedStoreItem[]
+              ) as EquippedStoreItem[];
+
+            const merged:
+              UserEquippedItem[] =
+              equipment
+                .map(
+                  (row) => {
+                    const item =
+                      storeItems.find(
+                        (
+                          storeItem
+                        ) =>
+                          storeItem.id ===
+                          row.item_id
+                      );
+
+                    if (!item) {
+                      return null;
+                    }
+
+                    return {
+                      user_id:
+                        row.user_id,
+
+                      slot:
+                        row.slot,
+
+                      item,
+                    };
+                  }
+                )
+                .filter(
+                  (
+                    row
+                  ): row is UserEquippedItem =>
+                    row !== null
+                );
+
+            setEquippedItems(
+              merged
             );
           }
         } else {
@@ -609,7 +779,7 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 해금 보상
+      // 해금된 보상
       // =====================================
 
       const {
@@ -633,9 +803,11 @@ export default function CouplePage() {
           true
         );
 
-      if (
-        rewardCountError
-      ) {
+      if (cancelled) {
+        return;
+      }
+
+      if (rewardCountError) {
         console.error(
           "보상 개수 조회 오류:",
           rewardCountError
@@ -647,7 +819,7 @@ export default function CouplePage() {
       );
 
       // =====================================
-      // 상대방 확인 대기 인증
+      // 상대방 인증 확인 대기
       // =====================================
 
       const {
@@ -674,6 +846,10 @@ export default function CouplePage() {
           "status",
           "pending"
         );
+
+      if (cancelled) {
+        return;
+      }
 
       if (
         pendingCountError
@@ -730,6 +906,10 @@ export default function CouplePage() {
         .limit(1)
         .maybeSingle();
 
+      if (cancelled) {
+        return;
+      }
+
       if (
         recentRewardError
       ) {
@@ -744,111 +924,6 @@ export default function CouplePage() {
             : null
         );
       }
-
-      // =====================================
-      // 커플 멤버
-      // =====================================
-
-      const {
-        data: memberRows,
-        error: memberError,
-      } = await supabase
-        .from(
-          "couple_members"
-        )
-        .select(
-          "user_id"
-        )
-        .eq(
-          "couple_id",
-          coupleId
-        )
-        .order(
-          "joined_at",
-          {
-            ascending: true,
-          }
-        );
-
-      if (
-        memberError
-      ) {
-        console.error(
-          "멤버 조회 오류:",
-          memberError
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      const userIds =
-        memberRows?.map(
-          (member) =>
-            member.user_id
-        ) ?? [];
-
-      // =====================================
-      // 프로필
-      // =====================================
-
-      const {
-        data: profileRows,
-        error: profileError,
-      } =
-        userIds.length >
-        0
-          ? await supabase
-              .from(
-                "profiles"
-              )
-              .select(
-                "id, nickname"
-              )
-              .in(
-                "id",
-                userIds
-              )
-          : {
-              data: [],
-              error: null,
-            };
-
-      if (
-        profileError
-      ) {
-        console.error(
-          "프로필 조회 오류:",
-          profileError
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      const combinedMembers:
-        Member[] =
-        userIds.map(
-          (userId) => {
-            const profile =
-              profileRows?.find(
-                (item) =>
-                  item.id ===
-                  userId
-              );
-
-            return {
-              user_id:
-                userId,
-
-              profiles: {
-                nickname:
-                  profile?.nickname ??
-                  null,
-              },
-            };
-          }
-        );
 
       // =====================================
       // 진행 중 약속
@@ -888,9 +963,11 @@ export default function CouplePage() {
           }
         );
 
-      if (
-        promiseError
-      ) {
+      if (cancelled) {
+        return;
+      }
+
+      if (promiseError) {
         console.error(
           "약속 조회 오류:",
           promiseError
@@ -901,7 +978,7 @@ export default function CouplePage() {
       }
 
       // =====================================
-      // 오늘 인증 상태
+      // 오늘 인증
       // =====================================
 
       const todayPromiseIds =
@@ -965,6 +1042,10 @@ export default function CouplePage() {
             today
           );
 
+        if (cancelled) {
+          return;
+        }
+
         if (
           verificationError
         ) {
@@ -1009,6 +1090,10 @@ export default function CouplePage() {
           "pending"
         );
 
+      if (cancelled) {
+        return;
+      }
+
       if (
         deleteRequestError
       ) {
@@ -1018,12 +1103,6 @@ export default function CouplePage() {
         );
 
         setLoading(false);
-        return;
-      }
-
-      if (
-        cancelled
-      ) {
         return;
       }
 
@@ -1053,9 +1132,7 @@ export default function CouplePage() {
         ) as DeleteRequest[]
       );
 
-      setLoading(
-        false
-      );
+      setLoading(false);
     }
 
     void loadCouple();
@@ -1071,7 +1148,7 @@ export default function CouplePage() {
   ]);
 
   // =========================================
-  // 삭제 요청
+  // 삭제 협의 요청
   // =========================================
 
   async function requestDelete(
@@ -1118,6 +1195,10 @@ export default function CouplePage() {
 
     window.location.reload();
   }
+
+  // =========================================
+  // 삭제 동의
+  // =========================================
 
   async function approveDelete(
     requestId: string,
@@ -1179,6 +1260,10 @@ export default function CouplePage() {
     );
   }
 
+  // =========================================
+  // 삭제 거절
+  // =========================================
+
   async function rejectDelete(
     requestId: string
   ) {
@@ -1208,6 +1293,10 @@ export default function CouplePage() {
 
     window.location.reload();
   }
+
+  // =========================================
+  // 삭제 요청 취소
+  // =========================================
 
   async function cancelDelete(
     requestId: string
@@ -1243,21 +1332,21 @@ export default function CouplePage() {
       return;
     }
 
-    const {
-      error,
-    } = await supabase
-      .from(
-        "reward_unlock_notifications"
-      )
-      .update({
-        seen: true,
-        seen_at:
-          new Date().toISOString(),
-      })
-      .eq(
-        "id",
-        rewardNotification.id
-      );
+    const { error } =
+      await supabase
+        .from(
+          "reward_unlock_notifications"
+        )
+        .update({
+          seen: true,
+
+          seen_at:
+            new Date().toISOString(),
+        })
+        .eq(
+          "id",
+          rewardNotification.id
+        );
 
     if (error) {
       console.error(
@@ -1274,10 +1363,10 @@ export default function CouplePage() {
   }
 
   // =========================================
-  // 아이템 표시용 이모지
+  // 아이템 이모지
   // =========================================
 
-  function getEquippedEmoji(
+  function getItemEmoji(
     item:
       | EquippedStoreItem
       | undefined
@@ -1301,19 +1390,14 @@ export default function CouplePage() {
       party_hat: "🥳",
       couple_crown: "👑",
 
+      hoodie: "🧥",
       pink_clothes: "👚",
       blue_clothes: "👕",
-      hoodie: "🧥",
       couple_hoodie: "🧥",
 
       heart_necklace: "💗",
-      ribbon_accessory: "🎀",
       necklace: "📿",
-
-      flower_background: "🌸",
-      cozy_background: "🌷",
-
-      cozy_sofa: "🛋️",
+      ribbon_accessory: "🎀",
     };
 
     if (
@@ -1349,20 +1433,6 @@ export default function CouplePage() {
 
     if (
       item.category ===
-      "background"
-    ) {
-      return "🌸";
-    }
-
-    if (
-      item.category ===
-      "furniture"
-    ) {
-      return "🛋️";
-    }
-
-    if (
-      item.category ===
       "couple"
     ) {
       return "💕";
@@ -1371,13 +1441,7 @@ export default function CouplePage() {
     return "✨";
   }
 
-  // =========================================
-  // 로딩
-  // =========================================
-
-  if (
-    authLoading
-  ) {
+  if (authLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
         <p className="text-sm text-gray-500">
@@ -1387,9 +1451,7 @@ export default function CouplePage() {
     );
   }
 
-  if (
-    loading
-  ) {
+  if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
         <p className="text-sm text-gray-500">
@@ -1400,28 +1462,22 @@ export default function CouplePage() {
   }
 
   // =========================================
-  // 표시값
+  // 기본 표시값
   // =========================================
 
   const first =
-    members[0]
-      ?.profiles
-      ?.nickname ??
-    "나";
+    members[0]?.profiles
+      ?.nickname ?? "나";
 
   const second =
-    members[1]
-      ?.profiles
-      ?.nickname ??
-    "파트너";
+    members[1]?.profiles
+      ?.nickname ?? "파트너";
 
   const level =
-    couple?.level ??
-    1;
+    couple?.level ?? 1;
 
   const xp =
-    couple?.xp ??
-    0;
+    couple?.xp ?? 0;
 
   const xpForNextLevel =
     100 +
@@ -1438,30 +1494,18 @@ export default function CouplePage() {
     );
 
   const coins =
-    wallet?.coins ??
-    0;
+    wallet.coins;
 
   const characterEmoji =
     character
       ?.character_type ===
-    "cat"
-      ? "🐱"
-      : character
-          ?.character_type ===
-        "dog"
+    "dog"
       ? "🐶"
-      : null;
-
-  const characterName =
-    character
-      ?.character_type ===
-    "cat"
-      ? "고양이"
       : character
           ?.character_type ===
-        "dog"
-      ? "강아지"
-      : "캐릭터";
+        "cat"
+      ? "🐱"
+      : null;
 
   const growthName =
     growthStage
@@ -1469,83 +1513,23 @@ export default function CouplePage() {
     "아기";
 
   // =========================================
-  // 현재 착용 아이템
+  // 각 사람별 착용 아이템
   // =========================================
 
-  const equippedHat =
-    equippedItems.find(
-      (item) =>
-        item.category ===
-        "hat"
-    );
-
-  const equippedClothes =
-    equippedItems.find(
-      (item) =>
-        item.category ===
-        "clothes"
-    );
-
-  const equippedAccessory =
-    equippedItems.find(
-      (item) =>
-        item.category ===
-        "accessory"
-    );
-
-  const equippedBackground =
-    equippedItems.find(
-      (item) =>
-        item.category ===
-        "background"
-    );
-
-  const equippedFurniture =
-    equippedItems.find(
-      (item) =>
-        item.category ===
-        "furniture"
-    );
-
-  const equippedCouple =
-    equippedItems.find(
-      (item) =>
-        item.category ===
-        "couple"
-    );
-
-  const hatEmoji =
-    getEquippedEmoji(
-      equippedHat
-    );
-
-  const clothesEmoji =
-    getEquippedEmoji(
-      equippedClothes
-    );
-
-  const accessoryEmoji =
-    getEquippedEmoji(
-      equippedAccessory
-    );
-
-  const backgroundEmoji =
-    getEquippedEmoji(
-      equippedBackground
-    );
-
-  const furnitureEmoji =
-    getEquippedEmoji(
-      equippedFurniture
-    );
-
-  const coupleItemEmoji =
-    getEquippedEmoji(
-      equippedCouple
-    );
+  function getUserItem(
+    userId: string,
+    slot: string
+  ) {
+    return equippedItems.find(
+      (row) =>
+        row.user_id ===
+          userId &&
+        row.slot === slot
+    )?.item;
+  }
 
   // =========================================
-  // 오늘 완료 여부
+  // 오늘 약속 완료 여부
   // =========================================
 
   const isPromiseCompletedToday = (
@@ -1636,6 +1620,159 @@ export default function CouplePage() {
     todayCompletedCount ===
       todayTotalCount;
 
+  // =========================================
+  // 캐릭터 한 마리
+  // =========================================
+
+  function renderUserCharacter(
+    member:
+      | Member
+      | undefined,
+    index: number
+  ) {
+    if (!member) {
+      return (
+        <div className="flex flex-1 items-center justify-center">
+          <span className="text-4xl opacity-30">
+            🐾
+          </span>
+        </div>
+      );
+    }
+
+    const nickname =
+      member.profiles
+        ?.nickname ??
+      (
+        index === 0
+          ? "나"
+          : "파트너"
+      );
+
+    const hat =
+      getUserItem(
+        member.user_id,
+        "hat"
+      );
+
+    const clothes =
+      getUserItem(
+        member.user_id,
+        "clothes"
+      );
+
+    const accessory =
+      getUserItem(
+        member.user_id,
+        "accessory"
+      );
+
+    const coupleItem =
+      getUserItem(
+        member.user_id,
+        "couple"
+      );
+
+    const hatEmoji =
+      getItemEmoji(
+        hat
+      );
+
+    const clothesEmoji =
+      getItemEmoji(
+        clothes
+      );
+
+    const accessoryEmoji =
+      getItemEmoji(
+        accessory
+      );
+
+    const coupleEmoji =
+      getItemEmoji(
+        coupleItem
+      );
+
+    const isMe =
+      member.user_id ===
+      currentUserId;
+
+    return (
+      <div className="relative flex min-w-0 flex-1 flex-col items-center">
+
+        <div className="relative h-[108px] w-[92px]">
+
+          {characterEmoji ? (
+            <>
+              <div
+                className="absolute bottom-4 left-1/2 flex h-[72px] w-[72px] -translate-x-1/2 items-center justify-center rounded-[24px] bg-white/70 text-[54px] shadow-inner"
+                style={{
+                  transform:
+                    `translateX(-50%) scale(${Math.min(
+                      Number(
+                        growthStage?.scale ??
+                          1
+                      ),
+                      1.1
+                    )})`,
+                }}
+              >
+                {characterEmoji}
+              </div>
+
+              {hatEmoji && (
+                <div className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 text-[31px] drop-shadow-sm">
+                  {hatEmoji}
+                </div>
+              )}
+
+              {clothesEmoji && (
+                <div className="pointer-events-none absolute bottom-0 left-1/2 z-30 -translate-x-1/2 text-[29px] drop-shadow-sm">
+                  {clothesEmoji}
+                </div>
+              )}
+
+              {accessoryEmoji && (
+                <div className="pointer-events-none absolute bottom-4 right-0 z-40 text-[22px]">
+                  {accessoryEmoji}
+                </div>
+              )}
+
+              {coupleEmoji && (
+                <div className="pointer-events-none absolute right-0 top-4 z-40 text-[20px]">
+                  {coupleEmoji}
+                </div>
+              )}
+            </>
+          ) : (
+            <Link
+              href="/character"
+              className="absolute inset-0 flex items-center justify-center rounded-[24px] border border-dashed border-pink-200 bg-white/60 text-4xl"
+            >
+              🐾
+            </Link>
+          )}
+
+        </div>
+
+        <div className="mt-1 flex max-w-full items-center gap-1.5">
+
+          <p className="truncate text-xs font-bold text-gray-700">
+            {nickname}
+          </p>
+
+          {isMe && (
+            <span className="shrink-0 rounded-full bg-pink-100 px-1.5 py-0.5 text-[8px] font-bold text-pink-500">
+              ME
+            </span>
+          )}
+
+        </div>
+
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
 
@@ -1687,6 +1824,10 @@ export default function CouplePage() {
                 LV.{level}
               </p>
 
+              <p className="mt-1 text-[10px] font-semibold text-pink-400">
+                {growthName}
+              </p>
+
             </div>
 
             <div className="flex items-center gap-2">
@@ -1694,7 +1835,7 @@ export default function CouplePage() {
               <div className="rounded-2xl bg-white/90 px-3 py-2 text-center shadow-sm">
 
                 <p className="text-[10px] text-gray-400">
-                  우리 코인
+                  내 코인
                 </p>
 
                 <p className="mt-0.5 text-sm font-bold text-amber-500">
@@ -1706,7 +1847,7 @@ export default function CouplePage() {
               <Link
                 href="/store"
                 prefetch={false}
-                className="flex h-[50px] items-center justify-center rounded-2xl bg-pink-500 px-3 text-[11px] font-bold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.98]"
+                className="flex h-[50px] items-center justify-center rounded-2xl bg-pink-500 px-3 text-[11px] font-bold text-white shadow-sm transition active:scale-[0.98]"
               >
                 STORE
               </Link>
@@ -1716,197 +1857,75 @@ export default function CouplePage() {
           </div>
 
           {/* =================================
-              캐릭터 + 실제 착용 아이템
+              두 캐릭터
           ================================= */}
 
-          <div className="mt-4 grid grid-cols-[1fr_auto] items-center gap-3">
+          <div className="relative mt-4 overflow-hidden rounded-[26px] border border-pink-100 bg-gradient-to-b from-white/90 to-pink-50/70 px-3 pb-4 pt-3">
 
-            {characterEmoji ? (
+            <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 text-xl text-pink-300">
+              ♡
+            </div>
 
-              <Link
-                href="/store"
-                prefetch={false}
-                className="relative flex min-w-0 items-center gap-3 overflow-hidden rounded-[24px] border border-pink-100 bg-white/80 px-3 py-3 shadow-sm"
-              >
+            <div className="flex items-end justify-center gap-1">
 
-                {/* 배경 */}
+              {renderUserCharacter(
+                members[0],
+                0
+              )}
 
-                {backgroundEmoji && (
-
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-end overflow-hidden pr-2 opacity-20">
-
-                    <span className="text-7xl">
-                      {backgroundEmoji}
-                    </span>
-
-                  </div>
-
-                )}
-
-                {/* 가구 */}
-
-                {furnitureEmoji && (
-
-                  <div className="pointer-events-none absolute bottom-0 right-2 text-3xl opacity-50">
-                    {furnitureEmoji}
-                  </div>
-
-                )}
-
-                {/* 캐릭터 */}
-
-                <div className="relative z-10 h-[94px] w-[88px] shrink-0">
-
-                  <div
-                    className="absolute bottom-2 left-1/2 flex h-16 w-16 -translate-x-1/2 items-center justify-center rounded-[22px] bg-[#fff8fb] text-5xl shadow-inner"
-                    style={{
-                      transform:
-                        `translateX(-50%) scale(${Math.min(
-                          Number(
-                            growthStage?.scale ??
-                              1
-                          ),
-                          1.12
-                        )})`,
-                    }}
-                  >
-                    {characterEmoji}
-                  </div>
-
-                  {/* 모자 */}
-
-                  {hatEmoji && (
-
-                    <div className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 text-[30px] drop-shadow-sm">
-                      {hatEmoji}
-                    </div>
-
-                  )}
-
-                  {/* 옷 */}
-
-                  {clothesEmoji && (
-
-                    <div className="pointer-events-none absolute bottom-0 left-1/2 z-30 -translate-x-1/2 text-[28px] drop-shadow-sm">
-                      {clothesEmoji}
-                    </div>
-
-                  )}
-
-                  {/* 액세서리 */}
-
-                  {accessoryEmoji && (
-
-                    <div className="pointer-events-none absolute bottom-3 right-0 z-40 text-[22px] drop-shadow-sm">
-                      {accessoryEmoji}
-                    </div>
-
-                  )}
-
-                  {/* 커플 아이템 */}
-
-                  {coupleItemEmoji && (
-
-                    <div className="pointer-events-none absolute right-0 top-2 z-40 text-[20px]">
-                      {coupleItemEmoji}
-                    </div>
-
-                  )}
-
-                </div>
-
-                <div className="relative z-10 min-w-0">
-
-                  <p className="text-[10px] font-semibold tracking-[0.12em] text-pink-400">
-                    OUR CHARACTER
-                  </p>
-
-                  <p className="mt-1 truncate text-sm font-bold">
-                    {characterName} · {growthName}
-                  </p>
-
-                  {equippedItems.length >
-                  0 ? (
-
-                    <p className="mt-1 text-[10px] font-semibold text-pink-400">
-                      ✨ {equippedItems.length}개 아이템 착용 중
-                    </p>
-
-                  ) : (
-
-                    <p className="mt-1 text-[10px] text-gray-400">
-                      STORE에서 꾸며보세요 ♡
-                    </p>
-
-                  )}
-
-                </div>
-
-              </Link>
-
-            ) : (
-
-              <Link
-                href="/character"
-                prefetch={false}
-                className="flex min-w-0 items-center gap-3 rounded-[22px] border border-dashed border-pink-200 bg-white/70 px-3 py-3"
-              >
-
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] bg-pink-50 text-3xl">
-                  🐾
-                </div>
-
-                <div>
-
-                  <p className="text-sm font-bold">
-                    우리 캐릭터 만들기
-                  </p>
-
-                  <p className="mt-1 text-[10px] text-gray-400">
-                    고양이 또는 강아지를 골라요.
-                  </p>
-
-                </div>
-
-              </Link>
-
-            )}
-
-            {/* XP */}
-
-            <div className="min-w-[74px] rounded-[20px] bg-white/90 px-3 py-3 text-center shadow-sm">
-
-              <p className="text-[10px] text-gray-400">
-                현재 XP
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-pink-500">
-                {xp}
-              </p>
-
-              <p className="mt-1 text-[9px] text-gray-300">
-                / {xpForNextLevel}
-              </p>
+              {renderUserCharacter(
+                members[1],
+                1
+              )}
 
             </div>
 
+            <Link
+              href="/store"
+              prefetch={false}
+              className="mt-2 block text-center text-[10px] font-semibold text-pink-400"
+            >
+              각자 원하는 아이템으로 캐릭터를 꾸며보세요 ♡
+            </Link>
+
           </div>
+
+          {/* =================================
+              XP
+          ================================= */}
 
           <div className="mt-4">
 
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-end justify-between">
 
-              <span className="text-gray-400">
-                다음 레벨까지
-              </span>
+              <div>
 
-              <span className="font-semibold text-pink-500">
+                <p className="text-[10px] text-gray-400">
+                  현재 XP
+                </p>
+
+                <p className="mt-1 text-xl font-bold text-pink-500">
+                  {xp}
+
+                  <span className="ml-1 text-xs font-semibold text-gray-300">
+                    / {xpForNextLevel}
+                  </span>
+
+                </p>
+
+              </div>
+
+              <p className="text-xs font-semibold text-pink-500">
+
+                다음 레벨까지{" "}
+
                 {Math.max(
                   xpForNextLevel -
                     xp,
                   0
-                )} XP 남음
-              </span>
+                )} XP
+
+              </p>
 
             </div>
 
@@ -1973,6 +1992,7 @@ export default function CouplePage() {
               </p>
 
               <p className="mt-1 text-3xl font-bold tracking-tight">
+
                 {promises.length}
 
                 <span className="ml-1 text-sm font-semibold text-gray-400">
@@ -1990,7 +2010,7 @@ export default function CouplePage() {
             <Link
               href="/us/history"
               prefetch={false}
-              className="group rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-50/50 hover:shadow-md"
+              className="group rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm"
             >
 
               <div className="flex items-center justify-between">
@@ -2030,19 +2050,19 @@ export default function CouplePage() {
               className="mt-3 flex items-center justify-between rounded-[26px] border border-pink-100 bg-white p-4 shadow-sm"
             >
 
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
 
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
                   💌
                 </div>
 
-                <div>
+                <div className="min-w-0">
 
                   <p className="font-bold">
                     확인을 기다리고 있어요
                   </p>
 
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 truncate text-xs text-gray-400">
                     상대방이 보낸 인증 {pendingVerificationCount}개
                   </p>
 
@@ -2050,7 +2070,7 @@ export default function CouplePage() {
 
               </div>
 
-              <span className="rounded-full bg-pink-500 px-3 py-2 text-[11px] font-semibold text-white">
+              <span className="shrink-0 rounded-full bg-pink-500 px-3 py-2 text-[11px] font-semibold text-white">
                 확인하기
               </span>
 
@@ -2083,10 +2103,16 @@ export default function CouplePage() {
                   </p>
 
                   <p className="mt-1 truncate text-xs text-gray-400">
-                    {recentReward.promises?.title ??
+
+                    {recentReward.promises
+                      ?.title ??
                       "약속"}{" "}
+
                     ·{" "}
-                    {recentReward.required_days}일 달성
+
+                    {recentReward.required_days}
+                    일 달성
+
                   </p>
 
                 </div>
@@ -2138,7 +2164,7 @@ export default function CouplePage() {
 
             <div className="mt-5 rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm">
 
-              <div className="flex items-end justify-between">
+              <div className="flex items-end justify-between gap-4">
 
                 <div>
 
@@ -2165,7 +2191,7 @@ export default function CouplePage() {
               <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-pink-50">
 
                 <div
-                  className="h-full rounded-full bg-pink-500"
+                  className="h-full rounded-full bg-pink-500 transition-all"
                   style={{
                     width:
                       `${todayProgressPercent}%`,
@@ -2190,6 +2216,12 @@ export default function CouplePage() {
               <h3 className="mt-4 text-lg font-bold">
                 아직 약속이 없어요
               </h3>
+
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                둘이 함께 지키고 싶은 약속을
+                <br />
+                첫 번째 퀘스트로 만들어보세요.
+              </p>
 
               <Link
                 href="/promise/new"
@@ -2233,14 +2265,20 @@ export default function CouplePage() {
                       </p>
 
                       <p className="text-[11px] text-gray-400">
-                        {incompletePromises.length}개
+                        아직 끝나지 않은 약속 {incompletePromises.length}개
                       </p>
 
                     </div>
 
                   </div>
 
-                  <span>
+                  <span
+                    className={`transition ${
+                      showIncompletePromises
+                        ? "rotate-180"
+                        : ""
+                    }`}
+                  >
                     ⌄
                   </span>
 
@@ -2248,214 +2286,401 @@ export default function CouplePage() {
 
                 {showIncompletePromises && (
 
-                  <div className="border-t border-pink-50 p-3">
+                  <div className="border-t border-pink-50 bg-[#fffdfd] p-3">
 
-                    {incompletePromises.map(
-                      (promise) => {
+                    {incompletePromises.length ===
+                    0 ? (
 
-                        const assignee =
-                          members.find(
-                            (member) =>
-                              member.user_id ===
-                              promise.assigned_to
-                          );
+                      <div className="rounded-[22px] bg-white px-4 py-7 text-center">
 
-                        const assigneeName =
-                          assignee?.profiles?.nickname ??
-                          "이름 없음";
+                        <p className="font-semibold text-pink-500">
+                          🎉 오늘 약속을 모두 완료했어요!
+                        </p>
 
-                        const deleteRequest =
-                          deleteRequests.find(
-                            (request) =>
-                              request.promise_id ===
-                              promise.id
-                          );
+                        <p className="mt-1 text-xs text-gray-400">
+                          둘이 오늘의 퀘스트를 다 해냈어요 ♡
+                        </p>
 
-                        const myVerification =
-                          getMyVerification(
-                            promise.id
-                          );
+                      </div>
 
-                        return (
+                    ) : (
 
-                          <article
-                            key={
-                              promise.id
-                            }
-                            className="mb-3 rounded-[26px] border border-pink-100 bg-white p-5"
-                          >
+                      <div className="space-y-4">
 
-                            <div className="flex justify-between gap-3">
+                        {incompletePromises.map(
+                          (promise) => {
 
-                              <div>
+                            const assignee =
+                              members.find(
+                                (member) =>
+                                  member.user_id ===
+                                  promise.assigned_to
+                              );
 
-                                <p className="text-[11px] text-gray-400">
-                                  {promise.is_joint
-                                    ? "💕 서로의 약속"
-                                    : `${assigneeName}님의 약속`}
-                                </p>
+                            const assigneeName =
+                              assignee
+                                ?.profiles
+                                ?.nickname ??
+                              "이름 없음";
 
-                                <h3 className="mt-2 text-lg font-bold">
-                                  {promise.title}
-                                </h3>
+                            const repeatLabel =
+                              promise.repeat_type ===
+                              "daily"
+                                ? "매일"
+                                : promise.repeat_type ===
+                                  "weekdays"
+                                ? "평일"
+                                : "사용자 지정";
 
-                              </div>
+                            const deleteRequest =
+                              deleteRequests.find(
+                                (request) =>
+                                  request.promise_id ===
+                                  promise.id
+                              );
 
-                              <span className="text-pink-500">
-                                🔥 {promise.current_streak}
-                              </span>
+                            const myVerification =
+                              getMyVerification(
+                                promise.id
+                              );
 
-                            </div>
+                            const isMyRejected =
+                              myVerification?.status ===
+                              "rejected";
 
-                            <div className="mt-4 rounded-2xl bg-[#fff8fb] px-4 py-3 text-xs text-gray-500">
-                              🔥 현재 {promise.current_streak}일 · 🏆 최고 {promise.best_streak}일 · ✓ 성공 {promise.total_success}일
-                            </div>
+                            const isMyPending =
+                              myVerification?.status ===
+                              "pending";
 
-                            {myVerification?.status ===
-                              "rejected" && (
+                            const isMyApproved =
+                              myVerification?.status ===
+                              "approved";
 
-                              <div className="mt-3 rounded-2xl bg-red-50 p-4 text-sm text-red-500">
+                            const jointMemberStatuses =
+                              promise.is_joint
+                                ? members.map(
+                                    (member) => {
 
-                                <p className="font-bold">
-                                  ↻ 인증이 반려되었어요
-                                </p>
+                                      const verification =
+                                        todayVerifications.find(
+                                          (item) =>
+                                            item.promise_id ===
+                                              promise.id &&
+                                            item.user_id ===
+                                              member.user_id
+                                        );
 
-                                <p className="mt-1">
-                                  {myVerification.rejection_reason ??
-                                    "반려 이유가 없어요."}
-                                </p>
+                                      return {
+                                        userId:
+                                          member.user_id,
 
-                              </div>
+                                        nickname:
+                                          member.profiles
+                                            ?.nickname ??
+                                          "파트너",
 
-                            )}
+                                        status:
+                                          verification?.status ??
+                                          null,
+                                      };
+                                    }
+                                  )
+                                : [];
 
-                            <div className="mt-4">
+                            return (
 
-                              {myVerification?.status ===
-                              "approved" ? (
-
-                                <div className="rounded-2xl bg-green-50 px-4 py-3 text-center font-semibold text-green-600">
-                                  ✓ 오늘 인증 완료
-                                </div>
-
-                              ) : myVerification?.status ===
-                                "pending" ? (
-
-                                <div className="rounded-2xl bg-amber-50 px-4 py-3 text-center font-semibold text-amber-600">
-                                  🕒 상대방 확인 대기 중
-                                </div>
-
-                              ) : (
-
-                                <Link
-                                  href={`/verify/${promise.id}`}
-                                  prefetch={false}
-                                  className="block rounded-2xl bg-pink-500 px-4 py-3 text-center font-semibold text-white"
-                                >
-                                  {myVerification?.status ===
-                                  "rejected"
-                                    ? "↻ 다시 인증하기"
-                                    : "📸 오늘 인증하기"}
-                                </Link>
-
-                              )}
-
-                            </div>
-
-                            {!deleteRequest && (
-
-                              <button
-                                type="button"
-                                disabled={
-                                  deleteProcessing ===
+                              <article
+                                key={
                                   promise.id
                                 }
-                                onClick={() =>
-                                  requestDelete(
-                                    promise.id,
-                                    promise.title
-                                  )
-                                }
-                                className="mt-3 w-full px-4 py-3 text-sm font-semibold text-gray-400"
+                                className="overflow-hidden rounded-[30px] border border-pink-100 bg-white shadow-sm"
                               >
-                                약속 삭제 협의하기
-                              </button>
 
-                            )}
+                                <div className="p-5">
 
-                            {deleteRequest &&
-                              deleteRequest.requested_by ===
-                                currentUserId && (
+                                  <div className="flex items-start justify-between gap-4">
 
-                                <div className="mt-3 rounded-2xl bg-yellow-50 p-4">
+                                    <div className="min-w-0">
 
-                                  <p className="font-semibold text-yellow-700">
-                                    🕒 삭제 협의 중
-                                  </p>
+                                      <div className="flex flex-wrap items-center gap-2">
 
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      cancelDelete(
-                                        deleteRequest.id
-                                      )
-                                    }
-                                    className="mt-2 text-sm text-gray-500"
-                                  >
-                                    삭제 요청 취소
-                                  </button>
+                                        <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-pink-500">
+                                          {repeatLabel}
+                                        </span>
 
-                                </div>
+                                        <span className="text-[11px] text-gray-400">
 
-                              )}
+                                          {promise.is_joint
+                                            ? "💕 서로의 약속"
+                                            : `${assigneeName}님의 약속`}
 
-                            {deleteRequest &&
-                              deleteRequest.requested_by !==
-                                currentUserId && (
+                                        </span>
 
-                                <div className="mt-3 rounded-2xl bg-[#fff8fb] p-4">
+                                      </div>
 
-                                  <p className="font-bold">
-                                    💌 삭제 협의 요청
-                                  </p>
+                                      <h3 className="mt-3 break-words text-xl font-bold leading-7">
+                                        {promise.title}
+                                      </h3>
 
-                                  <div className="mt-3 grid grid-cols-2 gap-2">
+                                    </div>
 
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        rejectDelete(
-                                          deleteRequest.id
-                                        )
-                                      }
-                                      className="rounded-xl border border-pink-100 bg-white px-3 py-3 text-sm"
-                                    >
-                                      계속 지키기
-                                    </button>
+                                    <div className="shrink-0 rounded-2xl bg-[#fff8fb] px-3 py-2 text-center">
 
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        approveDelete(
-                                          deleteRequest.id,
-                                          promise.id
-                                        )
-                                      }
-                                      className="rounded-xl bg-pink-500 px-3 py-3 text-sm text-white"
-                                    >
-                                      삭제 동의
-                                    </button>
+                                      <p className="text-[10px] text-gray-400">
+                                        연속
+                                      </p>
+
+                                      <p className="mt-0.5 text-lg font-bold text-pink-500">
+                                        🔥 {promise.current_streak}
+                                      </p>
+
+                                    </div>
 
                                   </div>
 
+                                  <div className="mt-4 rounded-2xl bg-[#fff8fb] px-4 py-3">
+
+                                    <p className="text-xs font-medium text-gray-500">
+
+                                      🔥 현재 {promise.current_streak}일
+
+                                      <span className="mx-2 text-pink-200">
+                                        ·
+                                      </span>
+
+                                      🏆 최고 {promise.best_streak}일
+
+                                      <span className="mx-2 text-pink-200">
+                                        ·
+                                      </span>
+
+                                      ✓ 성공 {promise.total_success}일
+
+                                    </p>
+
+                                  </div>
+
+                                  {promise.is_joint && (
+
+                                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl bg-pink-50/60 px-3.5 py-2.5 text-[11px]">
+
+                                      <span className="font-semibold text-pink-500">
+                                        💕 오늘
+                                      </span>
+
+                                      {jointMemberStatuses.map(
+                                        (
+                                          memberStatus
+                                        ) => {
+
+                                          const statusLabel =
+                                            memberStatus.status ===
+                                            "approved"
+                                              ? "✅"
+                                              : memberStatus.status ===
+                                                "pending"
+                                              ? "🕒"
+                                              : memberStatus.status ===
+                                                "rejected"
+                                              ? "↻"
+                                              : "⏳";
+
+                                          const statusClass =
+                                            memberStatus.status ===
+                                            "approved"
+                                              ? "text-green-600"
+                                              : memberStatus.status ===
+                                                "pending"
+                                              ? "text-amber-600"
+                                              : memberStatus.status ===
+                                                "rejected"
+                                              ? "text-red-500"
+                                              : "text-gray-400";
+
+                                          return (
+
+                                            <span
+                                              key={
+                                                memberStatus.userId
+                                              }
+                                              className={`font-semibold ${statusClass}`}
+                                            >
+
+                                              {memberStatus.nickname}{" "}
+                                              {statusLabel}
+
+                                            </span>
+
+                                          );
+                                        }
+                                      )}
+
+                                    </div>
+
+                                  )}
+
+                                  {isMyRejected && (
+
+                                    <div className="mt-4 rounded-[22px] border border-red-100 bg-red-50/70 p-4">
+
+                                      <p className="font-bold text-red-500">
+                                        ↻ 인증이 반려되었어요
+                                      </p>
+
+                                      <p className="mt-2 text-sm leading-6 text-red-400">
+
+                                        {myVerification.rejection_reason?.trim()
+                                          ? myVerification.rejection_reason
+                                          : "상대방이 반려 이유를 남기지 않았어요."}
+
+                                      </p>
+
+                                    </div>
+
+                                  )}
+
                                 </div>
 
-                              )}
+                                <div className="border-t border-pink-50 bg-[#fffdfd] px-5 py-4">
 
-                          </article>
+                                  {isMyRejected ? (
 
-                        );
-                      }
+                                    <Link
+                                      href={`/verify/${promise.id}`}
+                                      prefetch={false}
+                                      className="block w-full rounded-2xl bg-red-500 px-4 py-3.5 text-center font-semibold text-white"
+                                    >
+                                      ↻ 다시 인증하기
+                                    </Link>
+
+                                  ) : isMyPending ? (
+
+                                    <div className="w-full rounded-2xl bg-amber-50 px-4 py-3.5 text-center font-semibold text-amber-600">
+                                      🕒 상대방 확인 대기 중
+                                    </div>
+
+                                  ) : isMyApproved ? (
+
+                                    <div className="w-full rounded-2xl bg-green-50 px-4 py-3.5 text-center font-semibold text-green-600">
+                                      ✓ 오늘 인증 완료
+                                    </div>
+
+                                  ) : (
+
+                                    <Link
+                                      href={`/verify/${promise.id}`}
+                                      prefetch={false}
+                                      className="block w-full rounded-2xl bg-pink-500 px-4 py-3.5 text-center font-semibold text-white"
+                                    >
+                                      📸 오늘 인증하기
+                                    </Link>
+
+                                  )}
+
+                                  {!deleteRequest && (
+
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        deleteProcessing ===
+                                        promise.id
+                                      }
+                                      onClick={() =>
+                                        requestDelete(
+                                          promise.id,
+                                          promise.title
+                                        )
+                                      }
+                                      className="mt-3 w-full px-4 py-3 text-sm font-semibold text-gray-400 disabled:opacity-50"
+                                    >
+                                      약속 삭제 협의하기
+                                    </button>
+
+                                  )}
+
+                                  {deleteRequest &&
+                                    deleteRequest.requested_by ===
+                                      currentUserId && (
+
+                                      <div className="mt-4 rounded-2xl bg-yellow-50 p-4">
+
+                                        <p className="font-semibold text-yellow-700">
+                                          🕒 삭제 협의 중
+                                        </p>
+
+                                        <p className="mt-1 text-sm text-yellow-600">
+                                          상대방의 답변을 기다리고 있어요.
+                                        </p>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            cancelDelete(
+                                              deleteRequest.id
+                                            )
+                                          }
+                                          className="mt-3 text-sm font-semibold text-gray-500"
+                                        >
+                                          삭제 요청 취소
+                                        </button>
+
+                                      </div>
+
+                                    )}
+
+                                  {deleteRequest &&
+                                    deleteRequest.requested_by !==
+                                      currentUserId && (
+
+                                      <div className="mt-4 rounded-2xl bg-[#fff8fb] p-4">
+
+                                        <p className="font-semibold">
+                                          💌 삭제 협의 요청
+                                        </p>
+
+                                        <div className="mt-4 grid grid-cols-2 gap-3">
+
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              rejectDelete(
+                                                deleteRequest.id
+                                              )
+                                            }
+                                            className="rounded-xl border border-pink-100 bg-white px-3 py-3 text-sm"
+                                          >
+                                            계속 지키기
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              approveDelete(
+                                                deleteRequest.id,
+                                                promise.id
+                                              )
+                                            }
+                                            className="rounded-xl bg-pink-500 px-3 py-3 text-sm text-white"
+                                          >
+                                            삭제 동의
+                                          </button>
+
+                                        </div>
+
+                                      </div>
+
+                                    )}
+
+                                </div>
+
+                              </article>
+
+                            );
+                          }
+                        )}
+
+                      </div>
+
                     )}
 
                   </div>
@@ -2492,14 +2717,20 @@ export default function CouplePage() {
                       </p>
 
                       <p className="text-[11px] text-gray-400">
-                        {completedPromises.length}개
+                        오늘 끝낸 약속 {completedPromises.length}개
                       </p>
 
                     </div>
 
                   </div>
 
-                  <span>
+                  <span
+                    className={`transition ${
+                      showCompletedPromises
+                        ? "rotate-180"
+                        : ""
+                    }`}
+                  >
                     ⌄
                   </span>
 
@@ -2509,35 +2740,46 @@ export default function CouplePage() {
 
                   <div className="border-t border-pink-50 p-3">
 
-                    {completedPromises.map(
-                      (promise) => (
+                    {completedPromises.length ===
+                    0 ? (
 
-                        <div
-                          key={
-                            promise.id
-                          }
-                          className="mb-2 flex items-center gap-3 rounded-2xl bg-white px-4 py-3"
-                        >
+                      <p className="py-5 text-center text-sm text-gray-400">
+                        아직 완료한 약속이 없어요.
+                      </p>
 
-                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50">
-                            ✓
+                    ) : (
+
+                      completedPromises.map(
+                        (promise) => (
+
+                          <div
+                            key={
+                              promise.id
+                            }
+                            className="mb-2 flex items-center gap-3 rounded-2xl bg-white px-4 py-3"
+                          >
+
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50">
+                              ✓
+                            </div>
+
+                            <div>
+
+                              <p className="font-bold">
+                                {promise.title}
+                              </p>
+
+                              <p className="text-[10px] text-pink-500">
+                                🔥 {promise.current_streak}일
+                              </p>
+
+                            </div>
+
                           </div>
 
-                          <div>
-
-                            <p className="font-bold">
-                              {promise.title}
-                            </p>
-
-                            <p className="text-[10px] text-pink-500">
-                              🔥 {promise.current_streak}일
-                            </p>
-
-                          </div>
-
-                        </div>
-
+                        )
                       )
+
                     )}
 
                   </div>
@@ -2583,10 +2825,13 @@ export default function CouplePage() {
               </p>
 
               <p className="mt-1 text-3xl font-bold">
+
                 {promises.length}
+
                 <span className="ml-1 text-sm text-gray-400">
                   개
                 </span>
+
               </p>
 
             </div>
@@ -2602,10 +2847,13 @@ export default function CouplePage() {
               </p>
 
               <p className="mt-1 text-3xl font-bold">
+
                 {unlockedRewardCount}
+
                 <span className="ml-1 text-sm text-gray-400">
                   개
                 </span>
+
               </p>
 
             </div>
@@ -2637,15 +2885,23 @@ export default function CouplePage() {
             </p>
 
             <h2 className="mt-3 text-2xl font-bold">
+
               🔥{" "}
-              {rewardNotification.rewards?.required_days ??
+
+              {rewardNotification.rewards
+                ?.required_days ??
                 0}
+
               일 달성!
+
             </h2>
 
             <p className="mt-2 text-sm text-gray-400">
-              {rewardNotification.promises?.title ??
+
+              {rewardNotification.promises
+                ?.title ??
                 "약속"}
+
             </p>
 
             <div className="mt-6 rounded-[24px] bg-[#fff8fb] p-5">
@@ -2655,8 +2911,11 @@ export default function CouplePage() {
               </p>
 
               <p className="mt-2 text-xl font-bold text-pink-500">
-                {rewardNotification.rewards?.title ??
+
+                {rewardNotification.rewards
+                  ?.title ??
                   "새로운 보상"}
+
               </p>
 
             </div>
