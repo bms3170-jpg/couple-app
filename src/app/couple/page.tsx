@@ -1736,7 +1736,6 @@ export default function CouplePage() {
                                     </Link>
 
                                   )}
-                                  )}
 
                                   {/* 삭제 요청 없음 */}
 
