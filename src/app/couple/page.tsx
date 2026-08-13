@@ -3186,3 +3186,4 @@ export default function CouplePage() {
     </main>
   );
 }
+
