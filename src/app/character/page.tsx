@@ -14,6 +14,12 @@ type CharacterType =
   | "cat"
   | "dog";
 
+type CharacterColor =
+  | "original"
+  | "gray"
+  | "brown"
+  | "black";
+
 type CharacterRow = {
   id: string;
   couple_id: string;
@@ -21,6 +27,38 @@ type CharacterRow = {
   character_selected_at: string | null;
   affection: number;
 };
+
+type MembershipRow = {
+  couple_id: string;
+  character_color: CharacterColor | null;
+};
+
+const COLORS: {
+  value: CharacterColor;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "original",
+    label: "기본",
+    description: "따뜻한 기본 색상",
+  },
+  {
+    value: "gray",
+    label: "회색",
+    description: "차분한 회색",
+  },
+  {
+    value: "brown",
+    label: "갈색",
+    description: "포근한 갈색",
+  },
+  {
+    value: "black",
+    label: "검정",
+    description: "시크한 검정",
+  },
+];
 
 export default function CharacterPage() {
   const router = useRouter();
@@ -35,26 +73,49 @@ export default function CharacterPage() {
     loading: authLoading,
   } = useAuth();
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [saving, setSaving] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
   const [
-    selectedType,
-    setSelectedType,
-  ] = useState<CharacterType | null>(
-    null
-  );
+    saving,
+    setSaving,
+  ] = useState(false);
 
   const [
     coupleId,
     setCoupleId,
   ] = useState("");
 
-  const [notice, setNotice] =
-    useState("");
+  const [
+    selectedType,
+    setSelectedType,
+  ] =
+    useState<CharacterType | null>(
+      null
+    );
+
+  const [
+    selectedColor,
+    setSelectedColor,
+  ] =
+    useState<CharacterColor | null>(
+      null
+    );
+
+  const [
+    lockedCharacterType,
+    setLockedCharacterType,
+  ] =
+    useState<CharacterType | null>(
+      null
+    );
+
+  const [
+    notice,
+    setNotice,
+  ] = useState("");
 
   // =========================================
   // 현재 캐릭터 상태 불러오기
@@ -66,27 +127,37 @@ export default function CharacterPage() {
     }
 
     if (!user) {
-      router.replace("/login");
+      router.replace(
+        "/login"
+      );
       return;
     }
 
-    const currentUser = user;
-    let cancelled = false;
+    const currentUser =
+      user;
+
+    let cancelled =
+      false;
 
     async function loadCharacter() {
       setLoading(true);
       setNotice("");
 
       // =====================================
-      // 내가 속한 커플 찾기
+      // 내 커플 + 내 색상
       // =====================================
 
       const {
         data: membership,
         error: membershipError,
       } = await supabase
-        .from("couple_members")
-        .select("couple_id")
+        .from(
+          "couple_members"
+        )
+        .select(`
+          couple_id,
+          character_color
+        `)
         .eq(
           "user_id",
           currentUser.id
@@ -97,7 +168,9 @@ export default function CharacterPage() {
         return;
       }
 
-      if (membershipError) {
+      if (
+        membershipError
+      ) {
         console.error(
           "커플 조회 오류:",
           membershipError
@@ -111,7 +184,9 @@ export default function CharacterPage() {
         return;
       }
 
-      if (!membership) {
+      if (
+        !membership
+      ) {
         setNotice(
           "연결된 커플 정보를 찾을 수 없어요."
         );
@@ -120,22 +195,35 @@ export default function CharacterPage() {
         return;
       }
 
+      const membershipData =
+        membership as MembershipRow;
+
       const foundCoupleId =
-        membership.couple_id;
+        membershipData.couple_id;
 
       setCoupleId(
         foundCoupleId
       );
 
+      if (
+        membershipData.character_color
+      ) {
+        setSelectedColor(
+          membershipData.character_color
+        );
+      }
+
       // =====================================
-      // 캐릭터 정보 조회
+      // 커플 공통 캐릭터
       // =====================================
 
       const {
         data: characterData,
         error: characterError,
       } = await supabase
-        .from("couple_characters")
+        .from(
+          "couple_characters"
+        )
         .select(`
           id,
           couple_id,
@@ -153,7 +241,9 @@ export default function CharacterPage() {
         return;
       }
 
-      if (characterError) {
+      if (
+        characterError
+      ) {
         console.error(
           "캐릭터 조회 오류:",
           characterError
@@ -167,13 +257,20 @@ export default function CharacterPage() {
         return;
       }
 
-      // 기존 커플인데 캐릭터 행이 없는 경우 대비
-      if (!characterData) {
+      // =====================================
+      // 캐릭터 행이 없는 경우 생성
+      // =====================================
+
+      if (
+        !characterData
+      ) {
         const {
-          data: createdCharacter,
-          error: createError,
+          error:
+            createError,
         } = await supabase
-          .from("couple_characters")
+          .from(
+            "couple_characters"
+          )
           .insert({
             couple_id:
               foundCoupleId,
@@ -186,23 +283,14 @@ export default function CharacterPage() {
 
             affection:
               0,
-          })
-          .select(`
-            id,
-            couple_id,
-            character_type,
-            character_selected_at,
-            affection
-          `)
-          .maybeSingle();
+          });
 
         if (cancelled) {
           return;
         }
 
         if (
-          createError ||
-          !createdCharacter
+          createError
         ) {
           console.error(
             "캐릭터 생성 오류:",
@@ -210,9 +298,7 @@ export default function CharacterPage() {
           );
 
           setNotice(
-            createError
-              ? `캐릭터 정보를 준비하지 못했어요: ${createError.message}`
-              : "캐릭터 정보를 준비하지 못했어요."
+            `캐릭터 정보를 준비하지 못했어요: ${createError.message}`
           );
 
           setLoading(false);
@@ -227,12 +313,30 @@ export default function CharacterPage() {
         characterData as CharacterRow;
 
       // =====================================
-      // 이미 캐릭터를 선택했다면
-      // 선택 화면에 다시 접근하지 않음
+      // 이미 동물이 선택된 커플
+      // → 동물 변경 금지
+      // → 내 색상만 선택 가능
       // =====================================
 
       if (
         loadedCharacter.character_type
+      ) {
+        setLockedCharacterType(
+          loadedCharacter.character_type
+        );
+
+        setSelectedType(
+          loadedCharacter.character_type
+        );
+      }
+
+      // =====================================
+      // 동물 + 내 색상 모두 이미 선택 완료
+      // =====================================
+
+      if (
+        loadedCharacter.character_type &&
+        membershipData.character_color
       ) {
         router.replace(
           "/couple"
@@ -244,10 +348,11 @@ export default function CharacterPage() {
       setLoading(false);
     }
 
-    loadCharacter();
+    void loadCharacter();
 
     return () => {
-      cancelled = true;
+      cancelled =
+        true;
     };
   }, [
     authLoading,
@@ -257,13 +362,16 @@ export default function CharacterPage() {
   ]);
 
   // =========================================
-  // 캐릭터 선택
+  // 캐릭터 종류 선택
   // =========================================
 
   function chooseCharacter(
     type: CharacterType
   ) {
-    if (saving) {
+    if (
+      saving ||
+      lockedCharacterType
+    ) {
       return;
     }
 
@@ -275,11 +383,41 @@ export default function CharacterPage() {
   }
 
   // =========================================
-  // 최종 선택 저장
+  // 색상 선택
+  // =========================================
+
+  function chooseColor(
+    color: CharacterColor
+  ) {
+    if (saving) {
+      return;
+    }
+
+    setSelectedColor(
+      color
+    );
+
+    setNotice("");
+  }
+
+  // =========================================
+  // 미리보기 이미지
+  // =========================================
+
+  const previewPath =
+    selectedType &&
+    selectedColor
+      ? `/characters/${selectedType}/${selectedColor}/lv1.png`
+      : null;
+
+  // =========================================
+  // 최종 저장
   // =========================================
 
   async function confirmCharacter() {
-    if (!selectedType) {
+    if (
+      !selectedType
+    ) {
       setNotice(
         "고양이 또는 강아지를 선택해주세요."
       );
@@ -287,7 +425,20 @@ export default function CharacterPage() {
       return;
     }
 
-    if (!coupleId) {
+    if (
+      !selectedColor
+    ) {
+      setNotice(
+        "캐릭터 색상을 선택해주세요."
+      );
+
+      return;
+    }
+
+    if (
+      !coupleId ||
+      !user
+    ) {
       setNotice(
         "커플 정보를 확인하지 못했어요."
       );
@@ -296,16 +447,29 @@ export default function CharacterPage() {
     }
 
     const characterName =
-      selectedType === "cat"
+      selectedType ===
+      "cat"
         ? "고양이"
         : "강아지";
 
+    const colorLabel =
+      COLORS.find(
+        (item) =>
+          item.value ===
+          selectedColor
+      )?.label ??
+      selectedColor;
+
     const confirmed =
       window.confirm(
-        `${characterName}를 우리 캐릭터로 선택할까요?\n\n선택 후에는 고양이 ↔ 강아지 변경이 불가능해요.`
+        lockedCharacterType
+          ? `${colorLabel} 색상으로 내 캐릭터를 결정할까요?\n\n색상 선택 후에는 변경할 수 없어요.`
+          : `${characterName} · ${colorLabel} 색상으로 시작할까요?\n\n고양이 ↔ 강아지는 선택 후 변경할 수 없어요.`
       );
 
-    if (!confirmed) {
+    if (
+      !confirmed
+    ) {
       return;
     }
 
@@ -313,25 +477,30 @@ export default function CharacterPage() {
     setNotice("");
 
     // =====================================
-    // 저장 직전 다시 확인
-    // 동시에 두 사람이 선택하는 경우 방지
+    // 커플 캐릭터 종류 최신 상태 확인
     // =====================================
 
     const {
-      data: latestCharacter,
-      error: latestError,
+      data:
+        latestCharacter,
+      error:
+        latestError,
     } = await supabase
-      .from("couple_characters")
-      .select(
-        "character_type"
+      .from(
+        "couple_characters"
       )
+      .select(`
+        character_type
+      `)
       .eq(
         "couple_id",
         coupleId
       )
       .maybeSingle();
 
-    if (latestError) {
+    if (
+      latestError
+    ) {
       console.error(
         "캐릭터 재확인 오류:",
         latestError
@@ -346,98 +515,187 @@ export default function CharacterPage() {
       return;
     }
 
+    let finalType:
+      CharacterType =
+      selectedType;
+
+    // =====================================
+    // 아직 아무도 동물을 선택하지 않은 경우
+    // =====================================
+
     if (
-      latestCharacter?.character_type
+      !latestCharacter
+        ?.character_type
+    ) {
+      const {
+        data:
+          updatedCharacter,
+        error:
+          updateError,
+      } = await supabase
+        .from(
+          "couple_characters"
+        )
+        .update({
+          character_type:
+            selectedType,
+
+          character_selected_at:
+            new Date().toISOString(),
+        })
+        .eq(
+          "couple_id",
+          coupleId
+        )
+        .is(
+          "character_type",
+          null
+        )
+        .select(
+          "character_type"
+        )
+        .maybeSingle();
+
+      if (
+        updateError
+      ) {
+        console.error(
+          "캐릭터 저장 오류:",
+          updateError
+        );
+
+        setSaving(false);
+
+        setNotice(
+          `캐릭터를 저장하지 못했어요: ${updateError.message}`
+        );
+
+        return;
+      }
+
+      // =====================================
+      // 동시에 상대가 먼저 저장한 경우
+      // =====================================
+
+      if (
+        !updatedCharacter
+      ) {
+        const {
+          data:
+            refreshedCharacter,
+          error:
+            refreshError,
+        } = await supabase
+          .from(
+            "couple_characters"
+          )
+          .select(
+            "character_type"
+          )
+          .eq(
+            "couple_id",
+            coupleId
+          )
+          .maybeSingle();
+
+        if (
+          refreshError ||
+          !refreshedCharacter
+            ?.character_type
+        ) {
+          setSaving(false);
+
+          setNotice(
+            "캐릭터 정보를 다시 확인해주세요."
+          );
+
+          return;
+        }
+
+        finalType =
+          refreshedCharacter.character_type as CharacterType;
+      }
+    } else {
+      finalType =
+        latestCharacter.character_type as CharacterType;
+    }
+
+    // =====================================
+    // 상대방이 이미 다른 동물을 선택한 경우
+    // =====================================
+
+    if (
+      finalType !==
+      selectedType
     ) {
       setSaving(false);
 
-      setNotice(
-        "파트너가 먼저 캐릭터를 선택했어요. 홈으로 이동할게요 ♡"
+      setLockedCharacterType(
+        finalType
       );
 
-      window.setTimeout(
-        () => {
-          window.location.href =
-            "/couple";
-        },
-        900
+      setSelectedType(
+        finalType
+      );
+
+      setNotice(
+        `파트너가 먼저 ${
+          finalType ===
+          "cat"
+            ? "고양이"
+            : "강아지"
+        }를 선택했어요. 색상만 다시 선택해주세요 ♡`
       );
 
       return;
     }
 
     // =====================================
-    // 캐릭터 저장
-    // character_type이 아직 NULL인 경우에만 저장
+    // 내 개인 색상 저장
     // =====================================
 
     const {
-      data: updatedCharacter,
-      error: updateError,
+      error:
+        colorUpdateError,
     } = await supabase
-      .from("couple_characters")
+      .from(
+        "couple_members"
+      )
       .update({
-        character_type:
-          selectedType,
-
-        character_selected_at:
-          new Date().toISOString(),
+        character_color:
+          selectedColor,
       })
       .eq(
         "couple_id",
         coupleId
       )
-      .is(
-        "character_type",
-        null
+      .eq(
+        "user_id",
+        user.id
       )
-      .select(`
-        id,
-        couple_id,
-        character_type,
-        character_selected_at,
-        affection
-      `)
-      .maybeSingle();
+      .is(
+        "character_color",
+        null
+      );
 
-    if (updateError) {
+    if (
+      colorUpdateError
+    ) {
       console.error(
-        "캐릭터 저장 오류:",
-        updateError
+        "캐릭터 색상 저장 오류:",
+        colorUpdateError
       );
 
       setSaving(false);
 
       setNotice(
-        `캐릭터를 저장하지 못했어요: ${updateError.message}`
-      );
-
-      return;
-    }
-
-    if (!updatedCharacter) {
-      setSaving(false);
-
-      setNotice(
-        "이미 캐릭터가 선택되어 있어요."
-      );
-
-      window.setTimeout(
-        () => {
-          window.location.href =
-            "/couple";
-        },
-        900
+        `색상을 저장하지 못했어요: ${colorUpdateError.message}`
       );
 
       return;
     }
 
     setSaving(false);
-
-    // =====================================
-    // 완료
-    // =====================================
 
     window.location.href =
       "/couple";
@@ -465,10 +723,6 @@ export default function CharacterPage() {
 
       <div className="mx-auto max-w-md pb-10">
 
-        {/* =====================================
-            뒤로가기
-        ====================================== */}
-
         <button
           type="button"
           onClick={() =>
@@ -494,15 +748,15 @@ export default function CharacterPage() {
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-gray-500">
-            둘이 함께 키워갈
+            우리 둘의 동물을 선택하고
             <br />
-            하나뿐인 캐릭터를 선택해주세요.
+            나는 원하는 색상을 골라요.
           </p>
 
         </header>
 
         {/* =====================================
-            변경 불가 안내
+            안내
         ====================================== */}
 
         <section className="mt-6 rounded-[24px] border border-amber-100 bg-amber-50/70 px-4 py-4">
@@ -516,13 +770,20 @@ export default function CharacterPage() {
             <div>
 
               <p className="font-bold text-amber-700">
-                신중하게 선택해주세요
+                처음 한 번만 선택해요
               </p>
 
               <p className="mt-1 text-sm leading-6 text-amber-600">
-                고양이와 강아지 중 하나를 선택하면
-                <br />
-                이후에는 변경할 수 없어요.
+
+                {lockedCharacterType
+                  ? `${
+                      lockedCharacterType ===
+                      "cat"
+                        ? "고양이"
+                        : "강아지"
+                    }로 이미 결정됐어요. 내 색상을 선택해주세요.`
+                  : "고양이와 강아지 중 하나를 먼저 선택해주세요."}
+
               </p>
 
             </div>
@@ -532,131 +793,253 @@ export default function CharacterPage() {
         </section>
 
         {/* =====================================
-            선택 카드
+            동물 선택
         ====================================== */}
 
-        <section className="mt-7 grid grid-cols-2 gap-4">
+        <section className="mt-7">
 
-          {/* 고양이 */}
+          <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+            STEP 1
+          </p>
 
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() =>
-              chooseCharacter(
+          <h2 className="mt-1 text-xl font-bold">
+            어떤 친구와 함께할까요?
+          </h2>
+
+          <div className="mt-4 grid grid-cols-2 gap-4">
+
+            {/* 고양이 */}
+
+            <button
+              type="button"
+              disabled={
+                saving ||
+                !!lockedCharacterType
+              }
+              onClick={() =>
+                chooseCharacter(
+                  "cat"
+                )
+              }
+              className={`relative overflow-hidden rounded-[28px] border p-4 text-center shadow-sm transition disabled:cursor-default ${
+                selectedType ===
                 "cat"
-              )
-            }
-            className={`relative overflow-hidden rounded-[30px] border p-5 text-center shadow-sm transition disabled:opacity-60 ${
-              selectedType === "cat"
-                ? "border-pink-400 bg-pink-50 shadow-md"
-                : "border-pink-100 bg-white hover:bg-pink-50/50"
-            }`}
-          >
+                  ? "border-pink-400 bg-pink-50"
+                  : "border-pink-100 bg-white"
+              }`}
+            >
 
-            {selectedType ===
-              "cat" && (
+              {selectedType ===
+                "cat" && (
 
-              <div className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-pink-500 text-sm font-bold text-white">
-                ✓
+                <div className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-pink-500 text-sm font-bold text-white">
+                  ✓
+                </div>
+
+              )}
+
+              <div className="mx-auto flex h-28 items-center justify-center">
+
+                <img
+                  src="/characters/cat/original/lv1.png"
+                  alt="고양이"
+                  className="max-h-28 max-w-full object-contain"
+                />
+
               </div>
 
-            )}
+              <p className="mt-3 text-lg font-bold">
+                고양이
+              </p>
 
-            <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-[32px] bg-gradient-to-br from-pink-50 to-white text-7xl shadow-sm">
-              🐱
-            </div>
+            </button>
 
-            <p className="mt-5 text-xl font-bold">
-              고양이
-            </p>
+            {/* 강아지 */}
 
-            <p className="mt-2 text-xs leading-5 text-gray-400">
-              새침하지만
-              <br />
-              사랑스러운 우리 친구
-            </p>
-
-          </button>
-
-          {/* 강아지 */}
-
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() =>
-              chooseCharacter(
+            <button
+              type="button"
+              disabled={
+                saving ||
+                !!lockedCharacterType
+              }
+              onClick={() =>
+                chooseCharacter(
+                  "dog"
+                )
+              }
+              className={`relative overflow-hidden rounded-[28px] border p-4 text-center shadow-sm transition disabled:cursor-default ${
+                selectedType ===
                 "dog"
-              )
-            }
-            className={`relative overflow-hidden rounded-[30px] border p-5 text-center shadow-sm transition disabled:opacity-60 ${
-              selectedType === "dog"
-                ? "border-pink-400 bg-pink-50 shadow-md"
-                : "border-pink-100 bg-white hover:bg-pink-50/50"
-            }`}
-          >
+                  ? "border-pink-400 bg-pink-50"
+                  : "border-pink-100 bg-white"
+              }`}
+            >
 
-            {selectedType ===
-              "dog" && (
+              {selectedType ===
+                "dog" && (
 
-              <div className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-pink-500 text-sm font-bold text-white">
-                ✓
+                <div className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-pink-500 text-sm font-bold text-white">
+                  ✓
+                </div>
+
+              )}
+
+              <div className="mx-auto flex h-28 items-center justify-center">
+
+                <img
+                  src="/characters/dog/original/lv1.png"
+                  alt="강아지"
+                  className="max-h-28 max-w-full object-contain"
+                />
+
               </div>
 
-            )}
+              <p className="mt-3 text-lg font-bold">
+                강아지
+              </p>
 
-            <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-[32px] bg-gradient-to-br from-pink-50 to-white text-7xl shadow-sm">
-              🐶
-            </div>
+            </button>
 
-            <p className="mt-5 text-xl font-bold">
-              강아지
-            </p>
-
-            <p className="mt-2 text-xs leading-5 text-gray-400">
-              밝고 다정한
-              <br />
-              우리만의 친구
-            </p>
-
-          </button>
+          </div>
 
         </section>
 
         {/* =====================================
-            미리보기
+            색상 선택
         ====================================== */}
 
         {selectedType && (
 
-          <section className="mt-6 rounded-[30px] border border-pink-100 bg-white p-6 text-center shadow-sm">
+          <section className="mt-8">
+
+            <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+              STEP 2
+            </p>
+
+            <h2 className="mt-1 text-xl font-bold">
+              내 캐릭터 색상을 골라요
+            </h2>
+
+            <p className="mt-2 text-sm text-gray-400">
+              상대방과 다른 색상을 선택해도 괜찮아요 ♡
+            </p>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+
+              {COLORS.map(
+                (color) => {
+
+                  const selected =
+                    selectedColor ===
+                    color.value;
+
+                  return (
+
+                    <button
+                      key={
+                        color.value
+                      }
+                      type="button"
+                      disabled={
+                        saving
+                      }
+                      onClick={() =>
+                        chooseColor(
+                          color.value
+                        )
+                      }
+                      className={`relative rounded-[26px] border p-4 text-center shadow-sm transition ${
+                        selected
+                          ? "border-pink-400 bg-pink-50 ring-2 ring-pink-100"
+                          : "border-pink-100 bg-white"
+                      }`}
+                    >
+
+                      {selected && (
+
+                        <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-pink-500 text-xs font-bold text-white">
+                          ✓
+                        </div>
+
+                      )}
+
+                      <div className="flex h-28 items-center justify-center">
+
+                        <img
+                          src={`/characters/${selectedType}/${color.value}/lv1.png`}
+                          alt={
+                            color.label
+                          }
+                          className="max-h-28 max-w-full object-contain"
+                        />
+
+                      </div>
+
+                      <p className="mt-3 font-bold">
+                        {color.label}
+                      </p>
+
+                      <p className="mt-1 text-[11px] text-gray-400">
+                        {color.description}
+                      </p>
+
+                    </button>
+
+                  );
+                }
+              )}
+
+            </div>
+
+          </section>
+
+        )}
+
+        {/* =====================================
+            최종 미리보기
+        ====================================== */}
+
+        {previewPath && (
+
+          <section className="mt-7 overflow-hidden rounded-[30px] border border-pink-100 bg-white p-6 text-center shadow-sm">
 
             <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
               PREVIEW
             </p>
 
-            <div className="mx-auto mt-4 flex h-32 w-32 items-center justify-center rounded-full bg-[#fff8fb] text-8xl shadow-inner">
+            <div className="mt-4 flex h-48 items-end justify-center rounded-[26px] bg-gradient-to-b from-white to-pink-50/70 px-5 pb-4">
 
-              {selectedType ===
-                "cat"
-                ? "🐱"
-                : "🐶"}
+              <img
+                src={
+                  previewPath
+                }
+                alt="캐릭터 미리보기"
+                className="max-h-[170px] max-w-full object-contain drop-shadow-sm"
+              />
 
             </div>
 
             <h2 className="mt-5 text-xl font-bold">
 
               {selectedType ===
-                "cat"
-                ? "고양이와 함께할까요?"
-                : "강아지와 함께할까요?"}
+              "cat"
+                ? "고양이"
+                : "강아지"}{" "}
+
+              ·{" "}
+
+              {COLORS.find(
+                (item) =>
+                  item.value ===
+                  selectedColor
+              )?.label}
 
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-gray-500">
-              처음에는 아기 모습으로 시작하고
+              LV.1 모습으로 시작하고
               <br />
-              우리 레벨이 오를 때마다 성장해요 ♡
+              레벨이 오르면 자동으로 다음 포즈로 성장해요 ♡
             </p>
 
           </section>
@@ -664,7 +1047,7 @@ export default function CharacterPage() {
         )}
 
         {/* =====================================
-            오류 / 안내 메시지
+            안내 / 오류
         ====================================== */}
 
         {notice && (
@@ -676,35 +1059,35 @@ export default function CharacterPage() {
         )}
 
         {/* =====================================
-            결정 버튼
+            저장
         ====================================== */}
 
         <button
           type="button"
           disabled={
             !selectedType ||
+            !selectedColor ||
             saving
           }
           onClick={
             confirmCharacter
           }
-          className="mt-6 w-full rounded-2xl bg-pink-500 px-5 py-4 text-lg font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-6 w-full rounded-2xl bg-pink-500 px-5 py-4 text-lg font-semibold text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
 
           {saving
-            ? "캐릭터 선택 중..."
-            : selectedType === "cat"
-            ? "🐱 고양이로 결정하기"
-            : selectedType === "dog"
-            ? "🐶 강아지로 결정하기"
-            : "캐릭터를 선택해주세요"}
+            ? "캐릭터 저장 중..."
+            : selectedType &&
+              selectedColor
+            ? "이 캐릭터로 시작하기 ♡"
+            : "동물과 색상을 선택해주세요"}
 
         </button>
 
         <p className="mt-4 text-center text-xs leading-5 text-gray-400">
-          최종 선택 후에는
+          선택한 색상은 나에게만 적용되고
           <br />
-          고양이 ↔ 강아지 변경이 불가능해요.
+          레벨업할 때 색상은 그대로 유지돼요.
         </p>
 
       </div>
