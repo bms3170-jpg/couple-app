@@ -35,44 +35,29 @@ export default function CharacterPage() {
     loading: authLoading,
   } = useAuth();
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [
-    saving,
-    setSaving,
-  ] = useState(false);
+  const [saving, setSaving] =
+    useState(false);
 
   const [
     selectedType,
     setSelectedType,
-  ] =
-    useState<CharacterType | null>(
-      null
-    );
-
-  const [
-    character,
-    setCharacter,
-  ] =
-    useState<CharacterRow | null>(
-      null
-    );
+  ] = useState<CharacterType | null>(
+    null
+  );
 
   const [
     coupleId,
     setCoupleId,
   ] = useState("");
 
-  const [
-    notice,
-    setNotice,
-  ] = useState("");
+  const [notice, setNotice] =
+    useState("");
 
   // =========================================
-  // 현재 캐릭터 상태 확인
+  // 현재 캐릭터 상태 불러오기
   // =========================================
 
   useEffect(() => {
@@ -81,23 +66,15 @@ export default function CharacterPage() {
     }
 
     if (!user) {
-      router.replace(
-        "/login"
-      );
+      router.replace("/login");
       return;
     }
 
-    const currentUser =
-      user;
-
-    let cancelled =
-      false;
+    const currentUser = user;
+    let cancelled = false;
 
     async function loadCharacter() {
-      setLoading(
-        true
-      );
-
+      setLoading(true);
       setNotice("");
 
       // =====================================
@@ -116,29 +93,30 @@ export default function CharacterPage() {
         )
         .maybeSingle();
 
-      if (
-        cancelled
-      ) {
+      if (cancelled) {
         return;
       }
 
-      if (
-        membershipError ||
-        !membership
-      ) {
+      if (membershipError) {
         console.error(
           "커플 조회 오류:",
           membershipError
         );
 
         setNotice(
-          "커플 정보를 찾을 수 없어요."
+          `커플 정보를 불러오지 못했어요: ${membershipError.message}`
         );
 
-        setLoading(
-          false
+        setLoading(false);
+        return;
+      }
+
+      if (!membership) {
+        setNotice(
+          "연결된 커플 정보를 찾을 수 없어요."
         );
 
+        setLoading(false);
         return;
       }
 
@@ -150,7 +128,7 @@ export default function CharacterPage() {
       );
 
       // =====================================
-      // 현재 캐릭터 정보
+      // 캐릭터 정보 조회
       // =====================================
 
       const {
@@ -171,54 +149,88 @@ export default function CharacterPage() {
         )
         .maybeSingle();
 
-      if (
-        cancelled
-      ) {
+      if (cancelled) {
         return;
       }
 
-      if (
-        characterError
-      ) {
+      if (characterError) {
         console.error(
           "캐릭터 조회 오류:",
           characterError
         );
 
         setNotice(
-          "캐릭터 정보를 불러오지 못했어요."
+          `캐릭터 정보를 불러오지 못했어요: ${characterError.message}`
         );
 
-        setLoading(
-          false
-        );
-
+        setLoading(false);
         return;
       }
 
-      if (
-        !characterData
-      ) {
-        setNotice(
-          "캐릭터 정보를 찾을 수 없어요."
-        );
+      // 기존 커플인데 캐릭터 행이 없는 경우 대비
+      if (!characterData) {
+        const {
+          data: createdCharacter,
+          error: createError,
+        } = await supabase
+          .from("couple_characters")
+          .insert({
+            couple_id:
+              foundCoupleId,
 
-        setLoading(
-          false
-        );
+            character_type:
+              null,
 
+            character_selected_at:
+              null,
+
+            affection:
+              0,
+          })
+          .select(`
+            id,
+            couple_id,
+            character_type,
+            character_selected_at,
+            affection
+          `)
+          .maybeSingle();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (
+          createError ||
+          !createdCharacter
+        ) {
+          console.error(
+            "캐릭터 생성 오류:",
+            createError
+          );
+
+          setNotice(
+            createError
+              ? `캐릭터 정보를 준비하지 못했어요: ${createError.message}`
+              : "캐릭터 정보를 준비하지 못했어요."
+          );
+
+          setLoading(false);
+          return;
+        }
+
+        setLoading(false);
         return;
       }
 
       const loadedCharacter =
         characterData as CharacterRow;
 
-      setCharacter(
-        loadedCharacter
-      );
+      // =====================================
+      // 이미 캐릭터를 선택했다면
+      // 선택 화면에 다시 접근하지 않음
+      // =====================================
 
-      // 이미 선택한 캐릭터가 있으면
-      // 다시 선택하지 못하게 홈으로 이동
       if (
         loadedCharacter.character_type
       ) {
@@ -229,16 +241,13 @@ export default function CharacterPage() {
         return;
       }
 
-      setLoading(
-        false
-      );
+      setLoading(false);
     }
 
     loadCharacter();
 
     return () => {
-      cancelled =
-        true;
+      cancelled = true;
     };
   }, [
     authLoading,
@@ -254,6 +263,10 @@ export default function CharacterPage() {
   function chooseCharacter(
     type: CharacterType
   ) {
+    if (saving) {
+      return;
+    }
+
     setSelectedType(
       type
     );
@@ -262,13 +275,11 @@ export default function CharacterPage() {
   }
 
   // =========================================
-  // 캐릭터 최종 확정
+  // 최종 선택 저장
   // =========================================
 
   async function confirmCharacter() {
-    if (
-      !selectedType
-    ) {
+    if (!selectedType) {
       setNotice(
         "고양이 또는 강아지를 선택해주세요."
       );
@@ -276,10 +287,7 @@ export default function CharacterPage() {
       return;
     }
 
-    if (
-      !coupleId ||
-      !character
-    ) {
+    if (!coupleId) {
       setNotice(
         "커플 정보를 확인하지 못했어요."
       );
@@ -294,23 +302,19 @@ export default function CharacterPage() {
 
     const confirmed =
       window.confirm(
-        `${characterName}를 우리 캐릭터로 선택할까요?\n\n선택 후에는 변경할 수 없어요.`
+        `${characterName}를 우리 캐릭터로 선택할까요?\n\n선택 후에는 고양이 ↔ 강아지 변경이 불가능해요.`
       );
 
-    if (
-      !confirmed
-    ) {
+    if (!confirmed) {
       return;
     }
 
-    setSaving(
-      true
-    );
-
+    setSaving(true);
     setNotice("");
 
     // =====================================
-    // 이미 선택된 캐릭터인지 다시 확인
+    // 저장 직전 다시 확인
+    // 동시에 두 사람이 선택하는 경우 방지
     // =====================================
 
     const {
@@ -327,20 +331,16 @@ export default function CharacterPage() {
       )
       .maybeSingle();
 
-    if (
-      latestError
-    ) {
+    if (latestError) {
       console.error(
         "캐릭터 재확인 오류:",
         latestError
       );
 
-      setSaving(
-        false
-      );
+      setSaving(false);
 
       setNotice(
-        "캐릭터 상태를 확인하지 못했어요."
+        `캐릭터 상태를 확인하지 못했어요: ${latestError.message}`
       );
 
       return;
@@ -349,21 +349,18 @@ export default function CharacterPage() {
     if (
       latestCharacter?.character_type
     ) {
-      setSaving(
-        false
-      );
+      setSaving(false);
 
       setNotice(
-        "이미 우리 캐릭터가 선택되어 있어요."
+        "파트너가 먼저 캐릭터를 선택했어요. 홈으로 이동할게요 ♡"
       );
 
       window.setTimeout(
         () => {
-          router.replace(
-            "/couple"
-          );
+          window.location.href =
+            "/couple";
         },
-        800
+        900
       );
 
       return;
@@ -371,6 +368,7 @@ export default function CharacterPage() {
 
     // =====================================
     // 캐릭터 저장
+    // character_type이 아직 NULL인 경우에만 저장
     // =====================================
 
     const {
@@ -402,17 +400,13 @@ export default function CharacterPage() {
       `)
       .maybeSingle();
 
-    if (
-      updateError
-    ) {
+    if (updateError) {
       console.error(
         "캐릭터 저장 오류:",
         updateError
       );
 
-      setSaving(
-        false
-      );
+      setSaving(false);
 
       setNotice(
         `캐릭터를 저장하지 못했어요: ${updateError.message}`
@@ -421,37 +415,32 @@ export default function CharacterPage() {
       return;
     }
 
-    if (
-      !updatedCharacter
-    ) {
-      setSaving(
-        false
-      );
+    if (!updatedCharacter) {
+      setSaving(false);
 
       setNotice(
-        "이미 캐릭터가 선택되었거나 저장할 수 없어요."
+        "이미 캐릭터가 선택되어 있어요."
+      );
+
+      window.setTimeout(
+        () => {
+          window.location.href =
+            "/couple";
+        },
+        900
       );
 
       return;
     }
 
-    setCharacter(
-      updatedCharacter as CharacterRow
-    );
-
-    setSaving(
-      false
-    );
+    setSaving(false);
 
     // =====================================
-    // 저장 완료
+    // 완료
     // =====================================
 
-    router.replace(
-      "/couple"
-    );
-
-    router.refresh();
+    window.location.href =
+      "/couple";
   }
 
   // =========================================
@@ -477,7 +466,7 @@ export default function CharacterPage() {
       <div className="mx-auto max-w-md pb-10">
 
         {/* =====================================
-            헤더
+            뒤로가기
         ====================================== */}
 
         <button
@@ -489,6 +478,10 @@ export default function CharacterPage() {
         >
           ← 돌아가기
         </button>
+
+        {/* =====================================
+            헤더
+        ====================================== */}
 
         <header className="mt-8">
 
@@ -539,7 +532,7 @@ export default function CharacterPage() {
         </section>
 
         {/* =====================================
-            캐릭터 선택
+            선택 카드
         ====================================== */}
 
         <section className="mt-7 grid grid-cols-2 gap-4">
@@ -548,14 +541,14 @@ export default function CharacterPage() {
 
           <button
             type="button"
+            disabled={saving}
             onClick={() =>
               chooseCharacter(
                 "cat"
               )
             }
-            className={`relative overflow-hidden rounded-[30px] border p-5 text-center shadow-sm transition ${
-              selectedType ===
-              "cat"
+            className={`relative overflow-hidden rounded-[30px] border p-5 text-center shadow-sm transition disabled:opacity-60 ${
+              selectedType === "cat"
                 ? "border-pink-400 bg-pink-50 shadow-md"
                 : "border-pink-100 bg-white hover:bg-pink-50/50"
             }`}
@@ -590,14 +583,14 @@ export default function CharacterPage() {
 
           <button
             type="button"
+            disabled={saving}
             onClick={() =>
               chooseCharacter(
                 "dog"
               )
             }
-            className={`relative overflow-hidden rounded-[30px] border p-5 text-center shadow-sm transition ${
-              selectedType ===
-              "dog"
+            className={`relative overflow-hidden rounded-[30px] border p-5 text-center shadow-sm transition disabled:opacity-60 ${
+              selectedType === "dog"
                 ? "border-pink-400 bg-pink-50 shadow-md"
                 : "border-pink-100 bg-white hover:bg-pink-50/50"
             }`}
@@ -643,17 +636,21 @@ export default function CharacterPage() {
             </p>
 
             <div className="mx-auto mt-4 flex h-32 w-32 items-center justify-center rounded-full bg-[#fff8fb] text-8xl shadow-inner">
+
               {selectedType ===
                 "cat"
                 ? "🐱"
                 : "🐶"}
+
             </div>
 
             <h2 className="mt-5 text-xl font-bold">
+
               {selectedType ===
                 "cat"
                 ? "고양이와 함께할까요?"
                 : "강아지와 함께할까요?"}
+
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-gray-500">
@@ -667,7 +664,7 @@ export default function CharacterPage() {
         )}
 
         {/* =====================================
-            메시지
+            오류 / 안내 메시지
         ====================================== */}
 
         {notice && (
@@ -679,7 +676,7 @@ export default function CharacterPage() {
         )}
 
         {/* =====================================
-            최종 선택
+            결정 버튼
         ====================================== */}
 
         <button
@@ -693,15 +690,15 @@ export default function CharacterPage() {
           }
           className="mt-6 w-full rounded-2xl bg-pink-500 px-5 py-4 text-lg font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
+
           {saving
             ? "캐릭터 선택 중..."
-            : selectedType ===
-              "cat"
+            : selectedType === "cat"
             ? "🐱 고양이로 결정하기"
-            : selectedType ===
-              "dog"
+            : selectedType === "dog"
             ? "🐶 강아지로 결정하기"
             : "캐릭터를 선택해주세요"}
+
         </button>
 
         <p className="mt-4 text-center text-xs leading-5 text-gray-400">
