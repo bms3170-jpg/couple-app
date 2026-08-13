@@ -141,6 +141,66 @@ export default function StorePage() {
     useState("");
 
   // =========================================
+  // 우리 코인 지갑 새로고침
+  // =========================================
+
+  const refreshWallet =
+    useCallback(
+      async (
+        targetCoupleId: string
+      ) => {
+        if (!targetCoupleId) {
+          return null;
+        }
+
+        const {
+          data,
+          error,
+        } = await supabase
+          .from(
+            "couple_wallets"
+          )
+          .select(`
+            coins,
+            total_earned,
+            total_spent
+          `)
+          .eq(
+            "couple_id",
+            targetCoupleId
+          )
+          .maybeSingle();
+
+        if (error) {
+          console.error(
+            "우리 코인 지갑 조회 오류:",
+            error
+          );
+
+          return null;
+        }
+
+        const nextWallet:
+          CoinWallet = data
+          ? (
+              data as CoinWallet
+            )
+          : {
+              coins: 0,
+              total_earned: 0,
+              total_spent: 0,
+            };
+
+        setWallet(
+          nextWallet
+        );
+
+        return nextWallet;
+      },
+      [supabase]
+    );
+
+  // =========================================
   // 상점 데이터 불러오기
   // =========================================
 
@@ -239,48 +299,12 @@ export default function StorePage() {
       );
 
       // =====================================
-      // 내 코인 지갑
+      // 우리 코인 지갑
+      // couple_wallets 사용
       // =====================================
 
-      const {
-        data: walletData,
-        error: walletError,
-      } = await supabase
-        .from(
-          "user_coin_wallets"
-        )
-        .select(`
-          coins,
-          total_earned,
-          total_spent
-        `)
-        .eq(
-          "couple_id",
-          currentCoupleId
-        )
-        .eq(
-          "user_id",
-          user.id
-        )
-        .maybeSingle();
-
-      if (walletError) {
-        console.error(
-          "코인 지갑 조회 오류:",
-          walletError
-        );
-      }
-
-      setWallet(
-        walletData
-          ? (
-              walletData as CoinWallet
-            )
-          : {
-              coins: 0,
-              total_earned: 0,
-              total_spent: 0,
-            }
+      await refreshWallet(
+        currentCoupleId
       );
 
       // =====================================
@@ -338,7 +362,7 @@ export default function StorePage() {
       );
 
       // =====================================
-      // 인벤토리
+      // 커플 공용 인벤토리
       // =====================================
 
       const {
@@ -431,6 +455,7 @@ export default function StorePage() {
       user,
       router,
       supabase,
+      refreshWallet,
     ]
   );
 
@@ -459,6 +484,10 @@ export default function StorePage() {
       return;
     }
 
+    // =====================================
+    // 중복 구매 방지
+    // =====================================
+
     const alreadyOwned =
       inventory.some(
         (
@@ -475,6 +504,10 @@ export default function StorePage() {
       return;
     }
 
+    // =====================================
+    // 레벨 확인
+    // =====================================
+
     if (
       level <
       item.required_level
@@ -485,14 +518,30 @@ export default function StorePage() {
       return;
     }
 
+    // =====================================
+    // 구매 직전 실제 DB 잔액 확인
+    // =====================================
+
+    const latestWallet =
+      await refreshWallet(
+        coupleId
+      );
+
+    if (!latestWallet) {
+      setNotice(
+        "우리 코인 정보를 확인하지 못했어요."
+      );
+      return;
+    }
+
     if (
-      wallet.coins <
+      latestWallet.coins <
       item.price
     ) {
       setNotice(
         `코인이 부족해요. ${
           item.price -
-          wallet.coins
+          latestWallet.coins
         }코인이 더 필요해요.`
       );
       return;
@@ -500,7 +549,7 @@ export default function StorePage() {
 
     const confirmed =
       window.confirm(
-        `"${item.name}"을 ${item.price}코인에 구매할까요?`
+        `"${item.name}"을 ${item.price}코인에 구매할까요?\n\n우리 코인에서 차감돼요.`
       );
 
     if (!confirmed) {
@@ -512,6 +561,15 @@ export default function StorePage() {
     );
 
     setNotice("");
+
+    // =====================================
+    // 실제 구매
+    //
+    // 이 RPC 내부에서 반드시
+    // couple_wallets 코인 차감 +
+    // couple_inventory 추가가
+    // 한 번에 처리되어야 함
+    // =====================================
 
     const {
       data,
@@ -525,14 +583,18 @@ export default function StorePage() {
         }
       );
 
-    setProcessingItemId(
-      null
-    );
-
     if (error) {
+      setProcessingItemId(
+        null
+      );
+
       console.error(
         "아이템 구매 오류:",
         error
+      );
+
+      await refreshWallet(
+        coupleId
       );
 
       setNotice(
@@ -549,32 +611,27 @@ export default function StorePage() {
         | null;
 
     if (!result?.success) {
+      setProcessingItemId(
+        null
+      );
+
+      await refreshWallet(
+        coupleId
+      );
+
       setNotice(
         "구매 결과를 확인하지 못했어요."
       );
+
       return;
     }
 
     // =====================================
-    // 코인 즉시 반영
+    // 구매 후 couple_wallets 실제 잔액 재조회
     // =====================================
 
-    setWallet(
-      (current) => ({
-        ...current,
-
-        coins:
-          result.remaining_coins ??
-          Math.max(
-            current.coins -
-              item.price,
-            0
-          ),
-
-        total_spent:
-          current.total_spent +
-          item.price,
-      })
+    await refreshWallet(
+      coupleId
     );
 
     // =====================================
@@ -585,26 +642,78 @@ export default function StorePage() {
       result.inventory_id
     ) {
       setInventory(
-        (current) => [
-          ...current,
-          {
-            id:
-              result.inventory_id!,
+        (current) => {
 
-            item_id:
-              item.id,
+          const exists =
+            current.some(
+              (
+                inventoryItem
+              ) =>
+                inventoryItem.item_id ===
+                item.id
+            );
 
-            purchased_price:
-              item.price,
+          if (exists) {
+            return current;
+          }
 
-            purchased_at:
-              new Date().toISOString(),
-          },
-        ]
+          return [
+            ...current,
+            {
+              id:
+                result.inventory_id!,
+
+              item_id:
+                item.id,
+
+              purchased_price:
+                item.price,
+
+              purchased_at:
+                new Date().toISOString(),
+            },
+          ];
+        }
       );
     } else {
-      await loadStore();
+      const {
+        data:
+          refreshedInventory,
+        error:
+          refreshedInventoryError,
+      } = await supabase
+        .from(
+          "couple_inventory"
+        )
+        .select(`
+          id,
+          item_id,
+          purchased_price,
+          purchased_at
+        `)
+        .eq(
+          "couple_id",
+          coupleId
+        );
+
+      if (
+        refreshedInventoryError
+      ) {
+        console.error(
+          "구매 후 인벤토리 재조회 오류:",
+          refreshedInventoryError
+        );
+      } else {
+        setInventory(
+          (refreshedInventory ??
+            []) as InventoryItem[]
+        );
+      }
     }
+
+    setProcessingItemId(
+      null
+    );
 
     setNotice(
       `${item.name} 구매 완료! 이제 착용할 수 있어요 ♡`
@@ -621,6 +730,13 @@ export default function StorePage() {
     if (!user) {
       router.replace(
         "/login"
+      );
+      return;
+    }
+
+    if (!coupleId) {
+      setNotice(
+        "커플 정보를 찾을 수 없어요."
       );
       return;
     }
@@ -714,11 +830,11 @@ export default function StorePage() {
         }
       );
 
-    setEquippingItemId(
-      null
-    );
-
     if (error) {
+      setEquippingItemId(
+        null
+      );
+
       console.error(
         "아이템 착용 오류:",
         error
@@ -738,43 +854,85 @@ export default function StorePage() {
         | null;
 
     if (!result?.success) {
+      setEquippingItemId(
+        null
+      );
+
       setNotice(
         "착용 결과를 확인하지 못했어요."
       );
+
       return;
     }
 
     // =====================================
-    // 같은 슬롯 기존 아이템 제거 후
-    // 새 장비 즉시 반영
+    // DB 착용 상태 다시 조회
     // =====================================
 
-    setEquipment(
-      (current) => [
-        ...current.filter(
-          (
-            equipmentItem
-          ) =>
-            equipmentItem.slot !==
-            item.category
-        ),
-        {
-          id:
-            `temp-${item.id}`,
+    const {
+      data: equipmentRows,
+      error: equipmentError,
+    } = await supabase
+      .from(
+        "character_equipment"
+      )
+      .select(`
+        id,
+        couple_id,
+        slot,
+        item_id,
+        equipped_at
+      `)
+      .eq(
+        "couple_id",
+        coupleId
+      );
 
-          couple_id:
-            coupleId,
+    if (
+      equipmentError
+    ) {
+      console.error(
+        "착용 후 장비 재조회 오류:",
+        equipmentError
+      );
 
-          slot:
-            item.category,
+      // 재조회 실패 시 화면만 즉시 반영
+      setEquipment(
+        (current) => [
+          ...current.filter(
+            (
+              equipmentItem
+            ) =>
+              equipmentItem.slot !==
+              item.category
+          ),
+          {
+            id:
+              `temp-${item.id}`,
 
-          item_id:
-            item.id,
+            couple_id:
+              coupleId,
 
-          equipped_at:
-            new Date().toISOString(),
-        },
-      ]
+            slot:
+              item.category,
+
+            item_id:
+              item.id,
+
+            equipped_at:
+              new Date().toISOString(),
+          },
+        ]
+      );
+    } else {
+      setEquipment(
+        (equipmentRows ??
+          []) as EquipmentItem[]
+      );
+    }
+
+    setEquippingItemId(
+      null
     );
 
     setNotice(
@@ -851,11 +1009,13 @@ export default function StorePage() {
         string
       > = {
       basic_hat: "🧢",
+      straw_hat: "👒",
       beret: "🎨",
       ribbon_hat: "🎀",
       knight_helmet: "🪖",
       royal_crown: "👑",
-      magic_hat: "🪄",
+      magic_hat: "🧙",
+      party_hat: "🥳",
       couple_crown: "👑",
       cozy_sofa: "🛋️",
     };
@@ -1059,7 +1219,7 @@ export default function StorePage() {
         </header>
 
         {/* =====================================
-            코인 / 레벨
+            우리 코인 / 레벨
         ====================================== */}
 
         <section className="mt-7 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/70 p-5 shadow-sm">
@@ -1069,7 +1229,7 @@ export default function StorePage() {
             <div>
 
               <p className="text-xs font-semibold tracking-[0.16em] text-pink-400">
-                MY COIN
+                OUR COIN
               </p>
 
               <p className="mt-2 text-3xl font-bold">
@@ -1078,6 +1238,10 @@ export default function StorePage() {
                 <span className="ml-1 text-base font-semibold text-gray-400">
                   개
                 </span>
+              </p>
+
+              <p className="mt-1 text-[11px] text-gray-400">
+                둘이 함께 사용하는 코인이에요 ♡
               </p>
 
             </div>
@@ -1117,7 +1281,7 @@ export default function StorePage() {
             <div className="rounded-2xl bg-white/70 px-4 py-3">
 
               <p className="text-[10px] text-gray-400">
-                지금까지 획득
+                지금까지 함께 획득
               </p>
 
               <p className="mt-1 text-sm font-bold text-gray-700">
@@ -1129,7 +1293,7 @@ export default function StorePage() {
             <div className="rounded-2xl bg-white/70 px-4 py-3">
 
               <p className="text-[10px] text-gray-400">
-                지금까지 사용
+                지금까지 함께 사용
               </p>
 
               <p className="mt-1 text-sm font-bold text-gray-700">
@@ -1322,6 +1486,16 @@ export default function StorePage() {
 
                         )}
 
+                        {owned &&
+                          !equipped &&
+                          !locked && (
+
+                          <div className="absolute right-2 top-2 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
+                            구매 완료
+                          </div>
+
+                        )}
+
                         {locked && (
 
                           <div className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-white/70 backdrop-blur-[1px]">
@@ -1394,7 +1568,7 @@ export default function StorePage() {
                       {equipped ? (
 
                         <div className="mt-3 rounded-2xl border border-pink-200 bg-pink-50 px-3 py-3 text-center text-sm font-semibold text-pink-500">
-                          ✓ 착용중
+                          ✓ 착용 중
                         </div>
 
                       ) : owned ? (
@@ -1483,7 +1657,9 @@ export default function StorePage() {
               </p>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                구매하면 가격만큼 내 코인이 차감돼요.
+                구매하면 가격만큼 우리 코인이 차감돼요.
+                <br />
+                한 명이 구매하면 둘 모두 같은 아이템을 보유해요.
                 <br />
                 구매한 아이템은 언제든 다시 착용할 수 있어요.
                 <br />
