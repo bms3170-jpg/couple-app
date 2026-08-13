@@ -29,24 +29,65 @@ type CoupleInfo = {
 
 export default function UsSettingsPage() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
-  const { user, loading: authLoading } = useAuth();
 
-  const [loading, setLoading] = useState(true);
-  const [savingDate, setSavingDate] = useState(false);
-  const [savingNickname, setSavingNickname] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [deletingAccount, setDeletingAccount] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [deletingAvatar, setDeletingAvatar] = useState(false);
-  const [message, setMessage] = useState("");
-  const [couple, setCouple] = useState<CoupleInfo | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [relationshipDate, setRelationshipDate] = useState("");
-  const [nickname, setNickname] = useState("");
+  const supabase = useMemo(
+    () => createClient(),
+    []
+  );
+
+  const {
+    user,
+    loading: authLoading,
+  } = useAuth();
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [savingDate, setSavingDate] =
+    useState(false);
+
+  const [
+    savingNickname,
+    setSavingNickname,
+  ] = useState(false);
+
+  const [loggingOut, setLoggingOut] =
+    useState(false);
+
+  const [
+    deletingAccount,
+    setDeletingAccount,
+  ] = useState(false);
+
+  const [
+    uploadingAvatar,
+    setUploadingAvatar,
+  ] = useState(false);
+
+  const [
+    deletingAvatar,
+    setDeletingAvatar,
+  ] = useState(false);
+
+  const [message, setMessage] =
+    useState("");
+
+  const [couple, setCouple] =
+    useState<CoupleInfo | null>(null);
+
+  const [members, setMembers] =
+    useState<Member[]>([]);
+
+  const [
+    relationshipDate,
+    setRelationshipDate,
+  ] = useState("");
+
+  const [nickname, setNickname] =
+    useState("");
 
   // =========================================
-  // ì¤ì  ë°ì´í° ë¶ë¬ì¤ê¸°
+  // 설정 데이터 불러오기
   // =========================================
 
   useEffect(() => {
@@ -55,7 +96,8 @@ export default function UsSettingsPage() {
     }
 
     if (!user) {
-      // íì íí´ ì²ë¦¬ ì¤ìë ë¡ê·¸ì¸ íì´ì§ë¡ ê°ì  ì´ëíì§ ìì
+      // 회원 탈퇴 처리 중에는
+      // 로그인 페이지로 강제 이동하지 않음
       if (deletingAccount) {
         return;
       }
@@ -71,109 +113,242 @@ export default function UsSettingsPage() {
       setLoading(true);
       setMessage("");
 
-      const { data: membership, error: membershipError } = await supabase
+      // =====================================
+      // 내가 속한 커플
+      // =====================================
+
+      const {
+        data: membership,
+        error: membershipError,
+      } = await supabase
         .from("couple_members")
         .select("couple_id")
-        .eq("user_id", currentUser.id)
+        .eq(
+          "user_id",
+          currentUser.id
+        )
         .maybeSingle();
 
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
-      if (membershipError || !membership) {
-        console.error("ì»¤í ì¡°í ì¤ë¥:", membershipError);
-        setMessage("ì»¤í ì ë³´ë¥¼ ì°¾ì ì ìì´ì.");
+      if (
+        membershipError ||
+        !membership
+      ) {
+        console.error(
+          "커플 조회 오류:",
+          membershipError
+        );
+
+        setMessage(
+          "커플 정보를 찾을 수 없어요."
+        );
+
         setLoading(false);
         return;
       }
 
-      const coupleId = membership.couple_id;
+      const coupleId =
+        membership.couple_id;
 
-      const { data: coupleData, error: coupleError } = await supabase
+      // =====================================
+      // 커플 정보
+      // =====================================
+
+      const {
+        data: coupleData,
+        error: coupleError,
+      } = await supabase
         .from("couples")
         .select(`
           id,
           invite_code,
           relationship_started_at
         `)
-        .eq("id", coupleId)
+        .eq(
+          "id",
+          coupleId
+        )
         .maybeSingle();
 
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
-      if (coupleError || !coupleData) {
-        console.error("ì»¤í ì ë³´ ì¡°í ì¤ë¥:", coupleError);
-        setMessage("ì»¤í ì ë³´ë¥¼ ë¶ë¬ì¤ì§ ëª»íì´ì.");
+      if (
+        coupleError ||
+        !coupleData
+      ) {
+        console.error(
+          "커플 정보 조회 오류:",
+          coupleError
+        );
+
+        setMessage(
+          "커플 정보를 불러오지 못했어요."
+        );
+
         setLoading(false);
         return;
       }
 
-      setCouple(coupleData as CoupleInfo);
+      setCouple(
+        coupleData as CoupleInfo
+      );
 
       setRelationshipDate(
         coupleData.relationship_started_at
-          ? coupleData.relationship_started_at.slice(0, 10)
+          ? coupleData.relationship_started_at.slice(
+              0,
+              10
+            )
           : ""
       );
 
-      const { data: memberRows, error: memberError } = await supabase
+      // =====================================
+      // 커플 멤버
+      // =====================================
+
+      const {
+        data: memberRows,
+        error: memberError,
+      } = await supabase
         .from("couple_members")
         .select("user_id")
-        .eq("couple_id", coupleId)
-        .order("joined_at", { ascending: true });
+        .eq(
+          "couple_id",
+          coupleId
+        )
+        .order(
+          "joined_at",
+          {
+            ascending: true,
+          }
+        );
 
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       if (memberError) {
-        console.error("ë©¤ë² ì¡°í ì¤ë¥:", memberError);
-        setMessage("ë©¤ë² ì ë³´ë¥¼ ë¶ë¬ì¤ì§ ëª»íì´ì.");
+        console.error(
+          "멤버 조회 오류:",
+          memberError
+        );
+
+        setMessage(
+          "멤버 정보를 불러오지 못했어요."
+        );
+
         setLoading(false);
         return;
       }
 
-      const userIds = memberRows?.map((item) => item.user_id) ?? [];
+      const userIds =
+        memberRows?.map(
+          (item) =>
+            item.user_id
+        ) ?? [];
 
-      const { data: profileRows, error: profileError } = userIds.length
+      // =====================================
+      // 프로필 조회
+      // =====================================
+
+      const {
+        data: profileRows,
+        error: profileError,
+      } = userIds.length
         ? await supabase
             .from("profiles")
-            .select("id, nickname, avatar_path")
-            .in("id", userIds)
+            .select(
+              "id, nickname, avatar_path"
+            )
+            .in(
+              "id",
+              userIds
+            )
         : {
             data: [],
             error: null,
           };
 
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       if (profileError) {
-        console.error("íë¡í ì¡°í ì¤ë¥:", profileError);
-        setMessage("íë¡í ì ë³´ë¥¼ ë¶ë¬ì¤ì§ ëª»íì´ì.");
+        console.error(
+          "프로필 조회 오류:",
+          profileError
+        );
+
+        setMessage(
+          "프로필 정보를 불러오지 못했어요."
+        );
+
         setLoading(false);
         return;
       }
 
-      const loadedMembers: Member[] = userIds.map((userId) => {
-        const profile = profileRows?.find((item) => item.id === userId);
-        const avatarPath = profile?.avatar_path ?? null;
+      const loadedMembers:
+        Member[] =
+        userIds.map(
+          (userId) => {
+            const profile =
+              profileRows?.find(
+                (item) =>
+                  item.id ===
+                  userId
+              );
 
-        const avatarUrl = avatarPath
-          ? supabase.storage.from("avatars").getPublicUrl(avatarPath).data.publicUrl
-          : null;
+            const avatarPath =
+              profile?.avatar_path ??
+              null;
 
-        return {
-          user_id: userId,
-          nickname: profile?.nickname ?? "ì´ë¦ ìì",
-          avatar_path: avatarPath,
-          avatar_url: avatarUrl,
-        };
-      });
+            const avatarUrl =
+              avatarPath
+                ? supabase.storage
+                    .from("avatars")
+                    .getPublicUrl(
+                      avatarPath
+                    ).data.publicUrl
+                : null;
 
-      setMembers(loadedMembers);
+            return {
+              user_id:
+                userId,
 
-      const myProfile = loadedMembers.find(
-        (member) => member.user_id === currentUser.id
+              nickname:
+                profile?.nickname ??
+                "이름 없음",
+
+              avatar_path:
+                avatarPath,
+
+              avatar_url:
+                avatarUrl,
+            };
+          }
+        );
+
+      setMembers(
+        loadedMembers
       );
 
-      setNickname(myProfile?.nickname ?? "");
+      const myProfile =
+        loadedMembers.find(
+          (member) =>
+            member.user_id ===
+            currentUser.id
+        );
+
+      setNickname(
+        myProfile?.nickname ??
+          ""
+      );
+
       setLoading(false);
     }
 
@@ -191,36 +366,51 @@ export default function UsSettingsPage() {
   ]);
 
   // =========================================
-  // í¨ê»í ë ì§ ì ì¥
+  // 함께한 날짜 저장
   // =========================================
 
-  async function saveRelationshipDate(e: FormEvent) {
+  async function saveRelationshipDate(
+    e: FormEvent
+  ) {
     e.preventDefault();
 
-    if (!couple) return;
+    if (!couple) {
+      return;
+    }
 
     if (!relationshipDate) {
-      setMessage("í¨ê»í ë ì§ë¥¼ ì íí´ì£¼ì¸ì.");
+      setMessage(
+        "함께한 날짜를 선택해주세요."
+      );
       return;
     }
 
     setSavingDate(true);
     setMessage("");
 
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from("couples")
       .update({
-        relationship_started_at: relationshipDate,
+        relationship_started_at:
+          relationshipDate,
       })
-      .eq("id", couple.id)
-      .select("id, relationship_started_at")
+      .eq(
+        "id",
+        couple.id
+      )
+      .select(
+        "id, relationship_started_at"
+      )
       .maybeSingle();
 
     setSavingDate(false);
 
     if (error) {
       const errorText =
-        `ë ì§ ì ì¥ ì¤ë¥ | ` +
+        `날짜 저장 오류 | ` +
         `message=${error.message} | ` +
         `code=${error.code ?? ""} | ` +
         `details=${error.details ?? ""} | ` +
@@ -231,33 +421,44 @@ export default function UsSettingsPage() {
     }
 
     if (!data) {
-      setMessage("ë ì§ë¥¼ ìì í  ê¶íì´ ìê±°ë ìì í  ì»¤íì ì°¾ì§ ëª»íì´ì.");
+      setMessage(
+        "날짜를 수정할 권한이 없거나 수정할 커플을 찾지 못했어요."
+      );
       return;
     }
 
-    setCouple((current) =>
-      current
-        ? {
-            ...current,
-            relationship_started_at: data.relationship_started_at,
-          }
-        : current
+    setCouple(
+      (current) =>
+        current
+          ? {
+              ...current,
+              relationship_started_at:
+                data.relationship_started_at,
+            }
+          : current
     );
 
     setRelationshipDate(
       data.relationship_started_at
-        ? data.relationship_started_at.slice(0, 10)
+        ? data.relationship_started_at.slice(
+            0,
+            10
+          )
         : ""
     );
 
-    setMessage("í¨ê»í ë ì§ë¥¼ ì ì¥íì´ì â¡");
+    setMessage(
+      "함께한 날짜를 저장했어요 ♡"
+    );
   }
 
   // =========================================
-  // ëë¤ì ì ì¥
+  // 닉네임 저장
   // =========================================
 
-  async function saveNickname(e: FormEvent) {
+  async function saveNickname(
+    e: FormEvent
+  ) {
     e.preventDefault();
 
     if (!user) {
@@ -265,74 +466,132 @@ export default function UsSettingsPage() {
       return;
     }
 
-    const trimmedNickname = nickname.trim();
+    const trimmedNickname =
+      nickname.trim();
 
     if (!trimmedNickname) {
-      setMessage("ëë¤ìì ìë ¥í´ì£¼ì¸ì.");
+      setMessage(
+        "닉네임을 입력해주세요."
+      );
+
       return;
     }
 
-    if (trimmedNickname.length > 20) {
-      setMessage("ëë¤ìì 20ì ì´íë¡ ìë ¥í´ì£¼ì¸ì.");
+    if (
+      trimmedNickname.length >
+      20
+    ) {
+      setMessage(
+        "닉네임은 20자 이하로 입력해주세요."
+      );
+
       return;
     }
 
     setSavingNickname(true);
     setMessage("");
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ nickname: trimmedNickname })
-      .eq("id", user.id);
+    const { error } =
+      await supabase
+        .from("profiles")
+        .update({
+          nickname:
+            trimmedNickname,
+        })
+        .eq(
+          "id",
+          user.id
+        );
 
     setSavingNickname(false);
 
     if (error) {
-      console.error("ëë¤ì ì ì¥ ì¤ë¥:", error);
-      setMessage(`ëë¤ìì ë³ê²½íì§ ëª»íì´ì: ${error.message}`);
+      console.error(
+        "닉네임 저장 오류:",
+        error
+      );
+
+      setMessage(
+        `닉네임을 변경하지 못했어요: ${error.message}`
+      );
+
       return;
     }
 
-    setMembers((current) =>
-      current.map((member) =>
-        member.user_id === user.id
-          ? { ...member, nickname: trimmedNickname }
-          : member
-      )
+    setMembers(
+      (current) =>
+        current.map(
+          (member) =>
+            member.user_id ===
+            user.id
+              ? {
+                  ...member,
+                  nickname:
+                    trimmedNickname,
+                }
+              : member
+        )
     );
 
-    setNickname(trimmedNickname);
-    setMessage("ëë¤ìì ë³ê²½íì´ì â¡");
+    setNickname(
+      trimmedNickname
+    );
+
+    setMessage(
+      "닉네임을 변경했어요 ♡"
+    );
   }
 
   // =========================================
-  // íë¡í ì¬ì§ ìë¡ë
+  // 프로필 사진 업로드
   // =========================================
 
-  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  async function handleAvatarChange(
+    e: ChangeEvent<HTMLInputElement>
+  ) {
+    const file =
+      e.target.files?.[0];
+
     e.target.value = "";
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     if (!user) {
       router.replace("/login");
       return;
     }
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
 
     if (!allowedTypes.includes(file.type)) {
-      setMessage("JPG, PNG, WEBP ì´ë¯¸ì§ë§ ì¬ë¦´ ì ìì´ì.");
+      setMessage(
+        "JPG, PNG, WEBP 이미지만 올릴 수 있어요."
+      );
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage("íë¡í ì¬ì§ì 5MB ì´íë§ ì¬ë¦´ ì ìì´ì.");
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
+      setMessage(
+        "프로필 사진은 5MB 이하만 올릴 수 있어요."
+      );
       return;
     }
 
-    const currentMe = members.find((member) => member.user_id === user.id);
+    const currentMe =
+      members.find(
+        (member) =>
+          member.user_id ===
+          user.id
+      );
 
     const extension =
       file.type === "image/png"
@@ -341,63 +600,111 @@ export default function UsSettingsPage() {
         ? "webp"
         : "jpg";
 
-    const newPath = `${user.id}/avatar-${Date.now()}.${extension}`;
+    const newPath =
+      `${user.id}/avatar-${Date.now()}.${extension}`;
 
     setUploadingAvatar(true);
     setMessage("");
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(newPath, file, {
-        cacheControl: "3600",
-        contentType: file.type,
-        upsert: false,
-      });
+    const {
+      error: uploadError,
+    } =
+      await supabase.storage
+        .from("avatars")
+        .upload(
+          newPath,
+          file,
+          {
+            cacheControl: "3600",
+            contentType: file.type,
+            upsert: false,
+          }
+        );
 
     if (uploadError) {
       setUploadingAvatar(false);
-      setMessage(`ì¬ì§ì ì¬ë¦¬ì§ ëª»íì´ì: ${uploadError.message}`);
+
+      setMessage(
+        `사진을 올리지 못했어요: ${uploadError.message}`
+      );
+
       return;
     }
 
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({ avatar_path: newPath })
-      .eq("id", user.id);
+    const {
+      error: profileError,
+    } =
+      await supabase
+        .from("profiles")
+        .update({
+          avatar_path:
+            newPath,
+        })
+        .eq(
+          "id",
+          user.id
+        );
 
     if (profileError) {
-      await supabase.storage.from("avatars").remove([newPath]);
+      await supabase.storage
+        .from("avatars")
+        .remove([
+          newPath,
+        ]);
+
       setUploadingAvatar(false);
-      setMessage(`íë¡í ì¬ì§ì ì ì¥íì§ ëª»íì´ì: ${profileError.message}`);
+
+      setMessage(
+        `프로필 사진을 저장하지 못했어요: ${profileError.message}`
+      );
+
       return;
     }
 
-    const publicUrl = supabase.storage
-      .from("avatars")
-      .getPublicUrl(newPath).data.publicUrl;
+    const publicUrl =
+      supabase.storage
+        .from("avatars")
+        .getPublicUrl(
+          newPath
+        ).data.publicUrl;
 
-    setMembers((current) =>
-      current.map((member) =>
-        member.user_id === user.id
-          ? {
-              ...member,
-              avatar_path: newPath,
-              avatar_url: publicUrl,
-            }
-          : member
-      )
+    setMembers(
+      (current) =>
+        current.map(
+          (member) =>
+            member.user_id ===
+            user.id
+              ? {
+                  ...member,
+                  avatar_path:
+                    newPath,
+                  avatar_url:
+                    publicUrl,
+                }
+              : member
+        )
     );
 
-    if (currentMe?.avatar_path && currentMe.avatar_path !== newPath) {
-      await supabase.storage.from("avatars").remove([currentMe.avatar_path]);
+    if (
+      currentMe?.avatar_path &&
+      currentMe.avatar_path !==
+        newPath
+    ) {
+      await supabase.storage
+        .from("avatars")
+        .remove([
+          currentMe.avatar_path,
+        ]);
     }
 
     setUploadingAvatar(false);
-    setMessage("íë¡í ì¬ì§ì ë³ê²½íì´ì â¡");
-  }
 
+    setMessage(
+      "프로필 사진을 변경했어요 ♡"
+    );
+  }
   // =========================================
-  // íë¡í ì¬ì§ ì­ì 
+  // 프로필 사진 삭제
   // =========================================
 
   async function handleDeleteAvatar() {
@@ -406,71 +713,123 @@ export default function UsSettingsPage() {
       return;
     }
 
-    const currentMe = members.find((member) => member.user_id === user.id);
+    const currentMe =
+      members.find(
+        (member) =>
+          member.user_id ===
+          user.id
+      );
 
-    if (!currentMe?.avatar_path) return;
+    if (!currentMe?.avatar_path) {
+      return;
+    }
 
-    const confirmed = window.confirm("íë¡í ì¬ì§ì ì­ì í ê¹ì?");
+    const confirmed =
+      window.confirm(
+        "프로필 사진을 삭제할까요?"
+      );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     setDeletingAvatar(true);
     setMessage("");
 
-    const oldPath = currentMe.avatar_path;
+    const oldPath =
+      currentMe.avatar_path;
 
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({ avatar_path: null })
-      .eq("id", user.id);
+    const {
+      error: profileError,
+    } =
+      await supabase
+        .from("profiles")
+        .update({
+          avatar_path: null,
+        })
+        .eq(
+          "id",
+          user.id
+        );
 
     if (profileError) {
       setDeletingAvatar(false);
-      setMessage(`íë¡í ì¬ì§ì ì­ì íì§ ëª»íì´ì: ${profileError.message}`);
+
+      setMessage(
+        `프로필 사진을 삭제하지 못했어요: ${profileError.message}`
+      );
+
       return;
     }
 
-    const { error: removeError } = await supabase.storage
-      .from("avatars")
-      .remove([oldPath]);
+    const {
+      error: removeError,
+    } =
+      await supabase.storage
+        .from("avatars")
+        .remove([
+          oldPath,
+        ]);
 
     if (removeError) {
-      console.error("ê¸°ì¡´ íë¡í ì¬ì§ íì¼ ì­ì  ì¤ë¥:", removeError);
+      console.error(
+        "기존 프로필 사진 파일 삭제 오류:",
+        removeError
+      );
     }
 
-    setMembers((current) =>
-      current.map((member) =>
-        member.user_id === user.id
-          ? {
-              ...member,
-              avatar_path: null,
-              avatar_url: null,
-            }
-          : member
-      )
+    setMembers(
+      (current) =>
+        current.map(
+          (member) =>
+            member.user_id ===
+            user.id
+              ? {
+                  ...member,
+                  avatar_path: null,
+                  avatar_url: null,
+                }
+              : member
+        )
     );
 
     setDeletingAvatar(false);
-    setMessage("íë¡í ì¬ì§ì ì­ì íì´ì.");
+
+    setMessage(
+      "프로필 사진을 삭제했어요."
+    );
   }
 
   // =========================================
-  // ë¡ê·¸ìì
+  // 로그아웃
   // =========================================
 
   async function handleLogout() {
-    const confirmed = window.confirm("ë¡ê·¸ììí ê¹ì?");
+    const confirmed =
+      window.confirm(
+        "로그아웃할까요?"
+      );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     setLoggingOut(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signOut();
+    const { error } =
+      await supabase.auth.signOut();
 
     if (error) {
-      console.error("ë¡ê·¸ìì ì¤ë¥:", error);
-      setMessage(`ë¡ê·¸ììíì§ ëª»íì´ì: ${error.message}`);
+      console.error(
+        "로그아웃 오류:",
+        error
+      );
+
+      setMessage(
+        `로그아웃하지 못했어요: ${error.message}`
+      );
+
       setLoggingOut(false);
       return;
     }
@@ -480,7 +839,7 @@ export default function UsSettingsPage() {
   }
 
   // =========================================
-  // íì íí´
+  // 회원 탈퇴
   // =========================================
 
   async function handleDeleteAccount() {
@@ -489,45 +848,69 @@ export default function UsSettingsPage() {
       return;
     }
 
-    const firstConfirmed = window.confirm(
-      "ì ë§ íì íí´íìê² ì´ì?\n\níí´íë©´ ë´ ê³ì ê³¼ ê°ì¸ ë°ì´í°ê° ì­ì ë¼ì. ì´ ììì ëëë¦´ ì ìì´ì."
-    );
+    const firstConfirmed =
+      window.confirm(
+        "정말 회원 탈퇴하시겠어요?\n\n탈퇴하면 내 계정과 개인 데이터가 삭제돼요. 이 작업은 되돌릴 수 없어요."
+      );
 
-    if (!firstConfirmed) return;
-
-    const confirmText = window.prompt(
-      'ê³ìíë ¤ë©´ "íí´"ë¼ê³  ìë ¥í´ì£¼ì¸ì.'
-    );
-
-    if (confirmText !== "íí´") {
-      if (confirmText !== null) {
-        setMessage('íì íí´ê° ì·¨ìëì´ì. "íí´"ë¼ê³  ì íí ìë ¥í´ì£¼ì¸ì.');
-      }
+    if (!firstConfirmed) {
       return;
     }
 
-    // ì´ ê°ì ë¨¼ì  trueë¡ ë§ë¤ì´ auth ìíê° ì¬ë¼ì ¸ë
-    // useEffectê° /loginì¼ë¡ ë³´ë´ì§ ìëë¡ í¨
+    const confirmText =
+      window.prompt(
+        '계속하려면 "탈퇴"라고 입력해주세요.'
+      );
+
+    if (confirmText !== "탈퇴") {
+      if (confirmText !== null) {
+        setMessage(
+          '회원 탈퇴가 취소됐어요. "탈퇴"라고 정확히 입력해주세요.'
+        );
+      }
+
+      return;
+    }
+
+    // 탈퇴가 시작됐다는 것을 먼저 표시
+    // auth 상태가 사라져도 /login으로 이동하지 않게 함
     setDeletingAccount(true);
     setMessage("");
 
-    const { data, error } = await supabase.rpc("delete_my_account");
+    const {
+      data,
+      error,
+    } =
+      await supabase.rpc(
+        "delete_my_account"
+      );
 
     if (error) {
-      console.error("íì íí´ ì¤ë¥:", error);
-      setMessage(`íì íí´ì ì¤í¨íì´ì: ${error.message}`);
+      console.error(
+        "회원 탈퇴 오류:",
+        error
+      );
+
+      setMessage(
+        `회원 탈퇴에 실패했어요: ${error.message}`
+      );
+
       setDeletingAccount(false);
       return;
     }
 
-    const result = data as
-      | {
-          success?: boolean;
-        }
-      | null;
+    const result =
+      data as
+        | {
+            success?: boolean;
+          }
+        | null;
 
     if (!result?.success) {
-      setMessage("íì íí´ ì²ë¦¬ ê²°ê³¼ë¥¼ íì¸íì§ ëª»íì´ì.");
+      setMessage(
+        "회원 탈퇴 처리 결과를 확인하지 못했어요."
+      );
+
       setDeletingAccount(false);
       return;
     }
@@ -535,112 +918,197 @@ export default function UsSettingsPage() {
     try {
       await supabase.auth.signOut();
     } catch (signOutError) {
-      console.error("íí´ í ë¡ì»¬ ì¸ì ì ë¦¬ ì¤ë¥:", signOutError);
+      console.error(
+        "탈퇴 후 로컬 세션 정리 오류:",
+        signOutError
+      );
     }
 
-    // íí´ ìë£ í ë¡ê·¸ì¸ íì´ì§ê° ìë OurQuest ì²« íë©´ì¼ë¡ ì´ë
+    // 회원 탈퇴 완료 후
+    // 로그인 화면이 아닌 OurQuest 첫 화면으로 이동
     router.replace("/");
     router.refresh();
   }
 
   // =========================================
-  // ë¡ë©
+  // 로딩
   // =========================================
 
-  if (authLoading || loading) {
+  if (
+    authLoading ||
+    loading
+  ) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
-        <p className="text-sm text-gray-500">ì°ë¦¬ ì¤ì  ë¶ë¬ì¤ë ì¤...</p>
+        <p className="text-sm text-gray-500">
+          우리 설정 불러오는 중...
+        </p>
       </main>
     );
   }
 
-  const me = members.find((member) => member.user_id === user?.id);
-  const partner = members.find((member) => member.user_id !== user?.id);
+  const me =
+    members.find(
+      (member) =>
+        member.user_id ===
+        user?.id
+    );
+
+  const partner =
+    members.find(
+      (member) =>
+        member.user_id !==
+        user?.id
+    );
 
   return (
     <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
-      <div className="mx-auto max-w-md pb-28">
+
+      <div className="mx-auto w-full max-w-md pb-28">
+
+        {/* =====================================
+            헤더
+        ====================================== */}
+
         <header>
+
           <Link
             href="/us"
             prefetch={false}
             className="inline-block text-sm font-semibold text-gray-500"
           >
-            â ì°ë¦¬ë¡ ëìê°ê¸°
+            ← 우리로 돌아가기
           </Link>
 
           <p className="mt-8 text-sm font-semibold tracking-[0.2em] text-pink-400">
             OURQUEST
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold">ì°ë¦¬ ì¤ì  âï¸</h1>
+          <h1 className="mt-2 text-3xl font-bold">
+            우리 설정 ⚙️
+          </h1>
 
           <p className="mt-3 text-sm leading-6 text-gray-500">
-            ì°ë¦¬ ëì ì ë³´ì
+            우리 둘의 정보와
             <br />
-            í¨ê»í ë ì§ë¥¼ ê´ë¦¬í´ì.
+            함께한 날짜를 관리해요.
           </p>
+
         </header>
 
+        {/* =====================================
+            커플 프로필
+        ====================================== */}
+
         <section className="mt-7 rounded-[32px] bg-white p-6 shadow-sm">
+
           <div className="flex items-center gap-4">
+
             <div className="relative h-16 w-20 shrink-0">
+
               <div className="absolute left-0 top-0 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-pink-50 text-2xl shadow-sm">
+
                 {me?.avatar_url ? (
                   <img
                     src={me.avatar_url}
-                    alt={`${me.nickname} íë¡í ì¬ì§`}
+                    alt={`${me.nickname} 프로필 사진`}
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span>ð</span>
+                  <span>💗</span>
                 )}
+
               </div>
 
               <div className="absolute right-0 top-2 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-pink-50 text-2xl shadow-sm">
+
                 {partner?.avatar_url ? (
                   <img
                     src={partner.avatar_url}
-                    alt={`${partner.nickname} íë¡í ì¬ì§`}
+                    alt={`${partner.nickname} 프로필 사진`}
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span>â¡</span>
+                  <span>♡</span>
                 )}
+
               </div>
+
             </div>
 
             <div>
-              <p className="text-xs font-semibold text-pink-400">OUR COUPLE</p>
+
+              <p className="text-xs font-semibold text-pink-400">
+                OUR COUPLE
+              </p>
+
               <h2 className="mt-1 text-xl font-bold">
-                {me?.nickname ?? "ë"} â¡ {partner?.nickname ?? "íí¸ë"}
+                {me?.nickname ?? "나"}{" "}
+                ♡{" "}
+                {partner?.nickname ?? "파트너"}
               </h2>
+
             </div>
+
           </div>
+
         </section>
+
+        {/* =====================================
+            함께한 날짜
+        ====================================== */}
 
         <form
           onSubmit={saveRelationshipDate}
-          className="mt-5 rounded-3xl bg-white p-5 shadow-sm"
+          className="mt-5 w-full min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm"
         >
+
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pink-50 text-xl">
-              ð
+
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pink-50 text-xl">
+              💕
             </div>
+
             <div>
-              <h2 className="font-bold">í¨ê»í ë ì§</h2>
-              <p className="mt-1 text-sm text-gray-400">ì°ë¦¬ ì¬ì´ê° ììë ë </p>
+
+              <h2 className="font-bold">
+                함께한 날짜
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-400">
+                우리 사이가 시작된 날
+              </p>
+
             </div>
+
           </div>
 
-          <input
-            type="date"
-            value={relationshipDate}
-            onChange={(e) => setRelationshipDate(e.target.value)}
-            max={new Date().toISOString().split("T")[0]}
-            className="mt-5 block h-14 w-full min-w-0 appearance-none rounded-2xl border border-pink-100 bg-[#fff8fb] px-4 text-base text-[#2b2b2b] outline-none transition focus:border-pink-400"
-          />
+          <div className="mt-5 w-full min-w-0 overflow-hidden">
+
+            <input
+              type="date"
+              value={relationshipDate}
+              onChange={(e) =>
+                setRelationshipDate(
+                  e.target.value
+                )
+              }
+              max={
+                new Date()
+                  .toISOString()
+                  .split("T")[0]
+              }
+              style={{
+                width: "100%",
+                maxWidth: "100%",
+                minWidth: 0,
+                boxSizing: "border-box",
+                WebkitAppearance: "none",
+              }}
+              className="block w-full min-w-0 max-w-full rounded-2xl border border-pink-100 bg-[#fff8fb] px-4 py-4 text-base outline-none transition focus:border-pink-400"
+            />
+
+          </div>
 
           <button
             type="submit"
@@ -648,95 +1116,138 @@ export default function UsSettingsPage() {
             className="mt-3 w-full rounded-2xl bg-pink-500 px-5 py-4 font-semibold text-white transition hover:bg-pink-600 disabled:opacity-50"
           >
             {savingDate
-              ? "ì ì¥ ì¤..."
+              ? "저장 중..."
               : relationshipDate
-              ? "í¨ê»í ë ì§ ì ì¥"
-              : "ë ì§ ì¤ì íê¸°"}
+              ? "함께한 날짜 저장"
+              : "날짜 설정하기"}
           </button>
+
         </form>
+
+        {/* =====================================
+            내 프로필
+        ====================================== */}
 
         <form
           onSubmit={saveNickname}
           className="mt-5 rounded-3xl bg-white p-5 shadow-sm"
         >
+
           <div className="flex items-center gap-3">
+
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pink-50 text-xl">
-              ð¤
+              👤
             </div>
+
             <div>
-              <h2 className="font-bold">ë´ íë¡í</h2>
+
+              <h2 className="font-bold">
+                내 프로필
+              </h2>
+
               <p className="mt-1 text-sm text-gray-400">
-                ë´ ëë¤ìì ë³ê²½í  ì ìì´ì.
+                내 닉네임을 변경할 수 있어요.
               </p>
+
             </div>
+
           </div>
 
           <div className="mt-5 flex flex-col items-center">
+
             <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-pink-50 text-4xl shadow-sm">
+
               {me?.avatar_url ? (
                 <img
                   src={me.avatar_url}
-                  alt={`${me.nickname} íë¡í ì¬ì§`}
+                  alt={`${me.nickname} 프로필 사진`}
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span>ð¤</span>
+                <span>👤</span>
               )}
+
             </div>
 
             <p className="mt-3 text-xs text-gray-400">
-              JPG Â· PNG Â· WEBP / ìµë 5MB
+              JPG · PNG · WEBP / 최대 5MB
             </p>
 
             <div className="mt-3 grid w-full grid-cols-2 gap-2">
+
               <label
                 className={`flex cursor-pointer items-center justify-center rounded-2xl border border-pink-200 bg-white px-4 py-3 text-sm font-semibold text-pink-500 transition hover:bg-pink-50 ${
-                  uploadingAvatar || deletingAvatar
+                  uploadingAvatar ||
+                  deletingAvatar
                     ? "pointer-events-none opacity-50"
                     : ""
                 }`}
               >
                 {uploadingAvatar
-                  ? "ì¬ì§ ì¬ë¦¬ë ì¤..."
+                  ? "사진 올리는 중..."
                   : me?.avatar_url
-                  ? "ì¬ì§ ë³ê²½"
-                  : "ì¬ì§ ì¶ê°"}
+                  ? "사진 변경"
+                  : "사진 추가"}
 
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   className="hidden"
-                  disabled={uploadingAvatar || deletingAvatar}
-                  onChange={handleAvatarChange}
+                  disabled={
+                    uploadingAvatar ||
+                    deletingAvatar
+                  }
+                  onChange={
+                    handleAvatarChange
+                  }
                 />
+
               </label>
 
               <button
                 type="button"
-                onClick={handleDeleteAvatar}
+                onClick={
+                  handleDeleteAvatar
+                }
                 disabled={
-                  !me?.avatar_path || uploadingAvatar || deletingAvatar
+                  !me?.avatar_path ||
+                  uploadingAvatar ||
+                  deletingAvatar
                 }
                 className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-400 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {deletingAvatar ? "ì­ì  ì¤..." : "ì¬ì§ ì­ì "}
+                {deletingAvatar
+                  ? "삭제 중..."
+                  : "사진 삭제"}
               </button>
+
             </div>
+
           </div>
 
-          <label className="mt-6 block text-sm font-semibold">ëë¤ì</label>
+          <label className="mt-6 block text-sm font-semibold">
+            닉네임
+          </label>
 
           <input
             type="text"
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
+            onChange={(e) =>
+              setNickname(
+                e.target.value
+              )
+            }
             maxLength={20}
-            placeholder="ëë¤ì"
+            placeholder="닉네임"
             className="mt-2 w-full rounded-2xl border border-pink-100 bg-[#fff8fb] px-4 py-4 outline-none transition focus:border-pink-400"
           />
 
           <div className="mt-2 flex justify-end">
-            <p className="text-xs text-gray-400">{nickname.length} / 20</p>
+
+            <p className="text-xs text-gray-400">
+              {nickname.length} / 20
+            </p>
+
           </div>
 
           <button
@@ -744,59 +1255,116 @@ export default function UsSettingsPage() {
             disabled={savingNickname}
             className="mt-3 w-full rounded-2xl border border-pink-200 bg-white px-5 py-4 font-semibold text-pink-500 transition hover:bg-pink-50 disabled:opacity-50"
           >
-            {savingNickname ? "ë³ê²½ ì¤..." : "ëë¤ì ë³ê²½"}
+            {savingNickname
+              ? "변경 중..."
+              : "닉네임 변경"}
           </button>
+
         </form>
 
+        {/* =====================================
+            상대방
+        ====================================== */}
+
         <section className="mt-5 rounded-3xl bg-white p-5 shadow-sm">
+
           <div className="flex items-center gap-3">
+
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pink-50 text-xl">
-              â¡
+              ♡
             </div>
+
             <div>
-              <h2 className="font-bold">ìëë°©</h2>
-              <p className="mt-1 text-sm text-gray-400">ì°ê²°ë íí¸ë ì ë³´</p>
+
+              <h2 className="font-bold">
+                상대방
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-400">
+                연결된 파트너 정보
+              </p>
+
             </div>
+
           </div>
 
           <div className="mt-5 flex items-center gap-4 rounded-2xl bg-[#fff8fb] px-4 py-4">
+
             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-2xl shadow-sm">
+
               {partner?.avatar_url ? (
                 <img
                   src={partner.avatar_url}
-                  alt={`${partner.nickname} íë¡í ì¬ì§`}
+                  alt={`${partner.nickname} 프로필 사진`}
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span>â¡</span>
+                <span>♡</span>
               )}
+
             </div>
 
             <div>
-              <p className="text-xs text-gray-400">ëë¤ì</p>
-              <p className="mt-1 font-bold">{partner?.nickname ?? "íí¸ë"}</p>
+
+              <p className="text-xs text-gray-400">
+                닉네임
+              </p>
+
+              <p className="mt-1 font-bold">
+                {partner?.nickname ??
+                  "파트너"}
+              </p>
+
             </div>
+
           </div>
+
         </section>
 
+        {/* =====================================
+            커플 정보
+        ====================================== */}
+
         <section className="mt-5 rounded-3xl bg-white p-5 shadow-sm">
+
           <div className="flex items-center gap-3">
+
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pink-50 text-xl">
-              ð
+              🔗
             </div>
+
             <div>
-              <h2 className="font-bold">ì»¤í ì ë³´</h2>
-              <p className="mt-1 text-sm text-gray-400">íì¬ ì°ê²°ë ì°ë¦¬ ì ë³´</p>
+
+              <h2 className="font-bold">
+                커플 정보
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-400">
+                현재 연결된 우리 정보
+              </p>
+
             </div>
+
           </div>
 
           <div className="mt-5 rounded-2xl bg-[#fff8fb] px-4 py-5 text-center">
-            <p className="text-xs text-gray-400">ì´ë ì½ë</p>
-            <p className="mt-2 text-xl font-bold tracking-[0.2em]">
-              {couple?.invite_code ?? "-"}
+
+            <p className="text-xs text-gray-400">
+              초대 코드
             </p>
+
+            <p className="mt-2 text-xl font-bold tracking-[0.2em]">
+              {couple?.invite_code ??
+                "-"}
+            </p>
+
           </div>
+
         </section>
+
+        {/* =====================================
+            상태 메시지
+        ====================================== */}
 
         {message && (
           <div className="mt-5 rounded-2xl bg-white px-4 py-3 text-center text-sm text-gray-600 shadow-sm">
@@ -804,17 +1372,30 @@ export default function UsSettingsPage() {
           </div>
         )}
 
+        {/* =====================================
+            로그아웃
+        ====================================== */}
+
         <section className="mt-5 rounded-3xl bg-white p-5 shadow-sm">
+
           <div className="flex items-center gap-3">
+
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-50 text-xl">
-              ðª
+              🚪
             </div>
+
             <div>
-              <h2 className="font-bold">ê³ì </h2>
+
+              <h2 className="font-bold">
+                계정
+              </h2>
+
               <p className="mt-1 text-sm text-gray-400">
-                íì¬ ê³ì ìì ë¡ê·¸ììí´ì.
+                현재 계정에서 로그아웃해요.
               </p>
+
             </div>
+
           </div>
 
           <button
@@ -823,43 +1404,68 @@ export default function UsSettingsPage() {
             onClick={handleLogout}
             className="mt-5 w-full rounded-2xl border border-gray-200 bg-white px-5 py-4 font-semibold text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
           >
-            {loggingOut ? "ë¡ê·¸ìì ì¤..." : "ë¡ê·¸ìì"}
+            {loggingOut
+              ? "로그아웃 중..."
+              : "로그아웃"}
           </button>
+
         </section>
 
+        {/* =====================================
+            회원 탈퇴
+        ====================================== */}
+
         <section className="mt-5 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
+
           <div className="flex items-center gap-3">
+
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-xl">
-              â ï¸
+              ⚠️
             </div>
 
             <div>
-              <h2 className="font-bold text-red-500">íì íí´</h2>
+
+              <h2 className="font-bold text-red-500">
+                회원 탈퇴
+              </h2>
+
               <p className="mt-1 text-sm leading-6 text-gray-400">
-                ê³ì ê³¼ ë´ ê°ì¸ ë°ì´í°ë¥¼ ì­ì í´ì.
+                계정과 내 개인 데이터를 삭제해요.
                 <br />
-                íí´ íìë ëëë¦´ ì ìì´ì.
+                탈퇴 후에는 되돌릴 수 없어요.
               </p>
+
             </div>
+
           </div>
 
           <div className="mt-4 rounded-2xl bg-red-50/60 px-4 py-4 text-sm leading-6 text-red-400">
-            ìëë°©ì´ ë¨ì ìì¼ë©´ ëì ê³µê°ê³¼ ê³µë ê¸°ë¡ì ì ì§ëê³ ,
-            ë´ ê³ì ê³¼ ë´ ê°ì¸ ë°ì´í°ë§ ì ë¦¬ë¼ì.
+            상대방이 남아 있으면 둘의 공간과 공동 기록은 유지되고,
+            내 계정과 내 개인 데이터만 정리돼요.
           </div>
 
           <button
             type="button"
-            disabled={deletingAccount || loggingOut}
-            onClick={handleDeleteAccount}
+            disabled={
+              deletingAccount ||
+              loggingOut
+            }
+            onClick={
+              handleDeleteAccount
+            }
             className="mt-4 w-full rounded-2xl border border-red-200 bg-white px-5 py-4 font-semibold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {deletingAccount ? "íì íí´ ì²ë¦¬ ì¤..." : "íì íí´"}
+            {deletingAccount
+              ? "회원 탈퇴 처리 중..."
+              : "회원 탈퇴"}
           </button>
+
         </section>
 
         <BottomNav />
+
       </div>
+
     </main>
   );
 }
