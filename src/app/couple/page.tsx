@@ -1,49 +1,90 @@
 "use client";
 
+import Link from "next/link";
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { useAuth } from "@/components/AuthProvider";
-import BottomNav from "@/components/BottomNav";
 
-type VerificationItem = {
+import { createClient } from "@/lib/supabase/client";
+import BottomNav from "@/components/BottomNav";
+import { useAuth } from "@/components/AuthProvider";
+
+type CoupleInfo = {
+  level: number;
+  xp: number;
+};
+
+type Member = {
+  user_id: string;
+
+  profiles: {
+    nickname: string | null;
+  } | null;
+};
+
+type PromiseItem = {
+  id: string;
+  title: string;
+  assigned_to: string;
+  is_joint: boolean;
+  repeat_type: string;
+
+  current_streak: number;
+  best_streak: number;
+  total_success: number;
+
+  photo_required: boolean;
+  partner_approval_required: boolean;
+};
+
+type TodayVerification = {
   id: string;
   promise_id: string;
   user_id: string;
-  verification_date: string;
-  photo_path: string | null;
-  message: string | null;
-  status: "pending" | "approved" | "rejected";
-  reviewed_at: string | null;
+  status:
+    | "pending"
+    | "approved"
+    | "rejected";
   rejection_reason: string | null;
-
-  promise_title: string;
-  is_joint: boolean;
-  nickname: string;
-  photo_url: string | null;
 };
 
-type UnlockedReward = {
+type DeleteRequest = {
+  id: string;
+  promise_id: string;
+  requested_by: string;
+  status: string;
+};
+
+type RewardUnlockNotification = {
+  id: string;
+  reward_id: string;
+  promise_id: string;
+  seen: boolean;
+
+  rewards: {
+    title: string;
+    required_days: number;
+  } | null;
+
+  promises: {
+    title: string;
+  } | null;
+};
+
+type RecentReward = {
   id: string;
   title: string;
   required_days: number;
+  unlocked_at: string | null;
+
+  promises: {
+    title: string;
+  } | null;
 };
 
-type LevelUpPopup = {
-  fromLevel: number;
-  toLevel: number;
-  nextRequiredXp: number;
-};
-
-export default function VerificationsPage() {
-  const router = useRouter();
-
+export default function CouplePage() {
   const supabase = useMemo(
     () => createClient(),
     []
@@ -54,62 +95,96 @@ export default function VerificationsPage() {
     loading: authLoading,
   } = useAuth();
 
-  const [items, setItems] =
-    useState<VerificationItem[]>([]);
-
   const [loading, setLoading] =
     useState(true);
 
-  const [processingId, setProcessingId] =
-    useState<string | null>(null);
+  const [couple, setCouple] =
+    useState<CoupleInfo | null>(
+      null
+    );
 
-  const [notice, setNotice] =
-    useState("");
+  const [members, setMembers] =
+    useState<Member[]>([]);
+
+  const [promises, setPromises] =
+    useState<PromiseItem[]>([]);
 
   const [
-    rewardPopup,
-    setRewardPopup,
-  ] = useState<UnlockedReward | null>(null);
+    todayVerifications,
+    setTodayVerifications,
+  ] = useState<TodayVerification[]>([]);
 
   const [
-    rewardPromiseTitle,
-    setRewardPromiseTitle,
+    showIncompletePromises,
+    setShowIncompletePromises,
+  ] = useState(true);
+
+  const [
+    showCompletedPromises,
+    setShowCompletedPromises,
+  ] = useState(false);
+
+  const [
+    unlockedRewardCount,
+    setUnlockedRewardCount,
+  ] = useState(0);
+
+  const [
+    pendingVerificationCount,
+    setPendingVerificationCount,
+  ] = useState(0);
+
+  const [
+    recentReward,
+    setRecentReward,
+  ] = useState<RecentReward | null>(
+    null
+  );
+
+  const [
+    currentUserId,
+    setCurrentUserId,
   ] = useState("");
 
   const [
-    levelUpPopup,
-    setLevelUpPopup,
-  ] = useState<LevelUpPopup | null>(null);
+    deleteRequests,
+    setDeleteRequests,
+  ] = useState<DeleteRequest[]>([]);
 
   const [
-    showCompleted,
-    setShowCompleted,
-  ] = useState(false);
+    deleteProcessing,
+    setDeleteProcessing,
+  ] = useState<string | null>(
+    null
+  );
 
-  // =========================================
-  // 인증 목록 불러오기
-  // =========================================
+  const [
+    rewardNotification,
+    setRewardNotification,
+  ] =
+    useState<RewardUnlockNotification | null>(
+      null
+    );
 
-  const loadVerifications = useCallback(
-    async () => {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCouple() {
       if (authLoading) {
         return;
       }
 
       if (!user) {
-        setLoading(false);
-        router.replace("/login");
+        window.location.href =
+          "/login";
         return;
       }
 
-      const currentUser = user;
+      if (cancelled) return;
 
-      setLoading(true);
-      setNotice("");
-
-      // =====================================
-      // 내가 속한 커플 찾기
-      // =====================================
+      setCurrentUserId(
+        user.id
+      );
 
       const {
         data: membership,
@@ -117,835 +192,851 @@ export default function VerificationsPage() {
       } = await supabase
         .from("couple_members")
         .select("couple_id")
-        .eq(
-          "user_id",
-          currentUser.id
-        )
+        .eq("user_id", user.id)
         .maybeSingle();
 
-      if (
-        membershipError ||
-        !membership
-      ) {
-        console.error(
-          "커플 조회 오류:",
-          membershipError
-        );
+      if (cancelled) return;
 
-        setNotice(
-          "커플 정보를 찾을 수 없어요."
+      if (membershipError) {
+        console.error(
+          `커플 조회 오류 | message=${membershipError.message} | code=${membershipError.code} | details=${membershipError.details ?? ""} | hint=${membershipError.hint ?? ""}`
         );
 
         setLoading(false);
         return;
       }
 
-      // =====================================
-      // 상대방이 올린 인증 목록
-      // =====================================
+      if (!membership) {
+        window.location.href =
+          "/home";
+        return;
+      }
+
+      const coupleId =
+        membership.couple_id;
 
       const {
-        data: verificationRows,
-        error: verificationError,
+        data:
+          rewardNotificationData,
+        error:
+          rewardNotificationError,
       } = await supabase
-        .from("verifications")
+        .from(
+          "reward_unlock_notifications"
+        )
         .select(`
           id,
+          reward_id,
           promise_id,
-          user_id,
-          verification_date,
-          photo_path,
-          message,
-          status,
-          reviewed_at,
-          rejection_reason,
-          created_at
+          seen,
+          rewards (
+            title,
+            required_days
+          ),
+          promises (
+            title
+          )
         `)
+        .eq("user_id", user.id)
+        .eq("seen", false)
+        .order("created_at", {
+          ascending: true,
+        })
+        .limit(1)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (
+        rewardNotificationError
+      ) {
+        console.error(
+          `보상 알림 조회 오류 | message=${rewardNotificationError.message} | code=${rewardNotificationError.code} | details=${rewardNotificationError.details ?? ""} | hint=${rewardNotificationError.hint ?? ""}`
+        );
+      } else {
+        setRewardNotification(
+          rewardNotificationData
+            ? (rewardNotificationData as unknown as RewardUnlockNotification)
+            : null
+        );
+      }
+
+      const {
+        data: coupleData,
+        error: coupleError,
+      } = await supabase
+        .from("couples")
+        .select("level, xp")
+        .eq("id", coupleId)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (coupleError) {
+        console.error(
+          `커플 정보 조회 오류 | message=${coupleError.message} | code=${coupleError.code} | details=${coupleError.details ?? ""} | hint=${coupleError.hint ?? ""}`
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      if (!coupleData) {
+        console.error(
+          `커플 정보 없음 | coupleId=${coupleId}`
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      const {
+        count: unlockedCount,
+        error:
+          rewardCountError,
+      } = await supabase
+        .from("rewards")
+        .select("*", {
+          count: "exact",
+          head: true,
+        })
         .eq(
           "couple_id",
-          membership.couple_id
+          coupleId
+        )
+        .eq(
+          "is_unlocked",
+          true
+        );
+
+      if (cancelled) return;
+
+      if (rewardCountError) {
+        console.error(
+          `보상 개수 조회 오류 | message=${rewardCountError.message} | code=${rewardCountError.code} | details=${rewardCountError.details ?? ""} | hint=${rewardCountError.hint ?? ""}`
+        );
+      }
+
+      setUnlockedRewardCount(
+        unlockedCount ?? 0
+      );
+
+      const {
+        count: pendingCount,
+        error: pendingCountError,
+      } = await supabase
+        .from("verifications")
+        .select("*", {
+          count: "exact",
+          head: true,
+        })
+        .eq(
+          "couple_id",
+          coupleId
         )
         .neq(
           "user_id",
-          currentUser.id
+          user.id
+        )
+        .eq(
+          "status",
+          "pending"
+        );
+
+      if (cancelled) return;
+
+      if (pendingCountError) {
+        console.error(
+          `확인 대기 인증 개수 조회 오류 | message=${pendingCountError.message} | code=${pendingCountError.code} | details=${pendingCountError.details ?? ""} | hint=${pendingCountError.hint ?? ""}`
+        );
+      }
+
+      setPendingVerificationCount(
+        pendingCount ?? 0
+      );
+
+      const {
+        data: recentRewardData,
+        error: recentRewardError,
+      } = await supabase
+        .from("rewards")
+        .select(`
+          id,
+          title,
+          required_days,
+          unlocked_at,
+          promises (
+            title
+          )
+        `)
+        .eq(
+          "couple_id",
+          coupleId
+        )
+        .eq(
+          "is_unlocked",
+          true
+        )
+        .not(
+          "unlocked_at",
+          "is",
+          null
         )
         .order(
-          "created_at",
-          {
-            ascending: false,
-          }
-        );
+          "unlocked_at",
+          { ascending: false }
+        )
+        .limit(1)
+        .maybeSingle();
 
-      if (verificationError) {
+      if (cancelled) return;
+
+      if (recentRewardError) {
         console.error(
-          "인증 조회 오류:",
-          verificationError
+          `최근 보상 조회 오류 | message=${recentRewardError.message} | code=${recentRewardError.code} | details=${recentRewardError.details ?? ""} | hint=${recentRewardError.hint ?? ""}`
         );
+      } else {
+        setRecentReward(
+          recentRewardData
+            ? (recentRewardData as unknown as RecentReward)
+            : null
+        );
+      }
 
-        setNotice(
-          "인증 기록을 불러오지 못했어요."
+      const {
+        data: memberRows,
+        error: memberError,
+      } = await supabase
+        .from("couple_members")
+        .select("user_id")
+        .eq(
+          "couple_id",
+          coupleId
+        )
+        .order("joined_at", {
+          ascending: true,
+        });
+
+      if (cancelled) return;
+
+      if (memberError) {
+        console.error(
+          `멤버 조회 오류 | message=${memberError.message} | code=${memberError.code} | details=${memberError.details ?? ""} | hint=${memberError.hint ?? ""}`
         );
 
         setLoading(false);
         return;
       }
 
-      const rows =
-        verificationRows ?? [];
-
-      const promiseIds = [
-        ...new Set(
-          rows.map(
-            (item) =>
-              item.promise_id
-          )
-        ),
-      ];
-
-      const userIds = [
-        ...new Set(
-          rows.map(
-            (item) =>
-              item.user_id
-          )
-        ),
-      ];
-
-      // =====================================
-      // 약속 이름 조회
-      // =====================================
-
-      const {
-        data: promiseRows,
-      } = promiseIds.length
-        ? await supabase
-            .from("promises")
-            .select(
-              "id, title, is_joint"
-            )
-            .in(
-              "id",
-              promiseIds
-            )
-        : {
-            data: [],
-          };
-
-      // =====================================
-      // 닉네임 조회
-      // =====================================
+      const userIds =
+        memberRows?.map(
+          (member) =>
+            member.user_id
+        ) ?? [];
 
       const {
         data: profileRows,
+        error: profileError,
       } = userIds.length
         ? await supabase
             .from("profiles")
             .select(
               "id, nickname"
             )
-            .in(
-              "id",
-              userIds
-            )
+            .in("id", userIds)
         : {
             data: [],
+            error: null,
           };
 
-      // =====================================
-      // 인증 데이터 합치기
-      // =====================================
+      if (cancelled) return;
 
-      const combined: VerificationItem[] =
-        await Promise.all(
-          rows.map(
-            async (item) => {
-              const promise =
-                promiseRows?.find(
-                  (p) =>
-                    p.id ===
-                    item.promise_id
-                );
-
-              const profile =
-                profileRows?.find(
-                  (p) =>
-                    p.id ===
-                    item.user_id
-                );
-
-              let photoUrl:
-                | string
-                | null = null;
-
-              // =================================
-              // 비공개 사진 signed URL
-              // =================================
-
-              if (item.photo_path) {
-                const {
-                  data: signedData,
-                  error: signedError,
-                } =
-                  await supabase.storage
-                    .from(
-                      "verification-images"
-                    )
-                    .createSignedUrl(
-                      item.photo_path,
-                      60 * 60
-                    );
-
-                if (
-                  !signedError &&
-                  signedData
-                ) {
-                  photoUrl =
-                    signedData.signedUrl;
-                } else {
-                  console.error(
-                    "사진 URL 생성 오류:",
-                    signedError
-                  );
-                }
-              }
-
-              return {
-                id:
-                  item.id,
-
-                promise_id:
-                  item.promise_id,
-
-                user_id:
-                  item.user_id,
-
-                verification_date:
-                  item.verification_date,
-
-                photo_path:
-                  item.photo_path,
-
-                message:
-                  item.message,
-
-                status:
-                  item.status,
-
-                reviewed_at:
-                  item.reviewed_at,
-
-                rejection_reason:
-                  item.rejection_reason,
-
-                promise_title:
-                  promise?.title ??
-                  "약속",
-
-                is_joint:
-                  promise?.is_joint ??
-                  false,
-
-                nickname:
-                  profile?.nickname ??
-                  "파트너",
-
-                photo_url:
-                  photoUrl,
-              };
-            }
-          )
+      if (profileError) {
+        console.error(
+          `프로필 조회 오류 | message=${profileError.message} | code=${profileError.code} | details=${profileError.details ?? ""} | hint=${profileError.hint ?? ""}`
         );
 
-      // =====================================
-      // pending 인증을 위로
-      // =====================================
+        setLoading(false);
+        return;
+      }
 
-      combined.sort(
-        (a, b) => {
-          if (
-            a.status === "pending" &&
-            b.status !== "pending"
-          ) {
-            return -1;
+      const combinedMembers: Member[] =
+        userIds.map(
+          (userId) => {
+            const profile =
+              profileRows?.find(
+                (item) =>
+                  item.id ===
+                  userId
+              );
+
+            return {
+              user_id:
+                userId,
+
+              profiles: {
+                nickname:
+                  profile?.nickname ??
+                  null,
+              },
+            };
           }
-
-          if (
-            a.status !== "pending" &&
-            b.status === "pending"
-          ) {
-            return 1;
-          }
-
-          return 0;
-        }
-      );
-
-      setItems(
-        combined
-      );
-
-      setLoading(
-        false
-      );
-    },
-    [
-      authLoading,
-      user,
-      router,
-      supabase,
-    ]
-  );
-
-  // =========================================
-  // 최초 로딩
-  // =========================================
-
-  useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-
-    if (!user) {
-      setLoading(false);
-      router.replace("/login");
-      return;
-    }
-
-    loadVerifications();
-  }, [
-    authLoading,
-    user,
-    router,
-    loadVerifications,
-  ]);
-
-  // =========================================
-  // 승인
-  // =========================================
-
-  async function handleApprove(
-    verificationId: string
-  ) {
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    const currentUser =
-      user;
-
-    const targetVerification =
-      items.find(
-        (item) =>
-          item.id ===
-          verificationId
-      ) ?? null;
-
-    setProcessingId(
-      verificationId
-    );
-
-    setNotice("");
-    setLevelUpPopup(null);
-
-    // =====================================
-    // 승인 전 현재 커플 레벨 확인
-    // =====================================
-
-    let beforeLevel:
-      | number
-      | null = null;
-
-    let coupleId:
-      | string
-      | null = null;
-
-    const {
-      data: membershipBefore,
-      error: membershipBeforeError,
-    } = await supabase
-      .from("couple_members")
-      .select("couple_id")
-      .eq(
-        "user_id",
-        currentUser.id
-      )
-      .maybeSingle();
-
-    if (
-      !membershipBeforeError &&
-      membershipBefore
-    ) {
-      coupleId =
-        membershipBefore.couple_id;
+        );
 
       const {
-        data: coupleBefore,
-        error: coupleBeforeError,
+        data: promiseRows,
+        error: promiseError,
       } = await supabase
-        .from("couples")
-        .select("level")
-        .eq(
-          "id",
-          coupleId
-        )
-        .maybeSingle();
-
-      if (
-        !coupleBeforeError &&
-        coupleBefore
-      ) {
-        beforeLevel =
-          coupleBefore.level ??
-          1;
-      }
-    }
-
-    // =====================================
-    // 인증 승인
-    // =====================================
-
-    const {
-      data,
-      error,
-    } = await supabase.rpc(
-      "review_verification",
-      {
-        p_verification_id:
-          verificationId,
-
-        p_action:
-          "approve",
-
-        p_rejection_reason:
-          null,
-      }
-    );
-
-    if (error) {
-      setProcessingId(
-        null
-      );
-
-      console.error(
-        "승인 오류:",
-        error
-      );
-
-      setNotice(
-        `승인하지 못했어요: ${error.message}`
-      );
-
-      return;
-    }
-
-    // =====================================
-    // 승인된 인증이 이 약속의 첫 성공이면
-    // 타임라인 자동 등록
-    // =====================================
-
-    if (
-      coupleId &&
-      targetVerification
-    ) {
-      const {
-        data: firstApproved,
-        error: firstApprovedError,
-      } = await supabase
-        .from("verifications")
+        .from("promises")
         .select(`
           id,
-          created_at
+          title,
+          assigned_to,
+          is_joint,
+          repeat_type,
+          current_streak,
+          best_streak,
+          total_success,
+          photo_required,
+          partner_approval_required
         `)
         .eq(
           "couple_id",
           coupleId
         )
         .eq(
-          "promise_id",
-          targetVerification.promise_id
+          "is_active",
+          true
+        )
+        .order("created_at", {
+          ascending: false,
+        });
+
+      if (cancelled) return;
+
+      if (promiseError) {
+        console.error(
+          `약속 조회 오류 | message=${promiseError.message} | code=${promiseError.code} | details=${promiseError.details ?? ""} | hint=${promiseError.hint ?? ""}`
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      const todayPromiseIds =
+        (promiseRows ?? []).map(
+          (promise) =>
+            promise.id
+        );
+
+      let todayVerificationRows:
+        TodayVerification[] = [];
+
+      if (todayPromiseIds.length > 0) {
+        const today =
+          new Intl.DateTimeFormat(
+            "en-CA",
+            {
+              timeZone:
+                "Asia/Seoul",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            }
+          ).format(
+            new Date()
+          );
+
+        const {
+          data:
+            verificationRows,
+          error:
+            verificationError,
+        } = await supabase
+          .from(
+            "verifications"
+          )
+          .select(`
+            id,
+            promise_id,
+            user_id,
+            status,
+            rejection_reason
+          `)
+          .in(
+            "promise_id",
+            todayPromiseIds
+          )
+          .eq(
+            "verification_date",
+            today
+          );
+
+        if (cancelled) return;
+
+        if (verificationError) {
+          console.error(
+            `오늘 약속 인증 조회 오류 | message=${verificationError.message} | code=${verificationError.code} | details=${verificationError.details ?? ""} | hint=${verificationError.hint ?? ""}`
+          );
+        } else {
+          todayVerificationRows =
+            (verificationRows ??
+              []) as TodayVerification[];
+        }
+      }
+      // =====================================
+      // 삭제 협의 중인 약속
+      // =====================================
+
+      const {
+        data:
+          deleteRequestRows,
+        error:
+          deleteRequestError,
+      } = await supabase
+        .from(
+          "promise_delete_requests"
+        )
+        .select(`
+          id,
+          promise_id,
+          requested_by,
+          status
+        `)
+        .eq(
+          "couple_id",
+          coupleId
         )
         .eq(
           "status",
-          "approved"
-        )
-        .order(
-          "created_at",
-          {
-            ascending: true,
-          }
-        )
-        .limit(1)
-        .maybeSingle();
+          "pending"
+        );
+
+      if (cancelled) return;
 
       if (
-        firstApprovedError
+        deleteRequestError
       ) {
         console.error(
-          "첫 성공 인증 확인 오류:",
-          firstApprovedError
+          `삭제 요청 조회 오류 | message=${deleteRequestError.message} | code=${deleteRequestError.code} | details=${deleteRequestError.details ?? ""} | hint=${deleteRequestError.hint ?? ""}`
         );
-      } else if (
-        firstApproved?.id ===
-        verificationId
-      ) {
-        const {
-          error: timelineError,
-        } = await supabase
-          .from(
-            "couple_timeline_events"
-          )
-          .insert({
-            couple_id:
-              coupleId,
 
-            user_id:
-              targetVerification.user_id,
-
-            event_type:
-              "first_verification",
-
-            title:
-              "📸 첫 인증을 성공했어요",
-
-            description:
-              targetVerification.message
-                ? `${targetVerification.promise_title} · ${targetVerification.message}`
-                : targetVerification.promise_title,
-
-            related_id:
-              verificationId,
-
-            image_path:
-              targetVerification.photo_path,
-
-            event_date:
-              firstApproved.created_at,
-
-            source_key:
-              `first_verification:${targetVerification.promise_id}`,
-          });
-
-        if (
-          timelineError &&
-          timelineError.code !==
-            "23505"
-        ) {
-          console.error(
-            "첫 인증 타임라인 등록 오류:",
-            timelineError
-          );
-        }
+        setLoading(false);
+        return;
       }
-    }
-    // =====================================
-    // 승인 후 레벨 확인
-    // =====================================
 
-    let detectedLevelUp =
-      false;
+      if (cancelled) return;
 
-    if (
-      coupleId &&
-      beforeLevel !== null
-    ) {
-      const {
-        data: coupleAfter,
-        error: coupleAfterError,
-      } = await supabase
-        .from("couples")
-        .select("level")
-        .eq(
-          "id",
-          coupleId
-        )
-        .maybeSingle();
+      // =====================================
+      // 최종 데이터 적용
+      // =====================================
 
-      if (
-        !coupleAfterError &&
-        coupleAfter
-      ) {
-        const afterLevel =
-          coupleAfter.level ??
-          beforeLevel;
-
-        if (
-          afterLevel >
-          beforeLevel
-        ) {
-          const nextRequiredXp =
-            100 +
-            (afterLevel - 1) *
-              50;
-
-          setLevelUpPopup({
-            fromLevel:
-              beforeLevel,
-
-            toLevel:
-              afterLevel,
-
-            nextRequiredXp,
-          });
-
-          detectedLevelUp =
-            true;
-        }
-      }
-    }
-
-    const unlockedRewards =
-      (data?.unlocked_rewards ??
-        []) as UnlockedReward[];
-
-    // =====================================
-    // 커플 레벨업 타임라인 자동 등록
-    // =====================================
-
-    if (
-      detectedLevelUp &&
-      coupleId &&
-      beforeLevel !== null
-    ) {
-      const {
-        data:
-          latestCouple,
-
-        error:
-          latestCoupleError,
-      } = await supabase
-        .from("couples")
-        .select("level")
-        .eq(
-          "id",
-          coupleId
-        )
-        .maybeSingle();
-
-      if (
-        latestCoupleError
-      ) {
-        console.error(
-          "레벨업 타임라인용 커플 레벨 조회 오류:",
-          latestCoupleError
-        );
-      } else if (
-        latestCouple &&
-        latestCouple.level >
-          beforeLevel
-      ) {
-        const newLevel =
-          latestCouple.level;
-
-        const {
-          error:
-            levelTimelineError,
-        } = await supabase
-          .from(
-            "couple_timeline_events"
-          )
-          .insert({
-            couple_id:
-              coupleId,
-
-            user_id:
-              currentUser.id,
-
-            event_type:
-              "level_up",
-
-            title:
-              "🎉 우리 레벨이 올랐어요!",
-
-            description:
-              `LV.${beforeLevel} → LV.${newLevel}`,
-
-            related_id:
-              null,
-
-            image_path:
-              null,
-
-            event_date:
-              new Date().toISOString(),
-
-            source_key:
-              `level_up:${newLevel}`,
-          });
-
-        if (
-          levelTimelineError &&
-          levelTimelineError.code !==
-            "23505"
-        ) {
-          console.error(
-            "레벨업 타임라인 등록 오류:",
-            levelTimelineError
-          );
-        }
-      }
-    }
-
-    // =====================================
-    // 보상 해금 처리
-    // =====================================
-
-    if (
-      unlockedRewards.length >
-      0
-    ) {
-      setRewardPopup(
-        unlockedRewards[0]
+      setCouple(
+        coupleData
       );
 
-      setRewardPromiseTitle(
-        data?.promise_title ??
-          ""
+      setMembers(
+        combinedMembers
       );
-    } else if (
-      !detectedLevelUp
-    ) {
-      setNotice(
-        "인증을 승인했어요! 🎉"
+
+      setPromises(
+        (promiseRows ??
+          []) as PromiseItem[]
       );
+
+      setTodayVerifications(
+        todayVerificationRows
+      );
+
+      setDeleteRequests(
+        (deleteRequestRows ??
+          []) as DeleteRequest[]
+      );
+
+      setLoading(false);
     }
 
-    setProcessingId(
-      null
-    );
+    loadCouple();
 
-    // =====================================
-    // 인증 목록 다시 불러오기
-    // =====================================
-
-    await loadVerifications();
-
-    // =====================================
-    // 홈 화면 완전 새로고침
-    //
-    // 다시 인증 → 승인된 상태를
-    // /couple 화면에서 즉시 다시 조회하도록 함
-    //
-    // 보상/레벨업 팝업이 있는 경우에는
-    // 팝업을 먼저 보여줘야 하므로 바로 이동하지 않음
-    // =====================================
-
-    if (
-      unlockedRewards.length ===
-        0 &&
-      !detectedLevelUp
-    ) {
-      window.location.href =
-        "/couple";
-    }
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    supabase,
+    user,
+    authLoading,
+  ]);
 
   // =========================================
-  // 반려
+  // 약속 삭제 협의 요청
   // =========================================
 
-  async function handleReject(
-    verificationId: string
+  async function requestDelete(
+    promiseId: string,
+    title: string
   ) {
-    if (!user) {
-      router.replace(
-        "/login"
+    const confirmed =
+      window.confirm(
+        `"${title}" 약속의 삭제를 상대방에게 요청할까요?`
       );
 
+    if (!confirmed) {
       return;
     }
 
-    const reason =
-      window.prompt(
-        "반려 이유를 입력해주세요.\n비워도 괜찮아요."
+    setDeleteProcessing(
+      promiseId
+    );
+
+    const { error } =
+      await supabase.rpc(
+        "request_promise_delete",
+        {
+          p_promise_id:
+            promiseId,
+        }
       );
 
-    if (
-      reason === null
-    ) {
-      return;
-    }
-
-    setProcessingId(
-      verificationId
-    );
-
-    setNotice("");
-
-    const {
-      error,
-    } = await supabase.rpc(
-      "review_verification",
-      {
-        p_verification_id:
-          verificationId,
-
-        p_action:
-          "reject",
-
-        p_rejection_reason:
-          reason.trim() ||
-          null,
-      }
-    );
-
-    setProcessingId(
+    setDeleteProcessing(
       null
     );
 
     if (error) {
-      console.error(
-        "반려 오류:",
-        error
-      );
-
-      setNotice(
-        `반려하지 못했어요: ${error.message}`
+      alert(
+        error.message
       );
 
       return;
     }
 
-    setNotice(
-      "인증을 반려했어요."
+    alert(
+      "상대방에게 삭제 협의를 요청했어요 ♡"
     );
 
-    await loadVerifications();
+    window.location.reload();
   }
 
   // =========================================
-  // 로딩
+  // 삭제 동의
   // =========================================
 
-  if (
-    authLoading ||
-    loading
+  async function approveDelete(
+    requestId: string,
+    promiseId: string
   ) {
+    const confirmed =
+      window.confirm(
+        "이 약속을 삭제하는 데 동의할까요?\n\n앱에서는 더 이상 표시되지 않아요."
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleteProcessing(
+      promiseId
+    );
+
+    const { error } =
+      await supabase.rpc(
+        "respond_promise_delete",
+        {
+          p_request_id:
+            requestId,
+
+          p_action:
+            "approve",
+        }
+      );
+
+    setDeleteProcessing(
+      null
+    );
+
+    if (error) {
+      alert(
+        error.message
+      );
+
+      return;
+    }
+
+    setPromises(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !==
+            promiseId
+        )
+    );
+
+    setDeleteRequests(
+      (current) =>
+        current.filter(
+          (item) =>
+            item.id !==
+            requestId
+        )
+    );
+  }
+
+  // =========================================
+  // 삭제 거절
+  // =========================================
+
+  async function rejectDelete(
+    requestId: string
+  ) {
+    const { error } =
+      await supabase.rpc(
+        "respond_promise_delete",
+        {
+          p_request_id:
+            requestId,
+
+          p_action:
+            "reject",
+        }
+      );
+
+    if (error) {
+      alert(
+        error.message
+      );
+
+      return;
+    }
+
+    alert(
+      "약속을 그대로 유지하기로 했어요."
+    );
+
+    window.location.reload();
+  }
+
+  // =========================================
+  // 삭제 요청 취소
+  // =========================================
+
+  async function cancelDelete(
+    requestId: string
+  ) {
+    const { error } =
+      await supabase.rpc(
+        "cancel_promise_delete",
+        {
+          p_request_id:
+            requestId,
+        }
+      );
+
+    if (error) {
+      alert(
+        error.message
+      );
+
+      return;
+    }
+
+    window.location.reload();
+  }
+
+  // =========================================
+  // 보상 알림 확인
+  // =========================================
+
+  async function closeRewardNotification() {
+    if (
+      !rewardNotification
+    ) {
+      return;
+    }
+
+    const notificationId =
+      rewardNotification.id;
+
+    const { error } =
+      await supabase
+        .from(
+          "reward_unlock_notifications"
+        )
+        .update({
+          seen: true,
+
+          seen_at:
+            new Date().toISOString(),
+        })
+        .eq(
+          "id",
+          notificationId
+        );
+
+    if (error) {
+      console.error(
+        `보상 알림 확인 오류 | message=${error.message} | code=${error.code} | details=${error.details ?? ""} | hint=${error.hint ?? ""}`
+      );
+
+      return;
+    }
+
+    setRewardNotification(
+      null
+    );
+  }
+
+  // =========================================
+  // AuthProvider가 세션 확인 중
+  // =========================================
+
+  if (authLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
         <p className="text-sm text-gray-500">
-          인증 기록 불러오는 중...
+          로그인 정보 확인 중...
         </p>
       </main>
     );
   }
 
-  const pendingItems =
-    items.filter(
+  // =========================================
+  // 페이지 데이터 로딩
+  // =========================================
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
+        <p className="text-sm text-gray-500">
+          우리 공간 불러오는 중...
+        </p>
+      </main>
+    );
+  }
+
+  // =========================================
+  // 표시용 데이터
+  // =========================================
+
+  const first =
+    members[0]?.profiles
+      ?.nickname ?? "나";
+
+  const second =
+    members[1]?.profiles
+      ?.nickname ??
+    "파트너";
+
+  const level =
+    couple?.level ?? 1;
+
+  const xp =
+    couple?.xp ?? 0;
+
+  const xpForNextLevel =
+    100;
+
+  const xpPercent =
+    Math.min(
+      (xp /
+        xpForNextLevel) *
+        100,
+      100
+    );
+
+  // =========================================
+  // 오늘 약속 상태 확인
+  //
+  // rejected는 완료로 처리하지 않음
+  // 반려된 인증은 다시 인증할 수 있음
+  // =========================================
+
+  const isPromiseCompletedToday = (
+    promise: PromiseItem
+  ) => {
+    const promiseVerifications =
+      todayVerifications.filter(
+        (item) =>
+          item.promise_id ===
+          promise.id
+      );
+
+    if (promise.is_joint) {
+      return (
+        members.length > 0 &&
+        members.every(
+          (member) =>
+            promiseVerifications.some(
+              (item) =>
+                item.user_id ===
+                  member.user_id &&
+                item.status ===
+                  "approved"
+            )
+        )
+      );
+    }
+
+    return promiseVerifications.some(
       (item) =>
+        item.user_id ===
+          promise.assigned_to &&
         item.status ===
-        "pending"
+          "approved"
+    );
+  };
+
+  // =========================================
+  // 현재 사용자의 오늘 인증 상태
+  // =========================================
+
+  const getMyVerification = (
+    promiseId: string
+  ) => {
+    return (
+      todayVerifications.find(
+        (item) =>
+          item.promise_id ===
+            promiseId &&
+          item.user_id ===
+            currentUserId
+      ) ?? null
+    );
+  };
+
+  const incompletePromises =
+    promises.filter(
+      (promise) =>
+        !isPromiseCompletedToday(
+          promise
+        )
     );
 
-  const completedItems =
-    items.filter(
-      (item) =>
-        item.status !==
-        "pending"
+  const completedPromises =
+    promises.filter(
+      (promise) =>
+        isPromiseCompletedToday(
+          promise
+        )
     );
 
-  const pendingCount =
-    pendingItems.length;
+  const todayTotalCount =
+    promises.length;
+
+  const todayCompletedCount =
+    completedPromises.length;
+
+  const todayProgressPercent =
+    todayTotalCount > 0
+      ? Math.round(
+          (todayCompletedCount /
+            todayTotalCount) *
+            100
+        )
+      : 0;
+
+  const isTodayAllCompleted =
+    todayTotalCount > 0 &&
+    todayCompletedCount ===
+      todayTotalCount;
 
   return (
     <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
@@ -953,332 +1044,846 @@ export default function VerificationsPage() {
       <div className="mx-auto max-w-md pb-28">
 
         {/* =================================
-            헤더
-        ================================= */}
+            상단
+        ================================== */}
 
         <header className="flex items-end justify-between gap-4">
-
           <div>
-
             <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
-              VERIFICATIONS
+              OURQUEST
             </p>
 
             <h1 className="mt-2 text-3xl font-bold">
-              인증 확인
+              {first} ♡ {second}
             </h1>
 
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              파트너가 보내온 오늘의 인증을 확인해주세요 ♡
+            <p className="mt-2 text-sm text-gray-500">
+              오늘도 둘만의 퀘스트를 이어가요 ♡
             </p>
-
           </div>
 
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
-            📸
+            💕
           </div>
-
         </header>
 
         {/* =================================
-            대기 개수
-        ================================= */}
+            레벨 / XP
+        ================================== */}
 
-        <section className="mt-7 overflow-hidden rounded-[28px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/70 shadow-sm">
+        <section className="mt-7 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/60 p-5 shadow-sm">
 
-          <div className="flex items-center justify-between p-5">
-
+          <div className="flex items-start justify-between gap-4">
             <div>
-
-              <p className="text-xs font-semibold tracking-[0.16em] text-pink-400">
-                VERIFICATION STATUS
+              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+                OUR LEVEL
               </p>
 
-              <div className="mt-2 flex items-end gap-2">
+              <p className="mt-2 text-4xl font-bold tracking-tight">
+                LV.{level}
+              </p>
+            </div>
 
-                <p className="text-3xl font-bold tracking-tight">
-                  {pendingCount}
-                </p>
-
-                <p className="pb-1 text-sm font-semibold text-gray-400">
-                  개 확인 대기
-                </p>
-
-              </div>
-
-              <p className="mt-2 text-xs text-gray-400">
-                확인이 필요한 인증만 먼저 보여드려요.
+            <div className="rounded-2xl bg-white/80 px-4 py-3 text-right shadow-sm">
+              <p className="text-[11px] text-gray-400">
+                현재 XP
               </p>
 
+              <p className="mt-1 text-lg font-bold text-pink-500">
+                {xp}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">
+                다음 레벨까지
+              </span>
+
+              <span className="font-semibold text-pink-500">
+                {Math.max(
+                  xpForNextLevel - xp,
+                  0
+                )} XP 남음
+              </span>
             </div>
 
-            <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white text-2xl shadow-sm">
-              💌
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-pink-100/70">
+              <div
+                className="h-full rounded-full bg-pink-400 transition-all"
+                style={{
+                  width: `${xpPercent}%`,
+                }}
+              />
             </div>
-
           </div>
 
         </section>
 
         {/* =================================
-            메시지
-        ================================= */}
+            오늘 요약
+        ================================== */}
 
-        {notice && (
+        <section className="mt-5">
 
-          <div className="mt-4 rounded-2xl border border-pink-100 bg-white/80 px-4 py-3 text-center text-xs text-gray-500 shadow-sm">
-            {notice}
-          </div>
+          <div className="mb-3 flex items-end justify-between">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+                TODAY
+              </p>
 
-        )}
-
-        {/* =================================
-            인증 목록
-        ================================= */}
-
-        {pendingItems.length ===
-          0 &&
-        completedItems.length ===
-          0 ? (
-
-          <section className="mt-6 rounded-[30px] border border-dashed border-pink-200 bg-white p-8 text-center shadow-sm">
-
-            <div className="text-4xl">
-              📭
+              <h2 className="mt-1 text-lg font-bold">
+                오늘 한눈에 보기
+              </h2>
             </div>
 
-            <h2 className="mt-4 text-lg font-bold">
-              아직 받은 인증이 없어요
-            </h2>
+            <span className="text-[11px] text-gray-400">
+              우리 둘의 오늘 ♡
+            </span>
+          </div>
 
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              파트너가 인증을 보내면
-              <br />
-              여기에서 확인할 수 있어요.
-            </p>
+          <div className="grid grid-cols-2 gap-3">
 
-          </section>
+            <div className="rounded-[26px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/60 p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-lg">
+                  ✅
+                </div>
 
-        ) : (
+                <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-semibold text-pink-400">
+                  QUEST
+                </span>
+              </div>
 
-          <>
+              <p className="mt-4 text-xs text-gray-400">
+                오늘의 약속
+              </p>
 
-            {/* =================================
-                확인 대기 인증
-            ================================= */}
+              <p className="mt-1 text-3xl font-bold tracking-tight">
+                {promises.length}
 
-            {pendingItems.length >
-              0 && (
+                <span className="ml-1 text-sm font-semibold text-gray-400">
+                  개
+                </span>
+              </p>
 
-              <section className="mt-6">
+              <p className="mt-2 text-[11px] leading-5 text-gray-400">
+                오늘도 함께 이어가요 ♡
+              </p>
+            </div>
 
-                <div className="mb-3 flex items-end justify-between">
+            <Link
+              href="/us/history"
+              prefetch={false}
+              className="group rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-50/50 hover:shadow-md"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-50 text-lg">
+                  📖
+                </div>
 
-                  <div>
+                <span className="text-lg text-pink-200 transition group-hover:translate-x-0.5">
+                  ›
+                </span>
+              </div>
 
-                    <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
-                      WAITING LIST
-                    </p>
+              <p className="mt-4 text-xs text-gray-400">
+                우리 기록
+              </p>
 
-                    <h2 className="mt-1 text-lg font-bold">
-                      확인이 필요한 인증
-                    </h2>
+              <p className="mt-1 font-bold">
+                추억 모아보기
+              </p>
 
-                  </div>
+              <p className="mt-2 text-[11px] leading-5 text-gray-400">
+                약속과 인증 기록을 확인해요.
+              </p>
+            </Link>
 
-                  <span className="rounded-full bg-pink-50 px-3 py-1.5 text-xs font-semibold text-pink-500">
-                    {pendingItems.length}개
+          </div>
+
+          {pendingVerificationCount > 0 && (
+            <Link
+              href="/verifications"
+              prefetch={false}
+              className="group mt-3 flex items-center justify-between rounded-[26px] border border-pink-100 bg-white p-4 shadow-sm transition hover:bg-pink-50/50"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+                  💌
+                </div>
+
+                <div className="min-w-0">
+                  <p className="font-bold">
+                    확인을 기다리고 있어요
+                  </p>
+
+                  <p className="mt-1 truncate text-xs text-gray-400">
+                    상대방이 보낸 인증 {pendingVerificationCount}개
+                  </p>
+                </div>
+              </div>
+
+              <span className="ml-3 shrink-0 rounded-full bg-pink-500 px-3 py-2 text-[11px] font-semibold text-white">
+                확인하기
+              </span>
+            </Link>
+          )}
+
+          {recentReward && (
+            <Link
+              href="/rewards"
+              prefetch={false}
+              className="group mt-3 flex items-center justify-between rounded-[26px] border border-pink-100 bg-white p-4 shadow-sm transition hover:bg-pink-50/50"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-xl">
+                  🎁
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold tracking-[0.12em] text-pink-400">
+                    RECENT REWARD
+                  </p>
+
+                  <p className="mt-1 truncate font-bold">
+                    {recentReward.title}
+                  </p>
+
+                  <p className="mt-1 truncate text-xs text-gray-400">
+                    {recentReward.promises?.title ?? "약속"} · {recentReward.required_days}일 달성
+                  </p>
+                </div>
+              </div>
+
+              <span className="ml-3 text-lg text-pink-200 transition group-hover:translate-x-0.5">
+                ›
+              </span>
+            </Link>
+          )}
+
+        </section>
+
+        {/* =================================
+            오늘의 약속
+        ================================== */}
+
+        <section className="mt-7">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+                TODAY QUEST
+              </p>
+
+              <h2 className="mt-1 text-2xl font-bold">
+                오늘도 같이 해볼까요?
+              </h2>
+            </div>
+
+            <Link
+              href="/promise/new"
+              prefetch={false}
+              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pink-500 text-2xl text-white shadow-sm transition hover:bg-pink-600"
+            >
+              +
+            </Link>
+
+          </div>
+
+          {promises.length > 0 && (
+            <div className="mt-5 rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold tracking-[0.14em] text-pink-400">
+                    TODAY PROGRESS
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold text-gray-700">
+                    {isTodayAllCompleted
+                      ? "🎉 오늘 약속을 모두 지켰어요!"
+                      : `오늘 ${todayCompletedCount} / ${todayTotalCount} 완료`}
+                  </p>
+                </div>
+
+                <p className="text-2xl font-bold text-pink-500">
+                  {todayProgressPercent}
+
+                  <span className="ml-0.5 text-sm font-semibold">
+                    %
                   </span>
+                </p>
+              </div>
 
-                </div>
+              <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-pink-50">
+                <div
+                  className="h-full rounded-full bg-pink-500 transition-all duration-500"
+                  style={{
+                    width: `${todayProgressPercent}%`,
+                  }}
+                />
+              </div>
 
-                <div className="space-y-5">
+              {!isTodayAllCompleted && (
+                <p className="mt-2 text-[11px] text-gray-400">
+                  {todayTotalCount -
+                    todayCompletedCount}
+                  개의 약속이 남았어요 ♡
+                </p>
+              )}
+            </div>
+          )}
 
-                  {pendingItems.map(
-                    (item) => {
+          {/* 약속 없음 */}
 
-                      const isProcessing =
-                        processingId ===
-                        item.id;
+          {promises.length ===
+          0 ? (
 
-                      return (
-                        <article
-                          key={
-                            item.id
-                          }
-                          className="overflow-hidden rounded-[30px] border border-pink-100 bg-white shadow-sm"
-                        >
+            <div className="mt-5 rounded-3xl border border-dashed border-pink-200 bg-white p-8 text-center">
 
-                          <div className="p-3 pb-0">
+              <div className="text-4xl">
+                🌱
+              </div>
 
-                            {item.photo_url ? (
+              <h3 className="mt-4 text-lg font-bold">
+                아직 약속이 없어요
+              </h3>
 
-                              <img
-                                src={
-                                  item.photo_url
-                                }
-                                alt="인증 사진"
-                                className="max-h-[520px] w-full rounded-[22px] object-cover"
-                              />
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                둘이 함께 지키고 싶은 약속을
+                <br />
+                첫 번째 퀘스트로 만들어보세요.
+              </p>
 
-                            ) : (
+              <Link
+                href="/promise/new"
+                prefetch={false}
+                className="mt-6 block w-full rounded-2xl bg-pink-500 px-5 py-4 text-center font-semibold text-white"
+              >
+                첫 약속 만들기
+              </Link>
 
-                              <div className="flex h-48 items-center justify-center rounded-[22px] bg-[#fff8fb] text-sm text-gray-400">
-                                사진 없음
-                              </div>
+            </div>
 
-                            )}
+          ) : (
 
-                          </div>
+            <div className="mt-5 space-y-4">
 
-                          <div className="p-5">
+              {/* 오늘 미완료 */}
 
-                            <div className="flex items-start justify-between gap-4">
-
-                              <div>
-
-                                <div className="flex flex-wrap items-center gap-2">
-
-                                  {item.is_joint && (
-
-                                    <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-semibold text-pink-500">
-                                      💕 서로의 약속
-                                    </span>
-
-                                  )}
-
-                                  <span className="text-xs font-medium text-gray-400">
-                                    {item.nickname}님의 인증
-                                  </span>
-
-                                </div>
-
-                                <h2 className="mt-2 text-xl font-bold">
-                                  {item.promise_title}
-                                </h2>
-
-                                <p className="mt-2 text-xs text-gray-400">
-                                  {item.verification_date}
-                                </p>
-
-                              </div>
-
-                              <span className="shrink-0 rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-600">
-                                ● 확인 대기
-                              </span>
-
-                            </div>
-
-                            {item.message && (
-
-                              <div className="mt-4 rounded-[20px] border border-pink-100 bg-[#fff8fb] px-4 py-3">
-
-                                <p className="text-xs text-gray-400">
-                                  오늘 한마디
-                                </p>
-
-                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
-                                  “{item.message}”
-                                </p>
-
-                              </div>
-
-                            )}
-
-                            <div className="mt-5 grid grid-cols-[0.85fr_1.15fr] gap-3">
-
-                              <button
-                                type="button"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleReject(
-                                    item.id
-                                  )
-                                }
-                                className="rounded-2xl border border-pink-200 bg-white px-4 py-3.5 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-pink-50 active:scale-[0.99] disabled:opacity-50"
-                              >
-                                ✕ 반려
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleApprove(
-                                    item.id
-                                  )
-                                }
-                                className="rounded-2xl bg-pink-500 px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99] disabled:opacity-50"
-                              >
-                                {isProcessing
-                                  ? "처리 중..."
-                                  : "♡ 승인"}
-                              </button>
-
-                            </div>
-
-                          </div>
-
-                        </article>
-                      );
-                    }
-                  )}
-
-                </div>
-
-              </section>
-            )}
-
-            {/* =================================
-                완료된 인증
-            ================================= */}
-
-            {completedItems.length >
-              0 && (
-
-              <section className="mt-6">
+              <section className="overflow-hidden rounded-[26px] border border-pink-100 bg-white shadow-sm">
 
                 <button
                   type="button"
                   onClick={() =>
-                    setShowCompleted(
-                      (prev) =>
-                        !prev
+                    setShowIncompletePromises(
+                      (prev) => !prev
                     )
                   }
-                  className={`flex w-full items-center justify-between rounded-[26px] border p-4 text-left shadow-sm transition ${
-                    showCompleted
-                      ? "border-pink-200 bg-pink-50/50"
-                      : "border-pink-100 bg-white hover:bg-pink-50/40"
-                  }`}
+                  className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-pink-50/40"
                 >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-50 text-lg">
+                      ⏳
+                    </div>
 
+                    <div>
+                      <p className="font-bold">
+                        오늘 미완료
+                      </p>
+
+                      <p className="mt-0.5 text-[11px] text-gray-400">
+                        아직 끝나지 않은 약속 {incompletePromises.length}개
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`text-gray-300 transition ${
+                      showIncompletePromises
+                        ? "rotate-180"
+                        : ""
+                    }`}
+                  >
+                    ⌄
+                  </span>
+                </button>
+
+                {showIncompletePromises && (
+                  <div className="border-t border-pink-50 bg-[#fffdfd] p-3">
+
+                    {incompletePromises.length === 0 ? (
+
+                      <div className="rounded-[22px] bg-white px-4 py-7 text-center">
+                        <p className="font-semibold text-pink-500">
+                          🎉 오늘 약속을 모두 완료했어요!
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-400">
+                          둘이 오늘의 퀘스트를 다 해냈어요 ♡
+                        </p>
+                      </div>
+
+                    ) : (
+
+                      <div className="space-y-4">
+
+                        {incompletePromises.map(
+                          (promise) => {
+
+                            const assignee =
+                              members.find(
+                                (member) =>
+                                  member.user_id ===
+                                  promise.assigned_to
+                              );
+
+                            const assigneeName =
+                              assignee
+                                ?.profiles
+                                ?.nickname ??
+                              "이름 없음";
+
+                            const repeatLabel =
+                              promise.repeat_type ===
+                              "daily"
+                                ? "매일"
+                                : promise.repeat_type ===
+                                  "weekdays"
+                                ? "평일"
+                                : "사용자 지정";
+
+                            const deleteRequest =
+                              deleteRequests.find(
+                                (request) =>
+                                  request.promise_id ===
+                                  promise.id
+                              );
+
+                            const myVerification =
+                              getMyVerification(
+                                promise.id
+                              );
+
+                            const isMyRejected =
+                              myVerification?.status ===
+                              "rejected";
+
+                            const isMyPending =
+                              myVerification?.status ===
+                              "pending";
+
+                            const isMyApproved =
+                              myVerification?.status ===
+                              "approved";
+
+                            const jointMemberStatuses =
+                              promise.is_joint
+                                ? members.map(
+                                    (member) => {
+                                      const verification =
+                                        todayVerifications.find(
+                                          (item) =>
+                                            item.promise_id ===
+                                              promise.id &&
+                                            item.user_id ===
+                                              member.user_id
+                                        );
+
+                                      return {
+                                        userId:
+                                          member.user_id,
+
+                                        nickname:
+                                          member.profiles
+                                            ?.nickname ??
+                                          "파트너",
+
+                                        status:
+                                          verification?.status ??
+                                          null,
+                                      };
+                                    }
+                                  )
+                                : [];
+
+                            return (
+                              <article
+                                key={
+                                  promise.id
+                                }
+                                className="overflow-hidden rounded-[30px] border border-pink-100 bg-white shadow-sm"
+                              >
+                                <div className="p-5">
+
+                                  <div className="flex items-start justify-between gap-4">
+
+                                    <div className="min-w-0">
+
+                                      <div className="flex flex-wrap items-center gap-2">
+
+                                        <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-pink-500">
+                                          {repeatLabel}
+                                        </span>
+
+                                        <span className="text-[11px] text-gray-400">
+                                          {promise.is_joint
+                                            ? "💕 서로의 약속"
+                                            : `${assigneeName}님의 약속`}
+                                        </span>
+
+                                      </div>
+
+                                      <h3 className="mt-3 break-words text-xl font-bold leading-7">
+                                        {promise.title}
+                                      </h3>
+
+                                    </div>
+
+                                    <div className="shrink-0 rounded-2xl bg-[#fff8fb] px-3 py-2 text-center">
+                                      <p className="text-[10px] text-gray-400">
+                                        연속
+                                      </p>
+
+                                      <p className="mt-0.5 text-lg font-bold text-pink-500">
+                                        🔥 {promise.current_streak}
+                                      </p>
+                                    </div>
+
+                                  </div>
+
+                                  {/* 기록 요약 */}
+
+                                  <div className="mt-4 rounded-2xl bg-[#fff8fb] px-4 py-3">
+                                    <p className="text-xs font-medium text-gray-500">
+                                      🔥 현재 {promise.current_streak}일
+
+                                      <span className="mx-2 text-pink-200">
+                                        ·
+                                      </span>
+
+                                      🏆 최고 {promise.best_streak}일
+
+                                      <span className="mx-2 text-pink-200">
+                                        ·
+                                      </span>
+
+                                      ✓ 성공 {promise.total_success}일
+                                    </p>
+                                  </div>
+
+                                  {/* 공동 약속 오늘 인증 현황 */}
+
+                                  {promise.is_joint && (
+                                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl bg-pink-50/60 px-3.5 py-2.5 text-[11px]">
+
+                                      <span className="font-semibold text-pink-500">
+                                        💕 오늘
+                                      </span>
+
+                                      {jointMemberStatuses.map(
+                                        (memberStatus) => {
+
+                                          const statusLabel =
+                                            memberStatus.status === "approved"
+                                              ? "✅"
+                                              : memberStatus.status === "pending"
+                                              ? "🕒"
+                                              : memberStatus.status === "rejected"
+                                              ? "↻"
+                                              : "⏳";
+
+                                          const statusClass =
+                                            memberStatus.status === "approved"
+                                              ? "text-green-600"
+                                              : memberStatus.status === "pending"
+                                              ? "text-amber-600"
+                                              : memberStatus.status === "rejected"
+                                              ? "text-red-500"
+                                              : "text-gray-400";
+
+                                          return (
+                                            <span
+                                              key={
+                                                memberStatus.userId
+                                              }
+                                              className={`font-semibold ${statusClass}`}
+                                            >
+                                              {memberStatus.nickname}{" "}
+                                              {statusLabel}
+                                            </span>
+                                          );
+                                        }
+                                      )}
+
+                                    </div>
+                                  )}
+
+                                  {/* =================================
+                                      내가 올린 인증이 반려된 경우
+                                  ================================= */}
+
+                                  {isMyRejected && (
+                                    <div className="mt-4 rounded-[22px] border border-red-100 bg-red-50/70 p-4">
+
+                                      <div className="flex items-start gap-3">
+
+                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
+                                          ↻
+                                        </div>
+
+                                        <div className="min-w-0 flex-1">
+
+                                          <p className="font-bold text-red-500">
+                                            인증이 반려되었어요
+                                          </p>
+
+                                          <p className="mt-1 text-xs leading-5 text-red-400">
+                                            내용을 확인한 뒤 다시 인증해주세요.
+                                          </p>
+
+                                          <div className="mt-3 rounded-2xl bg-white px-4 py-3">
+
+                                            <p className="text-[10px] font-semibold tracking-[0.12em] text-gray-400">
+                                              반려 이유
+                                            </p>
+
+                                            <p className="mt-1.5 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-gray-700">
+                                              {myVerification.rejection_reason?.trim()
+                                                ? myVerification.rejection_reason
+                                                : "상대방이 반려 이유를 남기지 않았어요."}
+                                            </p>
+
+                                          </div>
+
+                                        </div>
+
+                                      </div>
+
+                                    </div>
+                                  )}
+
+                                  {/* 인증 설정 요약 */}
+
+                                  <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[11px] text-gray-400">
+
+                                    {promise.is_joint && (
+                                      <span className="font-semibold text-pink-500">
+                                        💕 공동
+                                      </span>
+                                    )}
+
+                                    {promise.photo_required && (
+                                      <span>
+                                        📷 사진
+                                      </span>
+                                    )}
+
+                                    {promise.partner_approval_required && (
+                                      <span>
+                                        ♡ 상대 확인
+                                      </span>
+                                    )}
+
+                                    {!promise.is_joint &&
+                                      !promise.photo_required &&
+                                      !promise.partner_approval_required && (
+                                        <span>
+                                          ✓ 기본 인증
+                                        </span>
+                                      )}
+
+                                  </div>
+
+                                </div>
+
+                                {/* 인증 버튼 영역 */}
+
+                                <div className="border-t border-pink-50 bg-[#fffdfd] px-5 py-4">
+
+                                  {isMyRejected ? (
+
+                                    <Link
+                                      href={`/verify/${promise.id}`}
+                                      prefetch={false}
+                                      className="block w-full rounded-2xl bg-red-500 px-4 py-3.5 text-center font-semibold text-white shadow-sm transition hover:bg-red-600 active:scale-[0.99]"
+                                    >
+                                      ↻ 다시 인증하기
+                                    </Link>
+
+                                  ) : isMyPending ? (
+
+                                    <div className="w-full rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3.5 text-center font-semibold text-amber-600">
+                                      🕒 상대방 확인 대기 중
+                                    </div>
+
+                                  ) : isMyApproved ? (
+
+                                    <div className="w-full rounded-2xl border border-green-100 bg-green-50 px-4 py-3.5 text-center font-semibold text-green-600">
+                                      ✓ 오늘 인증 완료
+                                    </div>
+
+                                  ) : (
+
+                                    <Link
+                                      href={`/verify/${promise.id}`}
+                                      prefetch={false}
+                                      className="block w-full rounded-2xl bg-pink-500 px-4 py-3.5 text-center font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99]"
+                                    >
+                                      📸 오늘 인증하기
+                                    </Link>
+
+                                  )}
+
+                                  {/* 삭제 요청 없음 */}
+
+                                  {!deleteRequest && (
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        deleteProcessing ===
+                                        promise.id
+                                      }
+                                      onClick={() =>
+                                        requestDelete(
+                                          promise.id,
+                                          promise.title
+                                        )
+                                      }
+                                      className="mt-3 w-full rounded-2xl px-4 py-3 text-sm font-semibold text-gray-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
+                                    >
+                                      약속 삭제 협의하기
+                                    </button>
+                                  )}
+
+                                  {/* 내가 삭제 요청 */}
+
+                                  {deleteRequest &&
+                                    deleteRequest.requested_by ===
+                                      currentUserId && (
+
+                                      <div className="mt-4 rounded-2xl bg-yellow-50 p-4">
+
+                                        <p className="font-semibold text-yellow-700">
+                                          🕒 삭제 협의 중
+                                        </p>
+
+                                        <p className="mt-1 text-sm leading-6 text-yellow-600">
+                                          상대방의 답변을 기다리고 있어요.
+                                        </p>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            cancelDelete(
+                                              deleteRequest.id
+                                            )
+                                          }
+                                          className="mt-3 text-sm font-semibold text-gray-500"
+                                        >
+                                          삭제 요청 취소
+                                        </button>
+
+                                      </div>
+                                    )}
+
+                                  {/* 상대가 삭제 요청 */}
+
+                                  {deleteRequest &&
+                                    deleteRequest.requested_by !==
+                                      currentUserId && (
+
+                                      <div className="mt-4 rounded-2xl border border-pink-100 bg-[#fff8fb] p-4">
+
+                                        <p className="font-semibold">
+                                          💌 삭제 협의 요청
+                                        </p>
+
+                                        <p className="mt-2 text-sm leading-6 text-gray-500">
+                                          상대방이 이 약속의 삭제를 요청했어요.
+                                          <br />
+                                          둘의 기록인 만큼 함께 결정해주세요.
+                                        </p>
+
+                                        <div className="mt-4 grid grid-cols-2 gap-3">
+
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              rejectDelete(
+                                                deleteRequest.id
+                                              )
+                                            }
+                                            className="rounded-xl border border-pink-100 bg-white px-3 py-3 text-sm font-semibold text-gray-600"
+                                          >
+                                            계속 지키기
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            disabled={
+                                              deleteProcessing ===
+                                              promise.id
+                                            }
+                                            onClick={() =>
+                                              approveDelete(
+                                                deleteRequest.id,
+                                                promise.id
+                                              )
+                                            }
+                                            className="rounded-xl bg-pink-500 px-3 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                                          >
+                                            삭제 동의
+                                          </button>
+
+                                        </div>
+
+                                      </div>
+                                    )}
+
+                                </div>
+
+                              </article>
+                            );
+                          }
+                        )}
+
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </section>
+
+              {/* 오늘 완료 */}
+
+              <section className="overflow-hidden rounded-[26px] border border-pink-100 bg-white shadow-sm">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowCompletedPromises(
+                      (prev) => !prev
+                    )
+                  }
+                  className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-pink-50/40"
+                >
                   <div className="flex items-center gap-3">
 
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-50 text-xl">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-green-50 text-lg">
                       ✅
                     </div>
 
                     <div>
 
-                      <div className="flex items-center gap-2">
+                      <p className="font-bold">
+                        오늘 완료
+                      </p>
 
-                        <p className="font-bold">
-                          완료된 인증
-                        </p>
-
-                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-pink-500">
-                          {completedItems.length}
-                        </span>
-
-                      </div>
-
-                      <p className="mt-1 text-xs text-gray-400">
-                        승인·반려가 끝난 인증을 모아봤어요.
+                      <p className="mt-0.5 text-[11px] text-gray-400">
+                        오늘 끝낸 약속 {completedPromises.length}개
                       </p>
 
                     </div>
@@ -1286,117 +1891,108 @@ export default function VerificationsPage() {
                   </div>
 
                   <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-gray-400 shadow-sm transition ${
-                      showCompleted
+                    className={`text-gray-300 transition ${
+                      showCompletedPromises
                         ? "rotate-180"
                         : ""
                     }`}
                   >
                     ⌄
                   </span>
-
                 </button>
-                {showCompleted && (
-                  <div className="mt-3 space-y-2 rounded-[24px] bg-pink-50/35 p-2">
 
-                    {completedItems.map(
-                      (item) => (
+                {showCompletedPromises && (
+                  <div className="border-t border-pink-50 bg-[#fffdfd] p-3">
 
-                        <article
-                          key={item.id}
-                          className="overflow-hidden rounded-[22px] border border-pink-100 bg-white shadow-sm"
-                        >
+                    {completedPromises.length === 0 ? (
 
-                          <div className="flex gap-3 p-3.5">
+                      <div className="rounded-[22px] bg-white px-4 py-7 text-center">
 
-                            {item.photo_url ? (
+                        <p className="text-sm text-gray-400">
+                          아직 오늘 완료한 약속이 없어요.
+                        </p>
 
-                              <img
-                                src={
-                                  item.photo_url
-                                }
-                                alt="인증 사진"
-                                className="h-14 w-14 shrink-0 rounded-2xl object-cover"
-                              />
+                      </div>
 
-                            ) : (
+                    ) : (
 
-                              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#fff8fb] text-lg">
-                                📷
-                              </div>
+                      <div className="space-y-2">
 
-                            )}
+                        {completedPromises.map(
+                          (promise) => {
 
-                            <div className="min-w-0 flex-1">
+                            const assignee =
+                              members.find(
+                                (member) =>
+                                  member.user_id ===
+                                  promise.assigned_to
+                              );
 
-                              <div className="flex items-start justify-between gap-2">
+                            const assigneeName =
+                              assignee
+                                ?.profiles
+                                ?.nickname ??
+                              "이름 없음";
 
-                                <div className="min-w-0">
+                            return (
+                              <Link
+                                key={promise.id}
+                                href="/promises"
+                                prefetch={false}
+                                className="group flex items-center justify-between gap-3 rounded-[20px] border border-pink-50 bg-white px-4 py-3.5 transition hover:bg-pink-50/50"
+                              >
+                                <div className="flex min-w-0 items-center gap-3">
 
-                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-green-50 text-sm">
+                                    ✓
+                                  </div>
 
-                                    <p className="min-w-0 truncate font-bold">
-                                      {item.promise_title}
+                                  <div className="min-w-0">
+
+                                    <p className="truncate text-sm font-bold text-gray-700">
+                                      {promise.title}
                                     </p>
 
-                                    {item.is_joint && (
+                                    <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] text-gray-400">
 
-                                      <span className="shrink-0 rounded-full bg-pink-50 px-2 py-0.5 text-[9px] font-semibold text-pink-500">
-                                        💕 서로
+                                      <span className="truncate">
+                                        {promise.is_joint
+                                          ? "💕 서로의 약속"
+                                          : `${assigneeName}님의 약속`}
                                       </span>
 
-                                    )}
+                                      <span>
+                                        ·
+                                      </span>
+
+                                      <span className="shrink-0 font-semibold text-green-500">
+                                        오늘 완료
+                                      </span>
+
+                                      <span>
+                                        ·
+                                      </span>
+
+                                      <span className="shrink-0 text-pink-500">
+                                        🔥 {promise.current_streak}일
+                                      </span>
+
+                                    </div>
 
                                   </div>
 
-                                  <p className="mt-1 text-xs text-gray-400">
-                                    {item.nickname} · {item.verification_date}
-                                  </p>
-
                                 </div>
 
-                                {item.status ===
-                                "approved" ? (
+                                <span className="shrink-0 text-lg text-pink-200 transition group-hover:translate-x-0.5">
+                                  ›
+                                </span>
 
-                                  <span className="shrink-0 rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-semibold text-green-600">
-                                    ✓ 승인
-                                  </span>
+                              </Link>
+                            );
+                          }
+                        )}
 
-                                ) : (
-
-                                  <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-red-500">
-                                    반려
-                                  </span>
-
-                                )}
-
-                              </div>
-
-                              {item.message && (
-
-                                <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">
-                                  “{item.message}”
-                                </p>
-
-                              )}
-
-                              {item.status ===
-                                "rejected" &&
-                                item.rejection_reason && (
-
-                                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-red-500">
-                                    반려 이유: {item.rejection_reason}
-                                  </p>
-
-                                )}
-
-                            </div>
-
-                          </div>
-
-                        </article>
-
-                      )
+                      </div>
                     )}
 
                   </div>
@@ -1404,205 +2000,189 @@ export default function VerificationsPage() {
 
               </section>
 
-            )}
+            </div>
+          )}
 
-          </>
-        )}
+        </section>
 
         {/* =================================
-            홈
-        ================================= */}
+            통계
+        ================================== */}
 
-        <Link
-          href="/couple"
-          prefetch={false}
-          className="mt-6 block w-full rounded-2xl border border-pink-100 bg-white/70 px-4 py-3 text-center text-xs font-semibold text-gray-400 transition hover:bg-pink-50 hover:text-pink-500"
-        >
-          홈으로 돌아가기
-        </Link>
+        <section className="mt-6">
+
+          <div className="mb-3 flex items-end justify-between">
+
+            <div>
+
+              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+                OUR STATS
+              </p>
+
+              <h2 className="mt-1 text-lg font-bold">
+                우리 기록 요약
+              </h2>
+
+            </div>
+
+            <span className="text-[11px] text-gray-400">
+              오늘 기준
+            </span>
+
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+
+            <div className="rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm">
+
+              <div className="flex items-center justify-between">
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-50 text-lg">
+                  🔥
+                </div>
+
+                <span className="text-[10px] font-semibold text-pink-400">
+                  QUEST
+                </span>
+
+              </div>
+
+              <p className="mt-4 text-xs text-gray-400">
+                진행 중인 약속
+              </p>
+
+              <p className="mt-1 text-3xl font-bold tracking-tight">
+                {promises.length}
+
+                <span className="ml-1 text-sm font-semibold text-gray-400">
+                  개
+                </span>
+              </p>
+
+            </div>
+
+            <div className="rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm">
+
+              <div className="flex items-center justify-between">
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-lg">
+                  🎁
+                </div>
+
+                <span className="text-[10px] font-semibold text-pink-400">
+                  REWARD
+                </span>
+
+              </div>
+
+              <p className="mt-4 text-xs text-gray-400">
+                해금한 보상
+              </p>
+
+              <p className="mt-1 text-3xl font-bold tracking-tight">
+                {unlockedRewardCount}
+
+                <span className="ml-1 text-sm font-semibold text-gray-400">
+                  개
+                </span>
+              </p>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* 공통 하단 메뉴 */}
+
+        <BottomNav />
 
       </div>
 
-      {/* =====================================
-          공통 하단 메뉴
-      ===================================== */}
-
-      <BottomNav />
-
-      {/* =====================================
+      {/* =================================
           보상 해금 팝업
-      ===================================== */}
+      ================================== */}
 
-      {rewardPopup && (
+      {rewardNotification && (
 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
 
           <div className="relative w-full max-w-sm overflow-hidden rounded-[34px] border border-pink-100 bg-white p-6 text-center shadow-2xl">
 
-            <div className="text-6xl">
-              🎁
-            </div>
+            <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-pink-100/60 blur-3xl" />
 
-            <p className="mt-4 text-xs font-bold tracking-[0.25em] text-pink-400">
-              REWARD UNLOCKED
-            </p>
+            <div className="pointer-events-none absolute -bottom-10 -left-8 h-28 w-28 rounded-full bg-amber-100/40 blur-3xl" />
 
-            <h2 className="mt-3 text-2xl font-bold">
-              🔥{" "}
-              {rewardPopup.required_days}
-              일 달성!
-            </h2>
+            <div className="relative">
 
-            <p className="mt-2 text-sm text-gray-400">
-              {rewardPromiseTitle}
-            </p>
-
-            {/* 보상 */}
-
-            <div className="mt-6 rounded-[24px] border border-pink-100 bg-[#fff8fb] p-5">
-
-              <p className="text-xs text-gray-400">
-                새로 열린 보상
-              </p>
-
-              <p className="mt-2 text-xl font-bold text-pink-500">
-                {rewardPopup.title}
-              </p>
-
-            </div>
-
-            {/* XP */}
-
-            <div className="mt-5 rounded-2xl bg-pink-50 px-4 py-3">
-
-              <p className="font-semibold text-pink-500">
-                +10 XP ✨
-              </p>
-
-            </div>
-
-            <p className="mt-5 text-sm leading-6 text-gray-500">
-              함께 약속을 지켜서
-              <br />
-              새로운 보상이 열렸어요 ♡
-            </p>
-
-            <Link
-              href="/rewards"
-              prefetch={false}
-              className="mt-6 block w-full rounded-2xl bg-pink-500 px-5 py-4 font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99]"
-            >
-              🎁 보상 보러가기
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRewardPopup(
-                  null
-                );
-
-                // 보상 확인 후 홈을 새로 불러오기
-                window.location.href =
-                  "/couple";
-              }}
-              className="mt-3 w-full rounded-2xl px-5 py-3 text-sm font-semibold text-gray-400"
-            >
-              계속하기
-            </button>
-
-          </div>
-
-        </div>
-
-      )}
-
-      {/* =====================================
-          레벨업 팝업
-      ===================================== */}
-
-      {levelUpPopup &&
-        !rewardPopup && (
-
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
-
-            <div className="relative w-full max-w-sm overflow-hidden rounded-[34px] border border-pink-100 bg-white p-6 text-center shadow-2xl">
-
-              <div className="text-6xl">
-                🎉
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[26px] bg-gradient-to-br from-pink-50 to-amber-50 text-5xl shadow-sm">
+                🎁
               </div>
 
-              <p className="mt-4 text-xs font-bold tracking-[0.25em] text-pink-400">
-                LEVEL UP!
+              <p className="mt-5 text-xs font-bold tracking-[0.22em] text-pink-400">
+                REWARD UNLOCKED
               </p>
 
               <h2 className="mt-3 text-2xl font-bold">
-                우리 레벨이 올랐어요 ♡
+                🔥{" "}
+                {rewardNotification.rewards
+                  ?.required_days ?? 0}
+                일 달성!
               </h2>
+
+              <p className="mt-2 text-sm text-gray-400">
+                {rewardNotification.promises
+                  ?.title ?? "약속"}
+              </p>
 
               <div className="mt-6 rounded-[24px] border border-pink-100 bg-[#fff8fb] p-5">
 
-                <p className="text-xs text-gray-400">
-                  새로운 우리 레벨
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-pink-400">
+                  NEW REWARD
                 </p>
 
-                <div className="mt-3 flex items-center justify-center gap-4">
-
-                  <span className="text-xl font-bold text-gray-400">
-                    LV.{levelUpPopup.fromLevel}
-                  </span>
-
-                  <span className="text-xl text-pink-400">
-                    →
-                  </span>
-
-                  <span className="text-3xl font-bold text-pink-500">
-                    LV.{levelUpPopup.toLevel}
-                  </span>
-
-                </div>
-
-              </div>
-
-              <div className="mt-5 rounded-2xl bg-pink-50 px-4 py-3">
-
-                <p className="text-sm text-gray-500">
-                  다음 레벨까지
-                </p>
-
-                <p className="mt-1 font-semibold text-pink-500">
-                  {levelUpPopup.nextRequiredXp} XP
+                <p className="mt-2 text-xl font-bold text-pink-500">
+                  {rewardNotification.rewards
+                    ?.title ??
+                    "새로운 보상"}
                 </p>
 
               </div>
 
               <p className="mt-5 text-sm leading-6 text-gray-500">
-                둘이 함께 쌓은 XP로
+                함께 약속을 지켜서
                 <br />
-                한 단계 더 성장했어요 ♡
+                새로운 보상이 열렸어요 ♡
               </p>
+
+              <Link
+                href="/rewards"
+                prefetch={false}
+                onClick={() => {
+                  void closeRewardNotification();
+                }}
+                className="mt-6 block w-full rounded-2xl bg-pink-500 px-5 py-4 font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99]"
+              >
+                🎁 보상 보러가기
+              </Link>
 
               <button
                 type="button"
                 onClick={() => {
-                  setLevelUpPopup(
-                    null
-                  );
-
-                  // 레벨업 확인 후 홈을 새로 불러오기
-                  window.location.href =
-                    "/couple";
+                  void closeRewardNotification();
                 }}
-                className="mt-6 w-full rounded-2xl bg-pink-500 px-5 py-4 font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99]"
+                className="mt-3 w-full rounded-2xl px-5 py-3 text-sm font-semibold text-gray-400 transition hover:bg-gray-50"
               >
-                확인했어요 ♡
+                확인했어요
               </button>
 
             </div>
 
           </div>
 
-        )}
+        </div>
+
+      )}
 
     </main>
   );
