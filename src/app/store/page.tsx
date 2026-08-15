@@ -35,6 +35,7 @@ type InventoryItem = {
   purchased_at: string;
 };
 
+
 type EquipmentItem = {
   id: string;
   couple_id: string;
@@ -43,6 +44,7 @@ type EquipmentItem = {
   item_id: string;
   equipped_at: string;
 };
+
 
 type CoupleInfo = {
   level: number;
@@ -63,22 +65,12 @@ type PurchaseResult = {
   remaining_coins?: number;
 };
 
-type EquipResult = {
-  success?: boolean;
-  equipment_id?: string;
-  item_id?: string;
-  item_name?: string;
-  slot?: string;
-};
 
 type CategoryFilter =
   | "all"
   | "hat"
   | "clothes"
-  | "accessory"
-  | "background"
-  | "furniture"
-  | "couple";
+  | "accessory";
 
 export default function StorePage() {
   const router = useRouter();
@@ -132,12 +124,6 @@ export default function StorePage() {
     null
   );
 
-  const [
-    equippingItemId,
-    setEquippingItemId,
-  ] = useState<string | null>(
-    null
-  );
 
   const [notice, setNotice] =
     useState("");
@@ -265,8 +251,7 @@ export default function StorePage() {
     );
 
   // =========================================
-  // 내 착용 아이템 새로고침
-  // RPC 사용
+  // 현재 사용 중인 아이템 새로고침
   // =========================================
 
   const refreshEquipment =
@@ -285,12 +270,8 @@ export default function StorePage() {
 
         if (error) {
           console.error(
-            "내 착용 아이템 RPC 조회 오류:",
+            "사용 중 아이템 조회 오류:",
             error
-          );
-
-          setNotice(
-            `착용 정보 조회 오류: ${error.message}`
           );
 
           return [];
@@ -690,148 +671,7 @@ export default function StorePage() {
     setProcessingItemId(
       null
     );
-
-    setNotice(
-      `${item.name} 구매 완료! 이제 내 캐릭터에 착용할 수 있어요 ♡`
-    );
-  }
-
-  // =========================================
-  // 착용
-  // =========================================
-
-  async function handleEquip(
-    item: StoreItem
-  ) {
-    if (
-      !user ||
-      !coupleId
-    ) {
-      return;
-    }
-
-    const latestInventory =
-      await refreshInventory();
-
-    const owned =
-      latestInventory.some(
-        (row) =>
-          row.item_id ===
-          item.id
-      );
-
-    if (!owned) {
-      setNotice(
-        "먼저 아이템을 구매해주세요."
-      );
-
-      return;
-    }
-
-    const alreadyEquipped =
-      equipment.some(
-        (row) =>
-          row.item_id ===
-          item.id
-      );
-
-    if (alreadyEquipped) {
-      setNotice(
-        "이미 착용 중이에요."
-      );
-
-      return;
-    }
-
-    const sameSlot =
-      equipment.find(
-        (row) =>
-          row.slot ===
-          item.category
-      );
-
-    if (sameSlot) {
-      const oldItem =
-        items.find(
-          (storeItem) =>
-            storeItem.id ===
-            sameSlot.item_id
-        );
-
-      const confirmed =
-        window.confirm(
-          oldItem
-            ? `"${oldItem.name}" 대신 "${item.name}"을 착용할까요?`
-            : `"${item.name}"을 착용할까요?`
-        );
-
-      if (!confirmed) {
-        return;
-      }
-    }
-
-    setEquippingItemId(
-      item.id
-    );
-
-    setNotice("");
-
-    const {
-      data,
-      error,
-    } = await supabase.rpc(
-      "equip_character_item",
-      {
-        p_item_id:
-          item.id,
-      }
-    );
-
-    if (error) {
-      console.error(
-        "착용 오류:",
-        error
-      );
-
-      setEquippingItemId(
-        null
-      );
-
-      setNotice(
-        error.message
-      );
-
-      await refreshEquipment();
-
-      return;
-    }
-
-    const result =
-      data as
-        | EquipResult
-        | null;
-
-    if (!result?.success) {
-      setEquippingItemId(
-        null
-      );
-
-      setNotice(
-        "착용 결과를 확인하지 못했어요."
-      );
-
-      return;
-    }
-
-    await refreshEquipment();
-
-    setEquippingItemId(
-      null
-    );
-
-    setNotice(
-      `${item.name} 착용 완료! 내 캐릭터에 적용됐어요 ♡`
-    );
+    setNotice(`${item.name} 구매 완료! 옷장에서 내 캐릭터를 꾸며보세요 ♡`);
   }
 
   // =========================================
@@ -863,21 +703,7 @@ export default function StorePage() {
       label: "액세서리",
       emoji: "🎀",
     },
-    {
-      value: "background",
-      label: "배경",
-      emoji: "🌷",
-    },
-    {
-      value: "furniture",
-      label: "가구",
-      emoji: "🛋️",
-    },
-    {
-      value: "couple",
-      label: "커플",
-      emoji: "💕",
-    },
+    
   ];
 
   const visibleItems =
@@ -938,26 +764,6 @@ export default function StorePage() {
       return "🎀";
     }
 
-    if (
-      item.category ===
-      "background"
-    ) {
-      return "🌸";
-    }
-
-    if (
-      item.category ===
-      "furniture"
-    ) {
-      return "🛋️";
-    }
-
-    if (
-      item.category ===
-      "couple"
-    ) {
-      return "💕";
-    }
 
     return "🎁";
   }
@@ -1003,9 +809,6 @@ export default function StorePage() {
 
     return "bg-pink-50 text-pink-500";
   }
-
-  const equippedCount =
-    equipment.length;
 
   if (
     authLoading ||
@@ -1088,18 +891,18 @@ export default function StorePage() {
             </div>
 
             <div className="flex gap-2">
-
-              <div className="rounded-2xl bg-white/90 px-3 py-3 text-center shadow-sm">
-
+              <Link
+                href="/inventory"
+                prefetch={false}
+                className="rounded-2xl bg-white/90 px-3 py-3 text-center shadow-sm transition active:scale-[0.98]"
+              >
                 <p className="text-[10px] text-gray-400">
-                  착용 중
+                  MY
                 </p>
-
-                <p className="mt-1 text-lg font-bold text-pink-500">
-                  {equippedCount}
+                <p className="mt-1 text-sm font-bold text-pink-500">
+                  INVENTORY
                 </p>
-
-              </div>
+              </Link>
 
               <div className="rounded-2xl bg-white/90 px-3 py-3 text-center shadow-sm">
 
@@ -1249,17 +1052,12 @@ export default function StorePage() {
                   processingItemId ===
                   item.id;
 
-                const equipping =
-                  equippingItemId ===
-                  item.id;
-
                 return (
                   <article
                     key={
                       item.id
                     }
-                    className={`relative overflow-hidden rounded-[26px] border bg-white p-4 shadow-sm ${
-                      equipped
+                    className={`relative overflow-hidden rounded-[26px] border bg-white p-4 shadow-sm ${equipped
                         ? "border-pink-300 ring-2 ring-pink-100"
                         : owned
                         ? "border-green-100"
@@ -1271,25 +1069,40 @@ export default function StorePage() {
 
                     <div className="relative">
 
-                      <div className="flex aspect-square w-full items-center justify-center rounded-[22px] bg-[#fff8fb] text-6xl">
-                        {getItemEmoji(
-                          item
+                      <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-[22px] bg-[#fff8fb] p-3">
+                        {item.image_path ? (
+                          // public/store/... 경로의 실제 PNG를 우선 표시해요.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.image_path}
+                            alt={item.name}
+                            className={`h-full w-full ${
+                              item.category === "background"
+                                ? "object-cover"
+                                : "object-contain"
+                            }`}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="text-6xl">
+                            {getItemEmoji(
+                              item
+                            )}
+                          </span>
                         )}
                       </div>
 
-                      {equipped && (
-                        <div className="absolute right-2 top-2 rounded-full bg-pink-500 px-2.5 py-1 text-[10px] font-bold text-white">
-                          착용 중
-                        </div>
-                      )}
 
-                      {owned &&
-                        !equipped &&
-                        !locked && (
+                      {equipped ? (
+                        <div className="absolute right-2 top-2 rounded-full bg-pink-500 px-2.5 py-1 text-[10px] font-bold text-white">
+                          사용 중
+                        </div>
+                      ) : owned &&
+                        !locked ? (
                         <div className="absolute right-2 top-2 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white">
                           구매 완료
                         </div>
-                      )}
+                      ) : null}
 
                       {locked && (
                         <div className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-white/70">
@@ -1346,31 +1159,16 @@ export default function StorePage() {
 
                     </div>
 
-                    {equipped ? (
-
-                      <div className="mt-3 rounded-2xl border border-pink-200 bg-pink-50 px-3 py-3 text-center text-sm font-semibold text-pink-500">
-                        ✓ 착용 중
-                      </div>
-
-                    ) : owned ? (
-
-                      <button
-                        type="button"
-                        disabled={
-                          equipping
-                        }
-                        onClick={() =>
-                          handleEquip(
-                            item
-                          )
-                        }
-                        className="mt-3 w-full rounded-2xl border border-pink-200 bg-white px-3 py-3 text-sm font-semibold text-pink-500"
+                    {owned ? (
+                      <Link
+                        href="/inventory"
+                        prefetch={false}
+                        className="mt-3 block w-full rounded-2xl border border-pink-200 bg-white px-3 py-3 text-center text-sm font-semibold text-pink-500"
                       >
-                        {equipping
-                          ? "착용 중..."
-                          : "착용하기"}
-                      </button>
-
+                        {equipped
+                          ? "핏 다시 맞추기 ♡"
+                          : "내 캐릭터 꾸미기 ♡"}
+                      </Link>
                     ) : locked ? (
 
                       <div className="mt-3 rounded-2xl bg-gray-50 px-3 py-3 text-center text-sm font-semibold text-gray-400">

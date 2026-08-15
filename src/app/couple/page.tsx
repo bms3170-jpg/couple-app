@@ -94,8 +94,10 @@ type RecentReward = {
 };
 
 type CharacterType =
+  | "dog"
   | "cat"
-  | "dog";
+  | "penguin"
+  | "red_panda";
 
 type CoupleCharacter = {
   character_type: CharacterType | null;
@@ -115,6 +117,7 @@ type GrowthStage = {
   scale: number;
   unlock_message: string | null;
 };
+
 
 type EquipmentRow = {
   id: string;
@@ -138,6 +141,18 @@ type UserEquippedItem = {
   slot: string;
   item: EquippedStoreItem;
 };
+
+type ItemPosition = {
+  user_id: string;
+  item_id: string;
+  animal: CharacterType;
+  stage: "baby" | "child" | "teen" | "adult";
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+};
+
 
 export default function CouplePage() {
   const supabase = useMemo(
@@ -254,12 +269,16 @@ export default function CouplePage() {
       null
     );
 
+
   const [
     equippedItems,
     setEquippedItems,
-  ] = useState<
-    UserEquippedItem[]
-  >([]);
+  ] = useState<UserEquippedItem[]>([]);
+
+  const [
+    itemPositions,
+    setItemPositions,
+  ] = useState<ItemPosition[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -677,8 +696,10 @@ export default function CouplePage() {
           }
         );
 
+
+
       // =====================================
-      // 착용 아이템
+      // 착용 아이템 + 아이템 PNG + 저장 위치
       // =====================================
 
       const {
@@ -701,7 +722,9 @@ export default function CouplePage() {
           coupleId
         );
 
-      if (cancelled) {
+      if (
+        cancelled
+      ) {
         return;
       }
 
@@ -712,6 +735,9 @@ export default function CouplePage() {
           "착용 아이템 조회 오류:",
           equipmentError
         );
+
+        setEquippedItems([]);
+        setItemPositions([]);
       } else {
         const equipment =
           (
@@ -729,15 +755,15 @@ export default function CouplePage() {
             )
           );
 
+        let storeItems:
+          EquippedStoreItem[] = [];
+
         if (
-          itemIds.length >
-          0
+          itemIds.length > 0
         ) {
           const {
-            data:
-              storeItemRows,
-            error:
-              storeItemError,
+            data: storeItemRows,
+            error: storeItemError,
           } = await supabase
             .from(
               "store_items"
@@ -762,59 +788,122 @@ export default function CouplePage() {
               storeItemError
             );
           } else {
-            const storeItems =
+            storeItems =
               (
                 storeItemRows ??
                 []
               ) as EquippedStoreItem[];
+          }
 
-            const merged:
-              UserEquippedItem[] =
-              equipment
-                .map(
-                  (row) => {
-                    const item =
-                      storeItems.find(
-                        (
-                          storeItem
-                        ) =>
-                          storeItem.id ===
-                          row.item_id
-                      );
+          const {
+            data: positionRows,
+            error: positionError,
+          } = await supabase
+            .from(
+              "character_item_positions"
+            )
+            .select(`
+              user_id,
+              item_id,
+              animal,
+              stage,
+              x,
+              y,
+              scale,
+              rotation
+            `)
+            .eq(
+              "couple_id",
+              coupleId
+            )
+            .in(
+              "item_id",
+              itemIds
+            );
 
-                    if (
-                      !item
-                    ) {
-                      return null;
-                    }
+          if (
+            positionError
+          ) {
+            console.error(
+              "아이템 위치 조회 오류:",
+              positionError
+            );
 
-                    return {
-                      user_id:
-                        row.user_id,
-
-                      slot:
-                        row.slot,
-
-                      item,
-                    };
-                  }
-                )
-                .filter(
-                  (
-                    row
-                  ): row is UserEquippedItem =>
-                    row !== null
-                );
-
-            setEquippedItems(
-              merged
+            setItemPositions([]);
+          } else {
+            setItemPositions(
+              (
+                positionRows ??
+                []
+              ).map(
+                (row: any) => ({
+                  user_id:
+                    row.user_id,
+                  item_id:
+                    row.item_id,
+                  animal:
+                    row.animal as CharacterType,
+                  stage:
+                    row.stage as
+                      | "baby"
+                      | "child"
+                      | "teen"
+                      | "adult",
+                  x:
+                    Number(row.x),
+                  y:
+                    Number(row.y),
+                  scale:
+                    Number(row.scale),
+                  rotation:
+                    Number(row.rotation),
+                })
+              )
             );
           }
         } else {
-          setEquippedItems(
-            []
-          );
+          setItemPositions([]);
         }
+
+        const merged:
+          UserEquippedItem[] =
+          equipment
+            .map(
+              (row) => {
+                const item =
+                  storeItems.find(
+                    (
+                      storeItem
+                    ) =>
+                      storeItem.id ===
+                      row.item_id
+                  );
+
+                if (
+                  !item
+                ) {
+                  return null;
+                }
+
+                return {
+                  user_id:
+                    row.user_id,
+                  slot:
+                    row.slot,
+                  item,
+                };
+              }
+            )
+            .filter(
+              (
+                row
+              ): row is UserEquippedItem =>
+                row !== null
+            );
+
+        setEquippedItems(
+          merged
+        );
       }
 
       // =====================================
@@ -1430,115 +1519,6 @@ export default function CouplePage() {
     );
   }
 
-  // =========================================
-  // 아이템 이모지
-  // =========================================
-
-  function getItemEmoji(
-    item:
-      | EquippedStoreItem
-      | undefined
-  ) {
-    if (
-      !item
-    ) {
-      return null;
-    }
-
-    const emojiMap:
-      Record<
-        string,
-        string
-      > = {
-      basic_hat:
-        "🧢",
-
-      straw_hat:
-        "👒",
-
-      beret:
-        "🎨",
-
-      ribbon_hat:
-        "🎀",
-
-      knight_helmet:
-        "🪖",
-
-      royal_crown:
-        "👑",
-
-      magic_hat:
-        "🎩",
-
-      party_hat:
-        "🥳",
-
-      couple_crown:
-        "👑",
-
-      hoodie:
-        "🧥",
-
-      pink_clothes:
-        "👚",
-
-      blue_clothes:
-        "👕",
-
-      couple_hoodie:
-        "🧥",
-
-      heart_necklace:
-        "💗",
-
-      necklace:
-        "📿",
-
-      ribbon_accessory:
-        "🎀",
-    };
-
-    if (
-      emojiMap[
-        item.item_key
-      ]
-    ) {
-      return emojiMap[
-        item.item_key
-      ];
-    }
-
-    if (
-      item.category ===
-      "hat"
-    ) {
-      return "🎩";
-    }
-
-    if (
-      item.category ===
-      "clothes"
-    ) {
-      return "👕";
-    }
-
-    if (
-      item.category ===
-      "accessory"
-    ) {
-      return "🎀";
-    }
-
-    if (
-      item.category ===
-      "couple"
-    ) {
-      return "💕";
-    }
-
-    return "✨";
-  }
 
   // =========================================
   // 로딩
@@ -1610,42 +1590,32 @@ export default function CouplePage() {
   const coins =
     wallet.coins;
 
+  // 캐릭터 성장 단계는 2레벨마다 변경
   const growthName =
-    growthStage
-      ?.stage_name ??
-    "아기";
+    level <= 2
+      ? "아기"
+      : level <= 4
+      ? "꼬마"
+      : level <= 6
+      ? "청년"
+      : "성년";
 
   // =========================================
   // 현재 로그인한 사람의 캐릭터 선택 상태
   // =========================================
-
-  const currentMember =
-    members.find(
-      (member) =>
-        member.user_id ===
-        currentUserId
-    ) ??
-    null;
-
-  const hasSelectedMyColor =
-    !!currentMember
-      ?.character_color;
-
   const needsCharacterSetup =
-    !character
-      ?.character_type ||
-    !hasSelectedMyColor;
+    !character?.character_type;
 
   // =========================================
   // 캐릭터 자동 성장
   // =========================================
 
   const characterImageLevel =
-    level <= 1
+    level <= 2
       ? 1
-      : level === 2
+      : level <= 4
       ? 2
-      : level === 3
+      : level <= 6
       ? 3
       : 4;
 
@@ -1656,14 +1626,28 @@ export default function CouplePage() {
   ) {
     if (
       !member ||
-      !character?.character_type ||
-      !member.character_color
+      !character?.character_type
     ) {
       return null;
     }
 
-    return `/characters/${character.character_type}/${member.character_color}/lv${characterImageLevel}.png`;
+    const stage =
+      characterImageLevel === 1
+        ? "baby"
+        : characterImageLevel === 2
+        ? "child"
+        : characterImageLevel === 3
+        ? "teen"
+        : "adult";
+
+    const animalFolder =
+      character.character_type === "red_panda"
+        ? "red-panda"
+        : character.character_type;
+
+    return `/characters/${animalFolder}/${stage}.png`;
   }
+
 
   const characterDisplayWidth =
     characterImageLevel ===
@@ -1677,9 +1661,7 @@ export default function CouplePage() {
       ? 128
       : 140;
 
-  // =========================================
-  // 착용 아이템 찾기
-  // =========================================
+
 
   function getUserItem(
     userId: string,
@@ -1692,6 +1674,64 @@ export default function CouplePage() {
         row.slot ===
           slot
     )?.item;
+  }
+
+  function getItemPosition(
+    userId: string,
+    itemId: string
+  ) {
+    if (
+      !character?.character_type
+    ) {
+      return null;
+    }
+
+    const stage =
+      characterImageLevel === 1
+        ? "baby"
+        : characterImageLevel === 2
+        ? "child"
+        : characterImageLevel === 3
+        ? "teen"
+        : "adult";
+
+    return (
+      itemPositions.find(
+        (row) =>
+          row.user_id ===
+            userId &&
+          row.item_id ===
+            itemId &&
+          row.animal ===
+            character.character_type &&
+          row.stage ===
+            stage
+      ) ??
+      null
+    );
+  }
+
+  function getItemImageSrc(
+    item:
+      | EquippedStoreItem
+      | undefined
+  ) {
+    const path =
+      item?.image_path?.trim();
+
+    if (!path) {
+      return null;
+    }
+
+    if (
+      path.startsWith("/") ||
+      path.startsWith("http://") ||
+      path.startsWith("https://")
+    ) {
+      return path;
+    }
+
+    return `/${path}`;
   }
 
   // =========================================
@@ -1817,6 +1857,14 @@ export default function CouplePage() {
           ? "나"
           : "파트너"
       );
+    const isMe =
+      member.user_id ===
+      currentUserId;
+
+    const characterImagePath =
+      getCharacterImagePath(
+        member
+      );
 
     const hat =
       getUserItem(
@@ -1836,124 +1884,131 @@ export default function CouplePage() {
         "accessory"
       );
 
-    const coupleItem =
-      getUserItem(
-        member.user_id,
-        "couple"
-      );
-
-    const hatEmoji =
-      getItemEmoji(
-        hat
-      );
-
-    const clothesEmoji =
-      getItemEmoji(
-        clothes
-      );
-
-    const accessoryEmoji =
-      getItemEmoji(
-        accessory
-      );
-
-    const coupleEmoji =
-      getItemEmoji(
-        coupleItem
-      );
-
-    const isMe =
-      member.user_id ===
-      currentUserId;
-
-    const characterImagePath =
-      getCharacterImagePath(
-        member
-      );
-
     return (
       <div className="relative flex w-[46%] min-w-0 flex-col items-center">
 
         <div className="relative flex h-[145px] w-full items-end justify-center">
 
           {characterImagePath ? (
-            <>
-
+            <div
+              className="relative z-10 shrink-0"
+              style={{
+                width: `${characterDisplayWidth}px`,
+              }}
+            >
               <img
-                src={
-                  characterImagePath
-                }
+                src={characterImagePath}
                 alt={
-                  character?.character_type ===
-                  "cat"
+                  character?.character_type === "dog"
+                    ? "강아지 캐릭터"
+                    : character?.character_type === "cat"
                     ? "고양이 캐릭터"
-                    : "강아지 캐릭터"
+                    : character?.character_type === "penguin"
+                    ? "펭귄 캐릭터"
+                    : "레서판다 캐릭터"
                 }
-                className="relative z-10 h-auto object-contain drop-shadow-sm"
+                className="block h-auto w-full object-contain drop-shadow-sm"
                 style={{
-                  width:
-                    `${characterDisplayWidth}px`,
-
-                  maxHeight:
-                    "135px",
+                  maxHeight: "135px",
                 }}
               />
 
-              {hatEmoji && (
-                <div
-                  className="pointer-events-none absolute left-1/2 top-1 z-30 -translate-x-1/2 drop-shadow-sm"
-                  style={{
-                    fontSize:
-                      characterImageLevel ===
-                      1
-                        ? "24px"
-                        : characterImageLevel ===
-                          2
-                        ? "28px"
-                        : characterImageLevel ===
-                          3
-                        ? "31px"
-                        : "34px",
-                  }}
-                >
-                  {hatEmoji}
-                </div>
-              )}
+              {[
+                {
+                  slot: "hat",
+                  item: hat,
+                  zIndex: 40,
+                },
+                {
+                  slot: "clothes",
+                  item: clothes,
+                  zIndex: 30,
+                },
+                {
+                  slot: "accessory",
+                  item: accessory,
+                  zIndex: 50,
+                },
+              ].map(
+                ({
+                  slot,
+                  item,
+                  zIndex,
+                }) => {
+                  if (!item) {
+                    return null;
+                  }
 
-              {clothesEmoji && (
-                <div
-                  className="pointer-events-none absolute bottom-0 left-1/2 z-30 -translate-x-1/2 drop-shadow-sm"
-                  style={{
-                    fontSize:
-                      characterImageLevel ===
-                      1
-                        ? "22px"
-                        : characterImageLevel ===
-                          2
-                        ? "25px"
-                        : characterImageLevel ===
-                          3
-                        ? "28px"
-                        : "31px",
-                  }}
-                >
-                  {clothesEmoji}
-                </div>
-              )}
+                  const imageSrc =
+                    getItemImageSrc(
+                      item
+                    );
 
-              {accessoryEmoji && (
-                <div className="pointer-events-none absolute bottom-7 right-1 z-40 text-[22px]">
-                  {accessoryEmoji}
-                </div>
-              )}
+                  if (
+                    !imageSrc
+                  ) {
+                    return null;
+                  }
 
-              {coupleEmoji && (
-                <div className="pointer-events-none absolute right-1 top-6 z-40 text-[20px]">
-                  {coupleEmoji}
-                </div>
-              )}
+                  const savedPosition =
+                    getItemPosition(
+                      member.user_id,
+                      item.id
+                    );
 
-            </>
+                  const fallback =
+                    slot === "hat"
+                      ? {
+                          x: 50,
+                          y: 5,
+                          scale: 78,
+                          rotation: 0,
+                        }
+                      : slot === "clothes"
+                      ? {
+                          x: 50,
+                          y: 58,
+                          scale: 78,
+                          rotation: 0,
+                        }
+                      : {
+                          x: 50,
+                          y: 48,
+                          scale: 42,
+                          rotation: 0,
+                        };
+
+                  const fit =
+                    savedPosition ??
+                    fallback;
+
+                  return (
+                    <img
+                      key={`${member.user_id}-${slot}`}
+                      src={imageSrc}
+                      alt=""
+                      aria-hidden="true"
+                      className="pointer-events-none absolute object-contain"
+                      style={{
+                        left:
+                          `${fit.x}%`,
+                        top:
+                          `${fit.y}%`,
+                        width:
+                          `${fit.scale}%`,
+                        transform: `
+                          translate(-50%, -50%)
+                          rotate(${fit.rotation}deg)
+                        `,
+                        transformOrigin:
+                          "center center",
+                        zIndex,
+                      }}
+                    />
+                  );
+                }
+              )}
+            </div>
           ) : (
 
             <div
@@ -2104,10 +2159,7 @@ export default function CouplePage() {
                 className="relative z-20 mt-3 block rounded-2xl bg-pink-500 px-4 py-3 text-center text-xs font-bold text-white"
               >
 
-                {!character
-                  ?.character_type
-                  ? "우리 캐릭터 선택하기"
-                  : "내 캐릭터 색상 선택하기"}
+                "우리 캐릭터 선택하기"
 
               </Link>
 
