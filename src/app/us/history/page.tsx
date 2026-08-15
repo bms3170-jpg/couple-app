@@ -778,8 +778,8 @@ export default function UsHistoryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
-      <div className="mx-auto max-w-md pb-28">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fff8fb_0%,#fffafd_38%,#fff7fb_100%)] px-4 py-7 text-[#2b2b2b] sm:px-5 sm:py-8">
+      <div className="mx-auto w-full max-w-md pb-28">
         <header className="relative overflow-hidden rounded-[34px] border border-pink-100/80 bg-gradient-to-br from-[#fffdfd] via-[#fff8fb] to-[#fff0f7] px-5 pb-5 pt-5 shadow-[0_12px_34px_rgba(236,72,153,0.07)]">
           <div className="pointer-events-none absolute -right-10 -top-8 h-44 w-52 rounded-full bg-pink-100/55 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-12 -left-10 h-36 w-36 rounded-full bg-orange-50/80 blur-3xl" />
@@ -1003,7 +1003,7 @@ export default function UsHistoryPage() {
             <span className="text-[11px] text-gray-400">우리 기록 요약</span>
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-[28px] border border-pink-100 bg-white p-3 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
+          <div className="mt-3 overflow-hidden rounded-[28px] border border-pink-100/80 bg-white/90 p-3 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
             <div className="grid grid-cols-2 gap-2">
               {[
                 {
@@ -1011,28 +1011,28 @@ export default function UsHistoryPage() {
                   label: "함께 만든 약속",
                   value: `${totalPromiseCount}개`,
                   sub: `진행 ${activePromiseCount} · 종료 ${endedPromiseCount}`,
-                  tone: "bg-emerald-50/70",
+                  tone: "bg-gradient-to-br from-emerald-50 via-[#f2fff8] to-white",
                 },
                 {
                   emoji: "📸",
                   label: "성공한 인증",
                   value: `${approvedCount}개`,
                   sub: pendingCount > 0 ? `대기 ${pendingCount}개` : "모두 확인 완료",
-                  tone: "bg-violet-50/70",
+                  tone: "bg-gradient-to-br from-violet-50 via-[#f7f3ff] to-white",
                 },
                 {
                   emoji: "🎁",
                   label: "해금한 보상",
                   value: `${unlockedRewardCount}개`,
                   sub: `남은 보상 ${remainingRewardCount}개`,
-                  tone: "bg-amber-50/70",
+                  tone: "bg-gradient-to-br from-amber-50 via-[#fff9e9] to-white",
                 },
                 {
                   emoji: "💝",
                   label: "사용한 보상",
                   value: `${usedRewardCount}개`,
                   sub: "함께 사용한 기록",
-                  tone: "bg-pink-50/70",
+                  tone: "bg-gradient-to-br from-pink-50 via-[#fff1f7] to-white",
                 },
               ].map((item) => (
                 <div key={item.label} className={`min-h-[132px] rounded-[20px] p-4 ${item.tone}`}>
@@ -1065,16 +1065,16 @@ export default function UsHistoryPage() {
                 key={badge.id}
                 className={`min-h-[150px] rounded-[24px] border p-4 shadow-[0_6px_18px_rgba(236,72,153,0.045)] ${
                   badge.unlocked
-                    ? "border-pink-100 bg-white"
-                    : "border-gray-100 bg-white/80 opacity-70"
+                    ? "border-emerald-100 bg-gradient-to-r from-white to-emerald-50/35"
+                    : "border-purple-100/60 bg-gradient-to-br from-white via-purple-50/35 to-pink-50/25 opacity-80"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[26px]">{badge.emoji}</span>
-                  <span className={`rounded-full px-2 py-1 text-[9px] font-black ${
+                  <span className={`rounded-full border px-2 py-1 text-[9px] font-black ${
                     badge.unlocked
-                      ? "bg-pink-50 text-pink-500"
-                      : "bg-gray-100 text-gray-400"
+                      ? "border-emerald-100 bg-emerald-50 text-emerald-600"
+                      : "border-purple-100 bg-purple-50/70 text-purple-400"
                   }`}>
                     {badge.unlocked ? "UNLOCKED" : "LOCKED"}
                   </span>
@@ -1092,8 +1092,8 @@ export default function UsHistoryPage() {
           <h2 className="text-lg font-black">우리의 최고 기록 🔥</h2>
 
           {bestPromise ? (
-            <div className="relative mt-3 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white via-white to-[#fff3f8] p-5 shadow-[0_9px_26px_rgba(236,72,153,0.06)]">
-              <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-pink-100/45 blur-2xl" />
+            <div className="relative mt-3 overflow-hidden rounded-[30px] border border-purple-100/80 bg-gradient-to-br from-[#fff9fd] via-[#f7f1ff] to-[#eee5ff] p-5 shadow-[0_10px_28px_rgba(139,92,246,0.08)]">
+              <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-purple-200/40 blur-2xl" />
 
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -1118,15 +1118,15 @@ export default function UsHistoryPage() {
               </div>
 
               <div className="mt-5 grid grid-cols-3 gap-2">
-                <div className="rounded-[18px] bg-[#fff8fb] p-3 text-center">
+                <div className="rounded-[18px] border border-white/80 bg-white/65 p-3 text-center backdrop-blur">
                   <p className="text-[10px] text-gray-400">현재 연속</p>
                   <p className="mt-1 font-black">{bestPromise.current_streak}일</p>
                 </div>
-                <div className="rounded-[18px] bg-[#fff8fb] p-3 text-center">
+                <div className="rounded-[18px] border border-white/80 bg-white/65 p-3 text-center backdrop-blur">
                   <p className="text-[10px] text-gray-400">최고 연속</p>
                   <p className="mt-1 font-black">{bestPromise.best_streak}일</p>
                 </div>
-                <div className="rounded-[18px] bg-[#fff8fb] p-3 text-center">
+                <div className="rounded-[18px] border border-white/80 bg-white/65 p-3 text-center backdrop-blur">
                   <p className="text-[10px] text-gray-400">누적 성공</p>
                   <p className="mt-1 font-black">{bestPromise.total_success}일</p>
                 </div>
@@ -1153,10 +1153,10 @@ export default function UsHistoryPage() {
           <button
             type="button"
             onClick={() => setShowPromiseRecords((prev) => !prev)}
-            className="mt-3 flex w-full items-center justify-between rounded-[22px] border border-pink-100 bg-white px-4 py-3 text-left shadow-sm"
+            className="mt-3 flex w-full items-center justify-between overflow-hidden rounded-[22px] border border-emerald-100 bg-gradient-to-r from-white via-[#f6fff9] to-emerald-50/70 px-4 py-3 text-left shadow-[0_7px_20px_rgba(16,185,129,0.05)]"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-50">✅</div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">✅</div>
               <div>
                 <p className="text-sm font-black">약속 목록</p>
                 <p className="mt-0.5 text-[11px] text-gray-400">{promises.length}개의 기록</p>
@@ -1180,7 +1180,7 @@ export default function UsHistoryPage() {
                       key={promise.id}
                       className={`rounded-[22px] border p-4 shadow-sm ${
                         promise.is_active
-                          ? "border-pink-100 bg-white"
+                          ? "border-emerald-100 bg-gradient-to-r from-white to-emerald-50/35"
                           : "border-gray-100 bg-white/70"
                       }`}
                     >
@@ -1201,7 +1201,7 @@ export default function UsHistoryPage() {
                         <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
                           promise.is_active
                             ? "bg-emerald-50 text-emerald-600"
-                            : "bg-gray-100 text-gray-400"
+                            : "border-purple-100 bg-purple-50/70 text-purple-400"
                         }`}>
                           {promise.is_active ? "진행 중" : "종료"}
                         </span>
@@ -1314,8 +1314,8 @@ export default function UsHistoryPage() {
                 onClick={() => setPeriodFilter(item.key)}
                 className={`shrink-0 rounded-full px-3.5 py-2.5 text-[11px] font-black transition active:scale-95 ${
                   periodFilter === item.key
-                    ? "bg-pink-500 text-white"
-                    : "border border-pink-100 bg-white text-gray-500"
+                    ? "bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white shadow-sm"
+                    : "border border-pink-100 bg-white/90 text-gray-500"
                 }`}
               >
                 {item.label}
@@ -1323,7 +1323,7 @@ export default function UsHistoryPage() {
             ))}
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-[22px] border border-pink-100 bg-white p-1.5 shadow-[0_6px_18px_rgba(236,72,153,0.05)]">
+          <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-[22px] border border-pink-100 bg-gradient-to-r from-white via-[#fff8fb] to-purple-50/40 p-1.5 shadow-[0_6px_18px_rgba(236,72,153,0.05)]">
             {[
               { key: "all" as const, label: "전체", count: filteredByPeriodVerifications.length },
               { key: "mine" as const, label: "내 인증", count: mineVerificationCount },
@@ -1356,7 +1356,7 @@ export default function UsHistoryPage() {
               return (
                 <div
                   key={verification.id}
-                  className="overflow-hidden rounded-[24px] border border-pink-100 bg-white shadow-[0_7px_20px_rgba(236,72,153,0.045)]"
+                  className="overflow-hidden rounded-[24px] border border-pink-100/80 bg-gradient-to-r from-white via-white to-pink-50/35 shadow-[0_7px_20px_rgba(236,72,153,0.045)]"
                 >
                   <button
                     type="button"
@@ -1364,7 +1364,7 @@ export default function UsHistoryPage() {
                     className="w-full p-4 text-left"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#fff8fb]">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-pink-50 bg-gradient-to-br from-pink-50 to-purple-50">
                         {verification.photo_url ? (
                           <img
                             src={verification.photo_url}
@@ -1436,7 +1436,7 @@ export default function UsHistoryPage() {
             </Link>
           </div>
 
-          <div className="relative mt-3 overflow-hidden rounded-[28px] border border-pink-100 bg-white p-5 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
+          <div className="relative mt-3 overflow-hidden rounded-[28px] border border-pink-100 bg-gradient-to-r from-white via-[#fffafd] to-pink-50/60 p-5 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
             <img
               src={HISTORY_IMAGES.reward}
               alt=""
@@ -1444,15 +1444,15 @@ export default function UsHistoryPage() {
               className="pointer-events-none absolute -right-3 -bottom-5 h-24 w-32 object-contain opacity-[0.08]"
             />
             <div className="relative z-10 grid grid-cols-3 gap-2">
-              <div className="rounded-[18px] bg-[#fff8fb] p-3 text-center">
+              <div className="rounded-[18px] border border-white/80 bg-white/65 p-3 text-center backdrop-blur">
                 <p className="text-[10px] text-gray-400">열린 보상</p>
                 <p className="mt-2 text-xl font-black text-pink-500">{unlockedRewardCount}개</p>
               </div>
-              <div className="rounded-[18px] bg-[#fff8fb] p-3 text-center">
+              <div className="rounded-[18px] border border-white/80 bg-white/65 p-3 text-center backdrop-blur">
                 <p className="text-[10px] text-gray-400">함께 사용</p>
                 <p className="mt-2 text-xl font-black">{usedRewardCount}개</p>
               </div>
-              <div className="rounded-[18px] bg-[#fff8fb] p-3 text-center">
+              <div className="rounded-[18px] border border-white/80 bg-white/65 p-3 text-center backdrop-blur">
                 <p className="text-[10px] text-gray-400">남은 보상</p>
                 <p className="mt-2 text-xl font-black text-amber-500">{remainingRewardCount}개</p>
               </div>
@@ -1461,9 +1461,9 @@ export default function UsHistoryPage() {
         </section>
 
         {firstSuccess && (
-          <section className="mt-5 overflow-hidden rounded-[28px] border border-pink-100 bg-gradient-to-r from-white via-white to-[#fff0f6] p-4.5 shadow-[0_8px_24px_rgba(236,72,153,0.055)]">
+          <section className="mt-5 overflow-hidden rounded-[28px] border border-emerald-100 bg-gradient-to-r from-[#fbfff9] via-[#f6fff4] to-[#fff8fb] p-4 shadow-[0_8px_24px_rgba(16,185,129,0.05)]">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">🌱</div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-white text-xl shadow-sm">🌱</div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black tracking-[0.16em] text-pink-400">FIRST MEMORY</p>
                 <p className="mt-1 text-sm font-black">우리의 첫 성공 기록</p>
@@ -1482,7 +1482,7 @@ export default function UsHistoryPage() {
         <Link
           href="/us"
           prefetch={false}
-          className="mt-6 block w-full rounded-2xl border border-pink-100 bg-white/80 px-4 py-3.5 text-center text-xs font-black text-gray-400"
+          className="mt-6 block w-full rounded-2xl border border-pink-100 bg-gradient-to-r from-white via-[#fffafd] to-pink-50/60 px-4 py-3.5 text-center text-xs font-black text-gray-400 shadow-sm"
         >
           우리 페이지로 돌아가기
         </Link>
@@ -1740,7 +1740,7 @@ export default function UsHistoryPage() {
                 onClick={() => setFeaturedVerificationRecord(selectedVerification.id)}
                 className={`mt-4 w-full rounded-2xl px-5 py-4 text-sm font-black ${
                   selectedVerification.id === featuredRecordId
-                    ? "bg-pink-500 text-white"
+                    ? "bg-gradient-to-r from-pink-500 to-fuchsia-500 text-white shadow-sm"
                     : "border border-pink-100 bg-white text-pink-500"
                 }`}
               >
