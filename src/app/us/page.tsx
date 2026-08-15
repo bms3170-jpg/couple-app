@@ -54,6 +54,16 @@ type AnniversaryInfo = {
   daysLeft: number;
 };
 
+const US_IMAGES = {
+  coupleHeart: "/images/us-couple-heart.PNG",
+  nextDay: "/images/us-next-day.PNG",
+  record: "/images/us-record.PNG",
+  level: "/images/us-level.PNG",
+  nextReward: "/images/us-next-reward.PNG",
+  recentMoment: "/images/us-recent-moment.PNG",
+  story: "/images/us-story.PNG",
+} as const;
+
 function startOfDay(date: Date) {
   const copy = new Date(date);
   copy.setHours(0, 0, 0, 0);
@@ -884,6 +894,13 @@ export default function UsPage() {
           <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-pink-100/60 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-rose-100/50 blur-3xl" />
 
+          <img
+            src={US_IMAGES.coupleHeart}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute -bottom-2 -right-8 h-36 w-44 object-contain opacity-[0.16]"
+          />
+
           <div className="relative z-10">
             <div className="flex items-center justify-between">
               <p className="text-xs font-black tracking-[0.2em] text-pink-400">
@@ -989,8 +1006,13 @@ export default function UsPage() {
         <section className="mt-4 grid grid-cols-[1.05fr_0.95fr] gap-3">
           <div className="rounded-[28px] border border-amber-100 bg-gradient-to-br from-white to-[#fff9eb] p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-xl">
-                🎂
+              <div className="flex h-12 w-14 items-center justify-center rounded-2xl bg-amber-50/80">
+                <img
+                  src={US_IMAGES.nextDay}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-11 w-12 object-contain"
+                />
               </div>
 
               <span className="text-[10px] font-black tracking-[0.12em] text-amber-500">
@@ -1034,8 +1056,13 @@ export default function UsPage() {
 
           <div className="rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-50 text-xl">
-                ✨
+              <div className="flex h-12 w-14 items-center justify-center rounded-2xl bg-pink-50/80">
+                <img
+                  src={US_IMAGES.record}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-11 w-12 object-contain"
+                />
               </div>
 
               <span className="text-[10px] font-black tracking-[0.12em] text-pink-400">
@@ -1091,8 +1118,15 @@ export default function UsPage() {
             LEVEL
         ================================== */}
 
-        <section className="mt-4 overflow-hidden rounded-[30px] border border-purple-100 bg-gradient-to-br from-white via-white to-purple-50/55 p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
+        <section className="relative mt-4 overflow-hidden rounded-[30px] border border-purple-100 bg-gradient-to-br from-white via-white to-purple-50/55 p-5 shadow-sm">
+          <img
+            src={US_IMAGES.level}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-5 top-16 h-28 w-36 object-contain opacity-[0.13]"
+          />
+
+          <div className="relative z-10 flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-xs font-black tracking-[0.18em] text-purple-400">
                 OUR LEVEL
@@ -1127,7 +1161,7 @@ export default function UsPage() {
             </div>
           </div>
 
-          <div className="mt-5 rounded-[22px] border border-purple-100 bg-white/75 p-4">
+          <div className="relative z-10 mt-5 rounded-[22px] border border-purple-100 bg-white/75 p-4">
             <div className="flex items-center justify-between text-xs">
               <span className="font-black text-gray-500">
                 다음 레벨까지
@@ -1170,8 +1204,13 @@ export default function UsPage() {
 
           <div className="mt-3 rounded-[22px] border border-amber-100 bg-gradient-to-r from-[#fffaf0] to-white p-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-xl">
-                🎁
+              <div className="flex h-14 w-16 shrink-0 items-center justify-center rounded-2xl bg-amber-50/80">
+                <img
+                  src={US_IMAGES.nextReward}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-12 w-14 object-contain"
+                />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -1241,8 +1280,13 @@ export default function UsPage() {
           >
             {recentMoment ? (
               <div className="flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
-                  💗
+                <div className="flex h-14 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm">
+                  <img
+                    src={US_IMAGES.recentMoment}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-full w-full object-cover"
+                  />
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -1272,9 +1316,12 @@ export default function UsPage() {
               </div>
             ) : (
               <div className="text-center">
-                <div className="text-3xl">
-                  🌱
-                </div>
+                <img
+                  src={US_IMAGES.recentMoment}
+                  alt=""
+                  aria-hidden="true"
+                  className="mx-auto h-28 w-40 object-contain"
+                />
 
                 <p className="mt-3 font-black">
                   아직 기록된 순간이 없어요
@@ -1309,6 +1356,15 @@ export default function UsPage() {
             <span className="text-xs text-gray-400">
               둘만의 공간 ♡
             </span>
+          </div>
+
+          <div className="mb-3 overflow-hidden rounded-[28px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/60 p-3 shadow-sm">
+            <img
+              src={US_IMAGES.story}
+              alt=""
+              aria-hidden="true"
+              className="h-32 w-full object-contain"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
