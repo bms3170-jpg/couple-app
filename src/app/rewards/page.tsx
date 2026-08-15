@@ -49,6 +49,16 @@ type LevelRewardMemory = {
   created_at: string;
 };
 
+const REWARD_IMAGES = {
+  mainChest: "/images/rewards-main-chest.PNG",
+  unlocked: "/images/rewards-unlocked.PNG",
+  used: "/images/rewards-used.PNG",
+  locked: "/images/rewards-locked.PNG",
+  unlockCelebration: "/images/rewards-unlock-celebration.PNG",
+  level: "/images/rewards-level.PNG",
+  levelEmpty: "/images/rewards-level-empty.PNG",
+} as const;
+
 function formatUsedDate(
   value: string | null
 ) {
@@ -1398,7 +1408,7 @@ export default function RewardsPage() {
 
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-pink-100 bg-white shadow-sm">
             <img
-              src="/images/rewards-main-chest.PNG"
+              src={REWARD_IMAGES.mainChest}
               alt=""
               aria-hidden="true"
               className="h-10 w-10 object-contain"
@@ -1430,7 +1440,7 @@ export default function RewardsPage() {
             </div>
 
             <img
-              src="/images/rewards-main-chest.PNG"
+              src={REWARD_IMAGES.mainChest}
               alt=""
               aria-hidden="true"
               className="pointer-events-none absolute -right-2 bottom-0 h-[145px] w-[160px] object-contain drop-shadow-sm"
@@ -1441,7 +1451,7 @@ export default function RewardsPage() {
             <div className="rounded-[22px] border border-white/80 bg-white/85 p-3 shadow-sm">
               <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-pink-50">
                 <img
-                  src="/images/rewards-unlocked.PNG"
+                  src={REWARD_IMAGES.unlocked}
                   alt=""
                   aria-hidden="true"
                   className="h-8 w-8 object-contain"
@@ -1463,7 +1473,7 @@ export default function RewardsPage() {
             <div className="rounded-[22px] border border-white/80 bg-white/85 p-3 shadow-sm">
               <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-green-50">
                 <img
-                  src="/images/rewards-used.PNG"
+                  src={REWARD_IMAGES.used}
                   alt=""
                   aria-hidden="true"
                   className="h-8 w-8 object-contain"
@@ -1748,20 +1758,23 @@ export default function RewardsPage() {
                                     <div className="mx-auto mt-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">
                                       {used ? (
                                         <img
-                                          src="/images/rewards-used.PNG"
+                                          src={REWARD_IMAGES.used}
                                           alt=""
                                           className="h-10 w-10 object-contain"
                                         />
                                       ) : unlocked ? (
                                         <img
-                                          src="/images/rewards-unlocked.PNG"
+                                          src={REWARD_IMAGES.unlocked}
                                           alt=""
                                           className="h-10 w-10 object-contain"
                                         />
                                       ) : (
-                                        <span className="text-xl">
-                                          🔒
-                                        </span>
+                                        <img
+                                          src={REWARD_IMAGES.locked}
+                                          alt=""
+                                          aria-hidden="true"
+                                          className="h-10 w-10 object-contain"
+                                        />
                                       )}
                                     </div>
 
@@ -1830,8 +1843,15 @@ export default function RewardsPage() {
                               </>
                             ) : (
                               <div className="text-center">
-                                <p className="font-black text-pink-500">
-                                  🎉 모든 보상을 해금했어요!
+                                <img
+                                  src={REWARD_IMAGES.unlockCelebration}
+                                  alt=""
+                                  aria-hidden="true"
+                                  className="mx-auto h-24 w-28 object-contain"
+                                />
+
+                                <p className="mt-2 font-black text-pink-500">
+                                  모든 보상을 해금했어요!
                                 </p>
 
                                 <p className="mt-1 text-xs text-gray-400">
@@ -1972,8 +1992,13 @@ export default function RewardsPage() {
             className="flex w-full items-center justify-between rounded-[26px] border border-purple-100 bg-gradient-to-r from-white to-purple-50/60 px-4 py-4 text-left shadow-sm"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-xl">
-                👑
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50/70">
+                <img
+                  src={REWARD_IMAGES.level}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-10 w-10 object-contain"
+                />
               </div>
 
               <div>
@@ -2011,9 +2036,12 @@ export default function RewardsPage() {
               {levelRewards.length ===
               0 ? (
                 <div className="rounded-[30px] border border-dashed border-purple-200 bg-gradient-to-br from-white to-purple-50/50 p-8 text-center">
-                  <div className="text-5xl">
-                    💝
-                  </div>
+                  <img
+                    src={REWARD_IMAGES.levelEmpty}
+                    alt=""
+                    aria-hidden="true"
+                    className="mx-auto h-32 w-40 object-contain"
+                  />
 
                   <p className="mt-4 font-black">
                     아직 레벨 보상이 없어요
@@ -2202,8 +2230,15 @@ export default function RewardsPage() {
                             !reward.is_used && (
                               <>
                                 <div className="mt-4 rounded-[20px] bg-amber-50 px-4 py-4 text-center">
-                                  <p className="font-black text-amber-600">
-                                    🎉 레벨 보상 해금 완료!
+                                  <img
+                                    src={REWARD_IMAGES.level}
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="mx-auto h-20 w-24 object-contain"
+                                  />
+
+                                  <p className="mt-2 font-black text-amber-600">
+                                    레벨 보상 해금 완료!
                                   </p>
                                 </div>
 
