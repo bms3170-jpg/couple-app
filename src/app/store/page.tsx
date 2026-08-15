@@ -12,21 +12,25 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 
-type StoreItem = {
-  id: string;
-  item_key: string;
-  name: string;
-  description: string | null;
-  category: string;
-  price: number;
-  required_level: number;
-  rarity: string;
-  image_path: string | null;
-  is_active: boolean;
-  sort_order: number;
-};
+type Animal =
+  | "dog"
+  | "cat"
+  | "penguin"
+  | "red_panda";
 
-type InventoryItem = {
+type AnimalPath =
+  | "dog"
+  | "cat"
+  | "penguin"
+  | "red-panda";
+
+type Stage =
+  | "baby"
+  | "child"
+  | "teen"
+  | "adult";
+
+type InventoryRow = {
   id: string;
   couple_id: string;
   user_id: string;
@@ -35,8 +39,7 @@ type InventoryItem = {
   purchased_at: string;
 };
 
-
-type EquipmentItem = {
+type EquipmentRow = {
   id: string;
   couple_id: string;
   user_id: string;
@@ -45,26 +48,23 @@ type EquipmentItem = {
   equipped_at: string;
 };
 
-
-type CoupleInfo = {
-  level: number;
+type StoreItem = {
+  id: string;
+  item_key: string;
+  name: string;
+  description: string | null;
+  category: string;
+  image_path: string | null;
+  required_level: number;
+  rarity: string;
 };
 
-type CoinWallet = {
-  coins: number;
-  total_earned: number;
-  total_spent: number;
+type Fit = {
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
 };
-
-type PurchaseResult = {
-  success?: boolean;
-  inventory_id?: string;
-  item_id?: string;
-  item_name?: string;
-  price?: number;
-  remaining_coins?: number;
-};
-
 
 type CategoryFilter =
   | "all"
@@ -72,7 +72,140 @@ type CategoryFilter =
   | "clothes"
   | "accessory";
 
-export default function StorePage() {
+const DEFAULT_FITS: Record<
+  "hat" | "clothes" | "accessory",
+  Fit
+> = {
+  hat: {
+    x: 50,
+    y: 5,
+    scale: 78,
+    rotation: 0,
+  },
+
+  clothes: {
+    x: 50,
+    y: 58,
+    scale: 78,
+    rotation: 0,
+  },
+
+  accessory: {
+    x: 50,
+    y: 48,
+    scale: 42,
+    rotation: 0,
+  },
+};
+
+const CATEGORIES: {
+  value: CategoryFilter;
+  label: string;
+  emoji: string;
+}[] = [
+  {
+    value: "all",
+    label: "전체",
+    emoji: "✨",
+  },
+  {
+    value: "hat",
+    label: "모자",
+    emoji: "🎩",
+  },
+  {
+    value: "clothes",
+    label: "옷",
+    emoji: "👕",
+  },
+  {
+    value: "accessory",
+    label: "액세서리",
+    emoji: "🎀",
+  },
+];
+
+function getStage(
+  level: number
+): Stage {
+  if (level <= 2) {
+    return "baby";
+  }
+
+  if (level <= 4) {
+    return "child";
+  }
+
+  if (level <= 6) {
+    return "teen";
+  }
+
+  return "adult";
+}
+
+function getAnimalPath(
+  animal: Animal
+): AnimalPath {
+  return animal === "red_panda"
+    ? "red-panda"
+    : animal;
+}
+
+function getStageLabel(
+  stage: Stage
+) {
+  if (stage === "baby") {
+    return "아기";
+  }
+
+  if (stage === "child") {
+    return "꼬마";
+  }
+
+  if (stage === "teen") {
+    return "청년";
+  }
+
+  return "성년";
+}
+
+function getAnimalLabel(
+  animal: Animal
+) {
+  if (animal === "dog") {
+    return "강아지";
+  }
+
+  if (animal === "cat") {
+    return "고양이";
+  }
+
+  if (animal === "penguin") {
+    return "펭귄";
+  }
+
+  return "레서판다";
+}
+
+function normalizeImagePath(
+  path: string | null
+) {
+  if (!path) {
+    return null;
+  }
+
+  if (
+    path.startsWith("/") ||
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  ) {
+    return path;
+  }
+
+  return `/${path}`;
+}
+
+export default function InventoryPage() {
   const router = useRouter();
 
   const supabase = useMemo(
@@ -85,30 +218,47 @@ export default function StorePage() {
     loading: authLoading,
   } = useAuth();
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [items, setItems] =
-    useState<StoreItem[]>([]);
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
 
-  const [inventory, setInventory] =
-    useState<InventoryItem[]>([]);
+  const [
+    coupleId,
+    setCoupleId,
+  ] = useState("");
 
-  const [equipment, setEquipment] =
-    useState<EquipmentItem[]>([]);
+  const [
+    level,
+    setLevel,
+  ] = useState(1);
 
-  const [coupleId, setCoupleId] =
-    useState("");
+  const [
+    animal,
+    setAnimal,
+  ] = useState<Animal | null>(
+    null
+  );
 
-  const [level, setLevel] =
-    useState(1);
+  const [
+    inventory,
+    setInventory,
+  ] = useState<InventoryRow[]>([]);
 
-  const [wallet, setWallet] =
-    useState<CoinWallet>({
-      coins: 0,
-      total_earned: 0,
-      total_spent: 0,
-    });
+  const [
+    items,
+    setItems,
+  ] = useState<StoreItem[]>([]);
+
+  const [
+    equipment,
+    setEquipment,
+  ] = useState<EquipmentRow[]>([]);
 
   const [
     selectedCategory,
@@ -118,141 +268,66 @@ export default function StorePage() {
   );
 
   const [
-    processingItemId,
-    setProcessingItemId,
+    selectedItemId,
+    setSelectedItemId,
   ] = useState<string | null>(
     null
   );
 
+  const [
+    editMode,
+    setEditMode,
+  ] = useState(false);
 
-  const [notice, setNotice] =
-    useState("");
+  const [
+    fit,
+    setFit,
+  ] = useState<Fit>({
+    x: 50,
+    y: 5,
+    scale: 78,
+    rotation: 0,
+  });
 
-  // =========================================
-  // 내 코인 새로고침
-  // =========================================
+  const [
+    notice,
+    setNotice,
+  ] = useState("");
 
-  const refreshWallet =
-    useCallback(
-      async (
-        currentCoupleId: string
-      ) => {
-        if (
-          !user ||
-          !currentCoupleId
-        ) {
-          return null;
-        }
+  const stage =
+    getStage(level);
 
-        const {
-          data,
-          error,
-        } = await supabase
-          .from(
-            "user_coin_wallets"
-          )
-          .select(`
-            coins,
-            total_earned,
-            total_spent
-          `)
-          .eq(
-            "couple_id",
-            currentCoupleId
-          )
-          .eq(
-            "user_id",
-            user.id
-          )
-          .maybeSingle();
+  const animalPath =
+    animal
+      ? getAnimalPath(animal)
+      : null;
 
-        if (error) {
-          console.error(
-            "내 코인 조회 오류:",
-            error
-          );
+  const characterImagePath =
+    animalPath
+      ? `/characters/${animalPath}/${stage}.png`
+      : null;
 
-          return null;
-        }
+  const selectedItem =
+    items.find(
+      (item) =>
+        item.id ===
+        selectedItemId
+    ) ?? null;
 
-        const nextWallet:
-          CoinWallet =
-          data
-            ? (data as CoinWallet)
-            : {
-                coins: 0,
-                total_earned: 0,
-                total_spent: 0,
-              };
-
-        setWallet(
-          nextWallet
-        );
-
-        return nextWallet;
-      },
-      [
-        supabase,
-        user,
-      ]
+  const selectedImagePath =
+    normalizeImagePath(
+      selectedItem?.image_path ??
+        null
     );
 
-  // =========================================
-  // 내 인벤토리 새로고침
-  // RPC 사용
-  // =========================================
-
-  const refreshInventory =
-    useCallback(
-      async () => {
-        if (!user) {
-          return [];
-        }
-
-        const {
-          data,
-          error,
-        } = await supabase.rpc(
-          "get_my_store_inventory"
+  const visibleItems =
+    selectedCategory === "all"
+      ? items
+      : items.filter(
+          (item) =>
+            item.category ===
+            selectedCategory
         );
-
-        if (error) {
-          console.error(
-            "내 인벤토리 RPC 조회 오류:",
-            error
-          );
-
-          setNotice(
-            `인벤토리 조회 오류: ${error.message}`
-          );
-
-          return [];
-        }
-
-        const rows =
-          (data ??
-            []) as InventoryItem[];
-
-        console.log(
-          "내 인벤토리:",
-          rows
-        );
-
-        setInventory(
-          rows
-        );
-
-        return rows;
-      },
-      [
-        supabase,
-        user,
-      ]
-    );
-
-  // =========================================
-  // 현재 사용 중인 아이템 새로고침
-  // =========================================
 
   const refreshEquipment =
     useCallback(
@@ -270,7 +345,7 @@ export default function StorePage() {
 
         if (error) {
           console.error(
-            "사용 중 아이템 조회 오류:",
+            "착용 정보 조회 오류:",
             error
           );
 
@@ -279,7 +354,7 @@ export default function StorePage() {
 
         const rows =
           (data ??
-            []) as EquipmentItem[];
+            []) as EquipmentRow[];
 
         setEquipment(
           rows
@@ -293,11 +368,7 @@ export default function StorePage() {
       ]
     );
 
-  // =========================================
-  // 상점 불러오기
-  // =========================================
-
-  const loadStore =
+  const loadInventory =
     useCallback(
       async () => {
         if (authLoading) {
@@ -315,14 +386,9 @@ export default function StorePage() {
         setLoading(true);
         setNotice("");
 
-        // =====================================
-        // 내가 속한 커플
-        // =====================================
-
         const {
           data: membership,
-          error:
-            membershipError,
+          error: membershipError,
         } = await supabase
           .from(
             "couple_members"
@@ -340,11 +406,6 @@ export default function StorePage() {
           membershipError ||
           !membership
         ) {
-          console.error(
-            "커플 조회 오류:",
-            membershipError
-          );
-
           setNotice(
             "커플 정보를 찾을 수 없어요."
           );
@@ -360,109 +421,167 @@ export default function StorePage() {
           currentCoupleId
         );
 
-        // =====================================
-        // 레벨
-        // =====================================
+        const [
+          coupleResult,
+          characterResult,
+          inventoryResult,
+        ] = await Promise.all([
+          supabase
+            .from(
+              "couples"
+            )
+            .select(
+              "level"
+            )
+            .eq(
+              "id",
+              currentCoupleId
+            )
+            .maybeSingle(),
 
-        const {
-          data: coupleData,
-          error: coupleError,
-        } = await supabase
-          .from(
-            "couples"
-          )
-          .select(
-            "level"
-          )
-          .eq(
-            "id",
-            currentCoupleId
-          )
-          .maybeSingle();
+          supabase
+            .from(
+              "couple_characters"
+            )
+            .select(
+              "character_type"
+            )
+            .eq(
+              "couple_id",
+              currentCoupleId
+            )
+            .maybeSingle(),
 
-        if (coupleError) {
+          supabase.rpc(
+            "get_my_store_inventory"
+          ),
+        ]);
+
+        if (
+          coupleResult.error
+        ) {
           console.error(
-            "커플 레벨 조회 오류:",
-            coupleError
+            "레벨 조회 오류:",
+            coupleResult.error
           );
         }
 
-        const currentLevel =
-          (
-            coupleData as
-              | CoupleInfo
-              | null
-          )?.level ?? 1;
+        const nextLevel =
+          coupleResult.data
+            ?.level ??
+          1;
 
         setLevel(
-          currentLevel
+          nextLevel
         );
 
-        // =====================================
-        // 상점 아이템
-        // =====================================
-
-        const {
-          data: storeRows,
-          error: storeError,
-        } = await supabase
-          .from(
-            "store_items"
-          )
-          .select(`
-            id,
-            item_key,
-            name,
-            description,
-            category,
-            price,
-            required_level,
-            rarity,
-            image_path,
-            is_active,
-            sort_order
-          `)
-          .eq(
-            "is_active",
-            true
-          )
-          .order(
-            "sort_order",
-            {
-              ascending: true,
-            }
-          );
-
-        if (storeError) {
+        if (
+          characterResult.error
+        ) {
           console.error(
-            "상점 조회 오류:",
-            storeError
+            "캐릭터 조회 오류:",
+            characterResult.error
           );
+        }
 
+        const nextAnimal =
+          characterResult.data
+            ?.character_type as
+            | Animal
+            | null;
+
+        setAnimal(
+          nextAnimal
+        );
+
+        if (
+          inventoryResult.error
+        ) {
           setNotice(
-            "상점 아이템을 불러오지 못했어요."
+            `인벤토리 조회 오류: ${inventoryResult.error.message}`
           );
 
           setLoading(false);
           return;
         }
 
-        setItems(
-          (storeRows ??
-            []) as StoreItem[]
+        const inventoryRows =
+          (inventoryResult.data ??
+            []) as InventoryRow[];
+
+        setInventory(
+          inventoryRows
         );
 
-        // =====================================
-        // 동시에 개인 데이터 조회
-        // =====================================
+        const itemIds =
+          Array.from(
+            new Set(
+              inventoryRows.map(
+                (row) =>
+                  row.item_id
+              )
+            )
+          );
 
-        await Promise.all([
-          refreshWallet(
-            currentCoupleId
-          ),
-          refreshInventory(),
-          refreshEquipment(),
-        ]);
+        if (
+          itemIds.length > 0
+        ) {
+          const {
+            data: storeRows,
+            error: storeError,
+          } = await supabase
+            .from(
+              "store_items"
+            )
+            .select(`
+              id,
+              item_key,
+              name,
+              description,
+              category,
+              image_path,
+              required_level,
+              rarity
+            `)
+            .in(
+              "id",
+              itemIds
+            )
+            .in(
+              "category",
+              [
+                "hat",
+                "clothes",
+                "accessory",
+              ]
+            )
+            .order(
+              "sort_order",
+              {
+                ascending: true,
+              }
+            );
+
+          if (storeError) {
+            console.error(
+              "아이템 조회 오류:",
+              storeError
+            );
+
+            setNotice(
+              "보유 아이템 정보를 불러오지 못했어요."
+            );
+          } else {
+            setItems(
+              (storeRows ??
+                []) as StoreItem[]
+            );
+          }
+        } else {
+          setItems([]);
+        }
+
+        await refreshEquipment();
 
         setLoading(false);
       },
@@ -471,109 +590,131 @@ export default function StorePage() {
         user,
         router,
         supabase,
-        refreshWallet,
-        refreshInventory,
         refreshEquipment,
       ]
     );
 
   useEffect(() => {
-    void loadStore();
+    void loadInventory();
   }, [
-    loadStore,
+    loadInventory,
   ]);
 
-  // =========================================
-  // 구매
-  // =========================================
-
-  async function handlePurchase(
+  async function loadPosition(
     item: StoreItem
   ) {
     if (
       !user ||
-      !coupleId
+      !animal
     ) {
       return;
     }
 
-    // 구매 직전 인벤토리 재확인
-    const latestInventory =
-      await refreshInventory();
+    const slot =
+      item.category === "hat" ||
+      item.category === "clothes" ||
+      item.category === "accessory"
+        ? item.category
+        : "accessory";
 
-    const alreadyOwned =
-      latestInventory.some(
-        (row) =>
-          row.item_id ===
-          item.id
+    const defaultFit =
+      DEFAULT_FITS[slot];
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from(
+        "character_item_positions"
+      )
+      .select(`
+        x,
+        y,
+        scale,
+        rotation
+      `)
+      .eq(
+        "user_id",
+        user.id
+      )
+      .eq(
+        "item_id",
+        item.id
+      )
+      .eq(
+        "animal",
+        animal
+      )
+      .eq(
+        "stage",
+        stage
+      )
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "위치 조회 오류:",
+        error
       );
 
-    if (alreadyOwned) {
-      setNotice(
-        "이미 보유 중인 아이템이에요."
-      );
-
-      return;
-    }
-
-    if (
-      level <
-      item.required_level
-    ) {
-      setNotice(
-        `LV.${item.required_level}부터 구매할 수 있어요.`
-      );
-
-      return;
-    }
-
-    const latestWallet =
-      await refreshWallet(
-        coupleId
-      );
-
-    if (!latestWallet) {
-      setNotice(
-        "내 코인을 확인하지 못했어요."
-      );
-
-      return;
-    }
-
-    if (
-      latestWallet.coins <
-      item.price
-    ) {
-      setNotice(
-        `코인이 부족해요. ${
-          item.price -
-          latestWallet.coins
-        }코인이 더 필요해요.`
+      setFit(
+        defaultFit
       );
 
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        `"${item.name}"을 ${item.price}코인에 구매할까요?`
-      );
+    if (data) {
+      setFit({
+        x: Number(
+          data.x
+        ),
 
-    if (!confirmed) {
-      return;
+        y: Number(
+          data.y
+        ),
+
+        scale: Number(
+          data.scale
+        ),
+
+        rotation: Number(
+          data.rotation
+        ),
+      });
+    } else {
+      setFit({
+        ...defaultFit,
+      });
     }
+  }
 
-    setProcessingItemId(
+  async function selectItem(
+    item: StoreItem
+  ) {
+    setSelectedItemId(
       item.id
     );
 
+    setEditMode(
+      true
+    );
+
+    await loadPosition(
+      item
+    );
+  }
+
+  async function handleEquip(
+    item: StoreItem
+  ) {
     setNotice("");
 
     const {
       data,
       error,
     } = await supabase.rpc(
-      "purchase_store_item",
+      "equip_character_item",
       {
         p_item_id:
           item.id,
@@ -581,234 +722,205 @@ export default function StorePage() {
     );
 
     if (error) {
-      console.error(
-        "구매 오류:",
-        error
-      );
-
-      setProcessingItemId(
-        null
-      );
-
       setNotice(
         error.message
       );
 
-      await refreshInventory();
-      await refreshWallet(
-        coupleId
-      );
-
       return;
     }
 
-    const result =
-      data as
-        | PurchaseResult
-        | null;
-
-    if (!result?.success) {
-      setProcessingItemId(
-        null
-      );
-
+    if (!data) {
       setNotice(
-        "구매 결과를 확인하지 못했어요."
+        "꾸미기 결과를 확인하지 못했어요."
       );
 
       return;
     }
 
-    // =====================================
-    // 구매 직후 화면 즉시 변경
-    // =====================================
+    await refreshEquipment();
 
+    setSelectedItemId(
+      item.id
+    );
+
+    await loadPosition(
+      item
+    );
+
+    setEditMode(
+      true
+    );
+
+    setNotice(
+      `${item.name} 꾸미기 완료 ♡`
+    );
+  }
+
+  function updateFit(
+    patch: Partial<Fit>
+  ) {
+    setFit(
+      (current) => ({
+        ...current,
+        ...patch,
+      })
+    );
+  }
+
+  function moveX(
+    amount: number
+  ) {
+    updateFit({
+      x: Math.max(
+        0,
+        Math.min(
+          100,
+          fit.x + amount
+        )
+      ),
+    });
+  }
+
+  function moveY(
+    amount: number
+  ) {
+    updateFit({
+      y: Math.max(
+        -30,
+        Math.min(
+          110,
+          fit.y + amount
+        )
+      ),
+    });
+  }
+
+  function resize(
+    amount: number
+  ) {
+    updateFit({
+      scale: Math.max(
+        20,
+        Math.min(
+          140,
+          fit.scale + amount
+        )
+      ),
+    });
+  }
+
+  function rotate(
+    amount: number
+  ) {
+    updateFit({
+      rotation: Math.max(
+        -30,
+        Math.min(
+          30,
+          fit.rotation + amount
+        )
+      ),
+    });
+  }
+
+  function resetFit() {
+    if (!selectedItem) {
+      return;
+    }
+
+    const slot =
+      selectedItem.category === "hat" ||
+      selectedItem.category === "clothes" ||
+      selectedItem.category === "accessory"
+        ? selectedItem.category
+        : "accessory";
+
+    setFit({
+      ...DEFAULT_FITS[slot],
+    });
+  }
+
+  async function saveFit() {
     if (
-      result.inventory_id
+      !user ||
+      !animal ||
+      !coupleId ||
+      !selectedItem
     ) {
-      setInventory(
-        (current) => {
-          const exists =
-            current.some(
-              (row) =>
-                row.item_id ===
-                item.id
-            );
+      return;
+    }
 
-          if (exists) {
-            return current;
-          }
+    setSaving(true);
+    setNotice("");
 
-          return [
-            ...current,
-            {
-              id:
-                result.inventory_id!,
-              couple_id:
-                coupleId,
-              user_id:
-                user.id,
-              item_id:
-                item.id,
-              purchased_price:
-                item.price,
-              purchased_at:
-                new Date().toISOString(),
-            },
-          ];
+    const {
+      error,
+    } = await supabase
+      .from(
+        "character_item_positions"
+      )
+      .upsert(
+        {
+          couple_id:
+            coupleId,
+
+          user_id:
+            user.id,
+
+          item_id:
+            selectedItem.id,
+
+          animal,
+
+          stage,
+
+          x:
+            fit.x,
+
+          y:
+            fit.y,
+
+          scale:
+            fit.scale,
+
+          rotation:
+            fit.rotation,
+
+          updated_at:
+            new Date().toISOString(),
+        },
+        {
+          onConflict:
+            "user_id,item_id,animal,stage",
         }
       );
+
+    setSaving(false);
+
+    if (error) {
+      setNotice(
+        `위치 저장 오류: ${error.message}`
+      );
+
+      return;
     }
 
-    // DB 기준으로 한 번 더 확정
-    await Promise.all([
-      refreshInventory(),
-      refreshWallet(
-        coupleId
-      ),
-    ]);
-
-    setProcessingItemId(
-      null
+    setEditMode(
+      false
     );
-    setNotice(`${item.name} 구매 완료! 옷장에서 내 캐릭터를 꾸며보세요 ♡`);
+
+    setNotice(
+      "아이템 위치를 저장했어요 ♡"
+    );
   }
 
-  // =========================================
-  // 카테고리
-  // =========================================
-
-  const categories: {
-    value: CategoryFilter;
-    label: string;
-    emoji: string;
-  }[] = [
-    {
-      value: "all",
-      label: "전체",
-      emoji: "✨",
-    },
-    {
-      value: "hat",
-      label: "모자",
-      emoji: "🎩",
-    },
-    {
-      value: "clothes",
-      label: "옷",
-      emoji: "👕",
-    },
-    {
-      value: "accessory",
-      label: "액세서리",
-      emoji: "🎀",
-    },
-    
-  ];
-
-  const visibleItems =
-    selectedCategory ===
-    "all"
-      ? items
-      : items.filter(
-          (item) =>
-            item.category ===
-            selectedCategory
-        );
-
-  // =========================================
-  // 아이템 이모지
-  // =========================================
-
-  function getItemEmoji(
-    item: StoreItem
-  ) {
-    const map:
-      Record<string, string> = {
-      basic_hat: "🎩",
-      straw_hat: "👒",
-      beret: "🔴",
-      ribbon_hat: "🎀",
-      knight_helmet: "🪖",
-      royal_crown: "👑",
-      magic_hat: "🧙",
-      party_hat: "🥳",
-      couple_crown: "👑",
-      cozy_sofa: "🛋️",
-    };
-
-    if (map[item.item_key]) {
-      return map[
-        item.item_key
-      ];
-    }
-
-    if (
-      item.category ===
-      "hat"
-    ) {
-      return "🎩";
-    }
-
-    if (
-      item.category ===
-      "clothes"
-    ) {
-      return "👕";
-    }
-
-    if (
-      item.category ===
-      "accessory"
-    ) {
-      return "🎀";
-    }
-
-
-    return "🎁";
-  }
-
-  function getRarityLabel(
-    rarity: string
-  ) {
-    return rarity.toUpperCase();
-  }
-
-  function getRarityClass(
-    rarity: string
-  ) {
-    if (
-      rarity === "basic"
-    ) {
-      return "bg-gray-50 text-gray-500";
-    }
-
-    if (
-      rarity === "normal"
-    ) {
-      return "bg-green-50 text-green-600";
-    }
-
-    if (
-      rarity === "rare"
-    ) {
-      return "bg-blue-50 text-blue-500";
-    }
-
-    if (
-      rarity === "special"
-    ) {
-      return "bg-purple-50 text-purple-500";
-    }
-
-    if (
-      rarity === "premium"
-    ) {
-      return "bg-amber-50 text-amber-600";
-    }
-
-    return "bg-pink-50 text-pink-500";
-  }
+  const equippedItemIds =
+    new Set(
+      equipment.map(
+        (row) =>
+          row.item_id
+      )
+    );
 
   if (
     authLoading ||
@@ -816,9 +928,11 @@ export default function StorePage() {
   ) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
+
         <p className="text-sm text-gray-500">
-          상점 불러오는 중...
+          옷장 불러오는 중...
         </p>
+
       </main>
     );
   }
@@ -826,129 +940,395 @@ export default function StorePage() {
   return (
     <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
 
-      <div className="mx-auto max-w-md pb-16">
+      <div className="mx-auto max-w-md pb-20">
 
         <header>
 
-          <Link
-            href="/couple"
-            prefetch={false}
-            className="inline-block text-sm font-semibold text-gray-500"
-          >
-            ← 돌아가기
-          </Link>
+          {/* 홈 / 스토어 이동 */}
 
-          <div className="mt-8 flex items-end justify-between gap-4">
+          <div className="flex items-center justify-between">
+
+            <Link
+              href="/couple"
+              prefetch={false}
+              className="flex items-center gap-1 text-sm font-semibold text-gray-500 transition active:scale-95"
+            >
+              ← 홈으로
+            </Link>
+
+            <Link
+              href="/store"
+              prefetch={false}
+              className="rounded-xl bg-pink-50 px-3 py-2 text-xs font-bold text-pink-500 transition active:scale-95"
+            >
+              STORE →
+            </Link>
+
+          </div>
+
+          <div className="mt-7 flex items-end justify-between gap-4">
 
             <div>
 
               <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
-                MY STORE
+                MY CLOSET
               </p>
 
               <h1 className="mt-2 text-3xl font-bold">
-                캐릭터 상점 ♡
+                우리 옷장 ♡
               </h1>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                내가 모은 코인으로
+                구매한 아이템으로 캐릭터를 꾸미고
                 <br />
-                내 캐릭터를 꾸며봐요.
+                내 취향에 맞게 핏을 조절해요.
               </p>
 
             </div>
 
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-white text-2xl shadow-sm">
-              🛍️
+              🎒
             </div>
 
           </div>
 
         </header>
+                <section className="mt-6 overflow-hidden rounded-[30px] border border-pink-100 bg-white p-4 shadow-sm">
 
-        <section className="mt-7 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/70 p-5 shadow-sm">
-
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between">
 
             <div>
 
-              <p className="text-xs font-semibold tracking-[0.16em] text-pink-400">
-                MY COIN
+              <p className="text-[10px] font-semibold tracking-[0.14em] text-pink-400">
+                PREVIEW
               </p>
 
-              <p className="mt-2 text-3xl font-bold">
-                🪙 {wallet.coins}
-
-                <span className="ml-1 text-base font-semibold text-gray-400">
-                  개
-                </span>
-              </p>
-
-              <p className="mt-1 text-[11px] text-gray-400">
-                내가 사용할 수 있는 코인이에요.
+              <p className="mt-1 text-sm font-bold">
+                {animal
+                  ? `${getAnimalLabel(animal)} · ${getStageLabel(stage)}`
+                  : "캐릭터 미선택"}
               </p>
 
             </div>
 
-            <div className="flex gap-2">
-              <Link
-                href="/inventory"
-                prefetch={false}
-                className="rounded-2xl bg-white/90 px-3 py-3 text-center shadow-sm transition active:scale-[0.98]"
+            {selectedItem && (
+
+              <button
+                type="button"
+                onClick={() =>
+                  setEditMode(
+                    (prev) =>
+                      !prev
+                  )
+                }
+                className="rounded-xl bg-pink-50 px-3 py-2 text-xs font-bold text-pink-500"
               >
-                <p className="text-[10px] text-gray-400">
-                  MY
-                </p>
-                <p className="mt-1 text-sm font-bold text-pink-500">
-                  INVENTORY
-                </p>
-              </Link>
+                {editMode
+                  ? "조정 닫기"
+                  : "다시 조정"}
+              </button>
 
-              <div className="rounded-2xl bg-white/90 px-3 py-3 text-center shadow-sm">
+            )}
 
-                <p className="text-[10px] text-gray-400">
-                  우리 레벨
+          </div>
+
+          {/* 캐릭터 미리보기 */}
+
+          <div className="relative mt-4 flex h-[330px] items-end justify-center overflow-hidden rounded-[26px] bg-gradient-to-b from-white to-pink-50/70">
+
+            {characterImagePath ? (
+
+              <div className="relative mb-4 w-[76%] max-w-[270px]">
+
+                <img
+                  src={
+                    characterImagePath
+                  }
+                  alt="내 캐릭터"
+                  className="block h-auto w-full object-contain"
+                  style={{
+                    maxHeight:
+                      "290px",
+                  }}
+                />
+
+                {selectedImagePath && (
+
+                  <img
+                    src={
+                      selectedImagePath
+                    }
+                    alt=""
+                    aria-hidden="true"
+                    className="pointer-events-none absolute object-contain"
+                    style={{
+                      left:
+                        `${fit.x}%`,
+
+                      top:
+                        `${fit.y}%`,
+
+                      width:
+                        `${fit.scale}%`,
+
+                      transform: `
+                        translate(-50%, -50%)
+                        rotate(${fit.rotation}deg)
+                      `,
+
+                      transformOrigin:
+                        "center center",
+
+                      zIndex: 20,
+                    }}
+                  />
+
+                )}
+
+              </div>
+
+            ) : (
+
+              <div className="pb-24 text-5xl opacity-30">
+                🐾
+              </div>
+
+            )}
+
+          </div>
+
+          {/* 선택한 아이템 */}
+
+          {selectedItem ? (
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+
+              <div className="min-w-0">
+
+                <p className="truncate font-bold">
+                  {selectedItem.name}
                 </p>
 
-                <p className="mt-1 text-lg font-bold text-pink-500">
-                  LV.{level}
+                <p className="mt-1 text-[10px] text-gray-400">
+                  x {fit.x} · y {fit.y} · 크기 {fit.scale} · 회전 {fit.rotation}°
                 </p>
 
               </div>
 
-            </div>
+              {equippedItemIds.has(
+                selectedItem.id
+              ) ? (
 
-          </div>
+                <span className="shrink-0 rounded-full bg-pink-500 px-3 py-2 text-[11px] font-bold text-white">
+                  사용 중
+                </span>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
+              ) : (
 
-            <div className="rounded-2xl bg-white/70 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleEquip(
+                      selectedItem
+                    )
+                  }
+                  className="shrink-0 rounded-xl bg-pink-500 px-3 py-2 text-xs font-bold text-white"
+                >
+                  꾸미기
+                </button>
 
-              <p className="text-[10px] text-gray-400">
-                지금까지 획득
-              </p>
-
-              <p className="mt-1 text-sm font-bold text-gray-700">
-                {wallet.total_earned} 코인
-              </p>
-
-            </div>
-
-            <div className="rounded-2xl bg-white/70 px-4 py-3">
-
-              <p className="text-[10px] text-gray-400">
-                지금까지 사용
-              </p>
-
-              <p className="mt-1 text-sm font-bold text-gray-700">
-                {wallet.total_spent} 코인
-              </p>
+              )}
 
             </div>
 
-          </div>
+          ) : (
+
+            <p className="mt-3 text-center text-xs text-gray-400">
+              아래에서 꾸밀 아이템을 골라주세요.
+            </p>
+
+          )}
+
+          {/* 핏 조정 */}
+
+          {editMode &&
+            selectedItem && (
+
+            <div className="mt-5 rounded-[24px] border border-pink-100 bg-[#fffafa] p-4">
+
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+
+                {/* 위치 */}
+
+                <div className="justify-self-center">
+
+                  <div className="grid grid-cols-3 gap-2">
+
+                    <div />
+
+                    <AdjustButton
+                      label="↑"
+                      onClick={() =>
+                        moveY(-1)
+                      }
+                    />
+
+                    <div />
+
+                    <AdjustButton
+                      label="←"
+                      onClick={() =>
+                        moveX(-1)
+                      }
+                    />
+
+                    <AdjustButton
+                      label="◎"
+                      pink
+                      onClick={() =>
+                        updateFit({
+                          x: 50,
+                          rotation: 0,
+                        })
+                      }
+                    />
+
+                    <AdjustButton
+                      label="→"
+                      onClick={() =>
+                        moveX(1)
+                      }
+                    />
+
+                    <div />
+
+                    <AdjustButton
+                      label="↓"
+                      onClick={() =>
+                        moveY(1)
+                      }
+                    />
+
+                    <div />
+
+                  </div>
+
+                  <p className="mt-2 text-center text-[10px] text-gray-400">
+                    위치
+                  </p>
+
+                </div>
+
+                <div className="h-28 w-px bg-pink-100" />
+
+                {/* 기울기 / 크기 */}
+
+                <div className="space-y-4">
+
+                  <div>
+
+                    <p className="mb-2 text-center text-[10px] font-semibold text-gray-400">
+                      기울기
+                    </p>
+
+                    <div className="flex items-center justify-center gap-2">
+
+                      <AdjustButton
+                        label="↶"
+                        onClick={() =>
+                          rotate(-2)
+                        }
+                      />
+
+                      <span className="min-w-10 text-center text-xs font-bold">
+                        {fit.rotation}°
+                      </span>
+
+                      <AdjustButton
+                        label="↷"
+                        onClick={() =>
+                          rotate(2)
+                        }
+                      />
+
+                    </div>
+
+                  </div>
+
+                  <div>
+
+                    <p className="mb-2 text-center text-[10px] font-semibold text-gray-400">
+                      크기
+                    </p>
+
+                    <div className="flex items-center justify-center gap-2">
+
+                      <AdjustButton
+                        label="－"
+                        onClick={() =>
+                          resize(-2)
+                        }
+                      />
+
+                      <span className="min-w-10 text-center text-xs font-bold">
+                        {fit.scale}
+                      </span>
+
+                      <AdjustButton
+                        label="＋"
+                        onClick={() =>
+                          resize(2)
+                        }
+                      />
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+
+                <button
+                  type="button"
+                  onClick={
+                    resetFit
+                  }
+                  className="rounded-2xl border border-pink-100 bg-white px-4 py-3 text-sm font-semibold text-gray-500"
+                >
+                  기본 위치
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    saving
+                  }
+                  onClick={() =>
+                    void saveFit()
+                  }
+                  className="rounded-2xl bg-pink-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {saving
+                    ? "저장 중..."
+                    : "저장 ♡"}
+                </button>
+
+              </div>
+
+              <p className="mt-3 text-center text-[10px] leading-5 text-gray-400">
+                위쪽은 y -30까지 이동할 수 있어요.
+              </p>
+
+            </div>
+
+          )}
 
         </section>
+
+        {/* 카테고리 */}
 
         <section className="mt-6">
 
@@ -956,35 +1336,31 @@ export default function StorePage() {
 
             <div className="flex w-max gap-2 pb-1">
 
-              {categories.map(
-                (category) => {
+              {CATEGORIES.map(
+                (category) => (
 
-                  const selected =
-                    selectedCategory ===
-                    category.value;
-
-                  return (
-                    <button
-                      key={
+                  <button
+                    key={
+                      category.value
+                    }
+                    type="button"
+                    onClick={() =>
+                      setSelectedCategory(
                         category.value
-                      }
-                      type="button"
-                      onClick={() =>
-                        setSelectedCategory(
-                          category.value
-                        )
-                      }
-                      className={`rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
-                        selected
-                          ? "border-pink-500 bg-pink-500 text-white shadow-sm"
-                          : "border-pink-100 bg-white text-gray-500"
-                      }`}
-                    >
-                      {category.emoji}{" "}
-                      {category.label}
-                    </button>
-                  );
-                }
+                      )
+                    }
+                    className={`rounded-full border px-4 py-2.5 text-sm font-semibold ${
+                      selectedCategory ===
+                      category.value
+                        ? "border-pink-500 bg-pink-500 text-white"
+                        : "border-pink-100 bg-white text-gray-500"
+                    }`}
+                  >
+                    {category.emoji}{" "}
+                    {category.label}
+                  </button>
+
+                )
               )}
 
             </div>
@@ -993,11 +1369,17 @@ export default function StorePage() {
 
         </section>
 
+        {/* 알림 */}
+
         {notice && (
-          <div className="mt-5 rounded-2xl border border-pink-100 bg-white px-4 py-3 text-center text-sm text-gray-600 shadow-sm">
+
+          <div className="mt-4 rounded-2xl border border-pink-100 bg-white px-4 py-3 text-center text-sm text-gray-600 shadow-sm">
             {notice}
           </div>
+
         )}
+
+        {/* 보유 아이템 */}
 
         <section className="mt-6">
 
@@ -1006,11 +1388,11 @@ export default function StorePage() {
             <div>
 
               <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
-                ITEMS
+                MY ITEMS
               </p>
 
               <h2 className="mt-1 text-lg font-bold">
-                아이템 둘러보기
+                내 옷장
               </h2>
 
             </div>
@@ -1021,199 +1403,187 @@ export default function StorePage() {
 
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {visibleItems.length ===
+          0 ? (
 
-            {visibleItems.map(
-              (item) => {
+            <div className="rounded-[26px] border border-dashed border-pink-200 bg-white p-8 text-center">
 
-                const owned =
-                  inventory.some(
-                    (row) =>
-                      row.item_id ===
+              <div className="text-4xl">
+                🎁
+              </div>
+
+              <p className="mt-3 font-bold">
+                아직 아이템이 없어요
+              </p>
+
+              <p className="mt-2 text-xs leading-5 text-gray-400">
+                STORE에서 마음에 드는 아이템을 구매해보세요.
+              </p>
+
+              <Link
+                href="/store"
+                prefetch={false}
+                className="mt-4 inline-block rounded-2xl bg-pink-500 px-5 py-3 text-sm font-bold text-white"
+              >
+                STORE에서 아이템 보기
+              </Link>
+
+            </div>
+
+          ) : (
+
+            <div className="grid grid-cols-2 gap-3">
+
+              {visibleItems.map(
+                (item) => {
+
+                  const imagePath =
+                    normalizeImagePath(
+                      item.image_path
+                    );
+
+                  const equipped =
+                    equippedItemIds.has(
                       item.id
-                  );
+                    );
 
-                const equipped =
-                  equipment.some(
-                    (row) =>
-                      row.item_id ===
-                      item.id
-                  );
+                  const selected =
+                    selectedItemId ===
+                    item.id;
 
-                const locked =
-                  level <
-                  item.required_level;
+                  return (
 
-                const notEnoughCoins =
-                  wallet.coins <
-                  item.price;
+                    <button
+                      key={
+                        item.id
+                      }
+                      type="button"
+                      onClick={() =>
+                        void selectItem(
+                          item
+                        )
+                      }
+                      className={`relative overflow-hidden rounded-[24px] border bg-white p-3 text-left shadow-sm transition active:scale-[0.98] ${
+                        selected
+                          ? "border-pink-400 ring-2 ring-pink-100"
+                          : equipped
+                          ? "border-pink-200"
+                          : "border-pink-100"
+                      }`}
+                    >
 
-                const processing =
-                  processingItemId ===
-                  item.id;
+                      <div className="flex aspect-square items-center justify-center overflow-hidden rounded-[20px] bg-[#fff8fb] p-3">
 
-                return (
-                  <article
-                    key={
-                      item.id
-                    }
-                    className={`relative overflow-hidden rounded-[26px] border bg-white p-4 shadow-sm ${equipped
-                        ? "border-pink-300 ring-2 ring-pink-100"
-                        : owned
-                        ? "border-green-100"
-                        : locked
-                        ? "border-gray-100"
-                        : "border-pink-100"
-                    }`}
-                  >
+                        {imagePath ? (
 
-                    <div className="relative">
-
-                      <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-[22px] bg-[#fff8fb] p-3">
-                        {item.image_path ? (
-                          // public/store/... 경로의 실제 PNG를 우선 표시해요.
-                          // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={item.image_path}
-                            alt={item.name}
-                            className={`h-full w-full ${
-                              item.category === "background"
-                                ? "object-cover"
-                                : "object-contain"
-                            }`}
-                            loading="lazy"
+                            src={
+                              imagePath
+                            }
+                            alt={
+                              item.name
+                            }
+                            className="h-full w-full object-contain"
                           />
+
                         ) : (
-                          <span className="text-6xl">
-                            {getItemEmoji(
-                              item
-                            )}
+
+                          <span className="text-5xl">
+                            🎁
                           </span>
+
                         )}
+
                       </div>
 
+                      {equipped && (
 
-                      {equipped ? (
-                        <div className="absolute right-2 top-2 rounded-full bg-pink-500 px-2.5 py-1 text-[10px] font-bold text-white">
+                        <span className="absolute right-2 top-2 rounded-full bg-pink-500 px-2.5 py-1 text-[9px] font-bold text-white">
                           사용 중
-                        </div>
-                      ) : owned &&
-                        !locked ? (
-                        <div className="absolute right-2 top-2 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white">
-                          구매 완료
-                        </div>
-                      ) : null}
+                        </span>
 
-                      {locked && (
-                        <div className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-white/70">
-
-                          <div className="text-center">
-
-                            <div className="text-2xl">
-                              🔒
-                            </div>
-
-                            <p className="mt-1 text-xs font-bold text-gray-500">
-                              LV.{item.required_level}
-                            </p>
-
-                          </div>
-
-                        </div>
                       )}
 
-                    </div>
-
-                    <div className="mt-3">
-
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-bold tracking-[0.1em] ${getRarityClass(
-                          item.rarity
-                        )}`}
-                      >
-                        {getRarityLabel(
-                          item.rarity
-                        )}
-                      </span>
-
-                    </div>
-
-                    <h3 className="mt-2 min-h-[48px] break-words text-base font-bold leading-6">
-                      {item.name}
-                    </h3>
-
-                    <p className="mt-1 line-clamp-2 min-h-[40px] text-xs leading-5 text-gray-400">
-                      {item.description ??
-                        "내 캐릭터를 꾸며주는 아이템이에요."}
-                    </p>
-
-                    <div className="mt-3 flex items-center justify-between">
-
-                      <p className="font-bold text-amber-500">
-                        🪙 {item.price}
+                      <p className="mt-3 truncate font-bold">
+                        {item.name}
                       </p>
 
-                      <p className="text-[10px] text-gray-400">
-                        LV.{item.required_level}
+                      <p className="mt-1 text-[10px] text-gray-400">
+
+                        {item.category ===
+                        "hat"
+                          ? "모자"
+                          : item.category ===
+                            "clothes"
+                          ? "옷"
+                          : "액세서리"}
+
                       </p>
 
-                    </div>
+                    </button>
 
-                    {owned ? (
-                      <Link
-                        href="/inventory"
-                        prefetch={false}
-                        className="mt-3 block w-full rounded-2xl border border-pink-200 bg-white px-3 py-3 text-center text-sm font-semibold text-pink-500"
-                      >
-                        {equipped
-                          ? "핏 다시 맞추기 ♡"
-                          : "내 캐릭터 꾸미기 ♡"}
-                      </Link>
-                    ) : locked ? (
+                  );
+                }
+              )}
 
-                      <div className="mt-3 rounded-2xl bg-gray-50 px-3 py-3 text-center text-sm font-semibold text-gray-400">
-                        🔒 레벨 잠금
-                      </div>
+            </div>
 
-                    ) : (
+          )}
 
-                      <button
-                        type="button"
-                        disabled={
-                          processing ||
-                          notEnoughCoins
-                        }
-                        onClick={() =>
-                          handlePurchase(
-                            item
-                          )
-                        }
-                        className={`mt-3 w-full rounded-2xl px-3 py-3 text-sm font-semibold ${
-                          notEnoughCoins
-                            ? "bg-gray-100 text-gray-400"
-                            : "bg-pink-500 text-white"
-                        }`}
-                      >
-                        {processing
-                          ? "구매 중..."
-                          : notEnoughCoins
-                          ? "코인 부족"
-                          : "구매하기"}
-                      </button>
+        </section>
 
-                    )}
+        {/* 아래 이동 버튼 */}
 
-                  </article>
-                );
-              }
-            )}
+        <section className="mt-8 grid grid-cols-2 gap-3">
 
-          </div>
+          <Link
+            href="/couple"
+            prefetch={false}
+            className="rounded-2xl border border-pink-100 bg-white px-4 py-4 text-center text-sm font-bold text-gray-600 shadow-sm"
+          >
+            ← 홈으로
+          </Link>
+
+          <Link
+            href="/store"
+            prefetch={false}
+            className="rounded-2xl bg-pink-500 px-4 py-4 text-center text-sm font-bold text-white shadow-sm"
+          >
+            STORE →
+          </Link>
 
         </section>
 
       </div>
 
     </main>
+  );
+}
+
+function AdjustButton({
+  label,
+  onClick,
+  pink = false,
+}: {
+  label: string;
+  onClick: () => void;
+  pink?: boolean;
+}) {
+  return (
+
+    <button
+      type="button"
+      onClick={
+        onClick
+      }
+      className={`flex h-11 w-11 items-center justify-center rounded-2xl text-lg font-bold shadow-sm transition active:scale-95 ${
+        pink
+          ? "bg-pink-500 text-white"
+          : "border border-pink-100 bg-white text-gray-600"
+      }`}
+    >
+      {label}
+    </button>
+
   );
 }
