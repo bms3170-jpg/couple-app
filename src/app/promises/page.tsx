@@ -33,24 +33,170 @@ type PromiseItem = {
   deleted_at: string | null;
 };
 
+type VerificationRow = {
+  promise_id: string;
+  user_id: string;
+  verification_date: string;
+  status: "pending" | "approved" | "rejected";
+};
+
+type PromiseReward = {
+  id: string;
+  promise_id: string | null;
+  title: string;
+  required_days: number;
+  is_unlocked: boolean;
+};
+
+type DayInfo = {
+  key: string;
+  label: string;
+  date: Date;
+};
+
+const CARD_THEMES = [
+  {
+    card:
+      "border-pink-100 bg-gradient-to-br from-white via-[#fffafd] to-[#fff1f7]",
+    stat:
+      "bg-pink-50/80",
+    accent:
+      "text-pink-500",
+    progress:
+      "from-pink-400 to-fuchsia-400",
+    soft:
+      "bg-pink-50",
+  },
+  {
+    card:
+      "border-emerald-100 bg-gradient-to-br from-white via-[#fbfffd] to-[#effcf6]",
+    stat:
+      "bg-emerald-50/80",
+    accent:
+      "text-emerald-600",
+    progress:
+      "from-emerald-300 to-emerald-500",
+    soft:
+      "bg-emerald-50",
+  },
+  {
+    card:
+      "border-purple-100 bg-gradient-to-br from-white via-[#fdfbff] to-[#f6efff]",
+    stat:
+      "bg-purple-50/80",
+    accent:
+      "text-purple-500",
+    progress:
+      "from-purple-300 to-purple-500",
+    soft:
+      "bg-purple-50",
+  },
+  {
+    card:
+      "border-amber-100 bg-gradient-to-br from-white via-[#fffefa] to-[#fff8e9]",
+    stat:
+      "bg-amber-50/80",
+    accent:
+      "text-amber-600",
+    progress:
+      "from-amber-300 to-orange-400",
+    soft:
+      "bg-amber-50",
+  },
+];
+
+function formatDateKey(
+  date: Date
+) {
+  return new Intl.DateTimeFormat(
+    "en-CA",
+    {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }
+  ).format(date);
+}
+
+function getRecentSevenDays(): DayInfo[] {
+  const formatter =
+    new Intl.DateTimeFormat(
+      "ko-KR",
+      {
+        timeZone:
+          "Asia/Seoul",
+        weekday:
+          "short",
+      }
+    );
+
+  const today =
+    new Date();
+
+  return Array.from(
+    { length: 7 },
+    (_, index) => {
+      const date =
+        new Date(today);
+
+      date.setDate(
+        today.getDate() -
+          (6 - index)
+      );
+
+      return {
+        key:
+          formatDateKey(date),
+        label:
+          formatter
+            .format(date)
+            .replace("요일", ""),
+        date,
+      };
+    }
+  );
+}
+
+function getNextGoal(
+  streak: number
+) {
+  const milestones = [
+    3,
+    7,
+    14,
+    30,
+    60,
+    100,
+  ];
+
+  const found =
+    milestones.find(
+      (goal) =>
+        goal > streak
+    );
+
+  if (found) {
+    return found;
+  }
+
+  return (
+    Math.ceil(
+      (streak + 1) / 30
+    ) * 30
+  );
+}
+
 export default function PromisesPage() {
   const supabase = useMemo(
     () => createClient(),
     []
   );
 
-  // =========================================
-  // 공통 로그인 정보
-  // =========================================
-
   const {
     user,
     loading: authLoading,
   } = useAuth();
-
-  // =========================================
-  // 상태
-  // =========================================
 
   const [loading, setLoading] =
     useState(true);
@@ -63,6 +209,20 @@ export default function PromisesPage() {
 
   const [promises, setPromises] =
     useState<PromiseItem[]>([]);
+
+  const [
+    recentVerifications,
+    setRecentVerifications,
+  ] = useState<
+    VerificationRow[]
+  >([]);
+
+  const [
+    promiseRewards,
+    setPromiseRewards,
+  ] = useState<
+    PromiseReward[]
+  >([]);
 
   const [
     currentCoupleId,
@@ -95,19 +255,20 @@ export default function PromisesPage() {
     setShowPromiseList,
   ] = useState(true);
 
-  // =========================================
-  // 약속 불러오기
-  // =========================================
+  const recentSevenDays =
+    useMemo(
+      () =>
+        getRecentSevenDays(),
+      []
+    );
 
   const loadPromises =
     useCallback(
       async () => {
-        // AuthProvider가 로그인 상태 확인 중이면 기다림
         if (authLoading) {
           return;
         }
 
-        // 로그인 상태 확인이 끝났는데 user가 없는 경우
         if (!user) {
           window.location.href =
             "/login";
@@ -117,10 +278,6 @@ export default function PromisesPage() {
 
         setLoading(true);
         setMessage("");
-
-        // =====================================
-        // 내가 속한 커플
-        // =====================================
 
         const {
           data: membership,
@@ -163,10 +320,6 @@ export default function PromisesPage() {
           coupleId
         );
 
-        // =====================================
-        // 커플 멤버
-        // =====================================
-
         const {
           data: memberRows,
           error: memberError,
@@ -196,10 +349,6 @@ export default function PromisesPage() {
             (item) =>
               item.user_id
           ) ?? [];
-
-        // =====================================
-        // 닉네임
-        // =====================================
 
         const {
           data: profileRows,
@@ -258,10 +407,6 @@ export default function PromisesPage() {
           loadedMembers
         );
 
-        // =====================================
-        // 모든 약속
-        // =====================================
-
         const {
           data: promiseRows,
           error: promiseError,
@@ -307,10 +452,125 @@ export default function PromisesPage() {
           return;
         }
 
-        setPromises(
+        const loadedPromises =
           (promiseRows ??
-            []) as PromiseItem[]
+            []) as PromiseItem[];
+
+        setPromises(
+          loadedPromises
         );
+
+        const promiseIds =
+          loadedPromises.map(
+            (promise) =>
+              promise.id
+          );
+
+        if (
+          promiseIds.length >
+          0
+        ) {
+          const startDate =
+            recentSevenDays[0]
+              ?.key;
+
+          const {
+            data:
+              verificationRows,
+            error:
+              verificationError,
+          } = await supabase
+            .from(
+              "verifications"
+            )
+            .select(`
+              promise_id,
+              user_id,
+              verification_date,
+              status
+            `)
+            .eq(
+              "couple_id",
+              coupleId
+            )
+            .in(
+              "promise_id",
+              promiseIds
+            )
+            .gte(
+              "verification_date",
+              startDate
+            );
+
+          if (
+            verificationError
+          ) {
+            console.error(
+              "최근 인증 조회 오류:",
+              verificationError
+            );
+
+            setRecentVerifications(
+              []
+            );
+          } else {
+            setRecentVerifications(
+              (
+                verificationRows ??
+                  []
+              ) as VerificationRow[]
+            );
+          }
+
+          const {
+            data: rewardRows,
+            error: rewardError,
+          } = await supabase
+            .from("rewards")
+            .select(`
+              id,
+              promise_id,
+              title,
+              required_days,
+              is_unlocked
+            `)
+            .eq(
+              "couple_id",
+              coupleId
+            )
+            .in(
+              "promise_id",
+              promiseIds
+            );
+
+          if (
+            rewardError
+          ) {
+            console.error(
+              "약속 보상 조회 오류:",
+              rewardError
+            );
+
+            setPromiseRewards(
+              []
+            );
+          } else {
+            setPromiseRewards(
+              (
+                rewardRows ??
+                  []
+              ) as PromiseReward[]
+            );
+          }
+        } else {
+          setRecentVerifications(
+            []
+          );
+
+          setPromiseRewards(
+            []
+          );
+        }
 
         setLoading(false);
       },
@@ -318,20 +578,13 @@ export default function PromisesPage() {
         supabase,
         user,
         authLoading,
+        recentSevenDays,
       ]
     );
-
-  // =========================================
-  // 최초 실행
-  // =========================================
 
   useEffect(() => {
     loadPromises();
   }, [loadPromises]);
-
-  // =========================================
-  // 약속 종료
-  // =========================================
 
   async function endPromise(
     promise: PromiseItem
@@ -441,21 +694,29 @@ export default function PromisesPage() {
       .insert({
         couple_id:
           currentCoupleId,
+
         user_id:
           user.id,
+
         event_type:
           "promise_ended",
+
         title:
           "📖 약속을 마무리했어요",
+
         description:
           `${updatedPromise.title} · 최고 연속 ${updatedPromise.best_streak}일 · 총 성공 ${updatedPromise.total_success}일`,
+
         related_id:
           promise.id,
+
         image_path:
           null,
+
         event_date:
           updatedPromise.deleted_at ??
           endedAt,
+
         source_key:
           sourceKey,
       });
@@ -483,7 +744,7 @@ export default function PromisesPage() {
     }
 
     setMessage(
-      "약속을 종료했고 타임라인에도 기록했어요 ♡"
+      "약속을 종료했고 우리 기록에도 남겼어요 ♡"
     );
 
     setTab(
@@ -493,26 +754,28 @@ export default function PromisesPage() {
     await loadPromises();
   }
 
-  // =========================================
-  // 로그인 또는 데이터 로딩 중
-  // =========================================
-
   if (
     authLoading ||
     loading
   ) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
-        <p className="text-sm text-gray-500">
-          약속 불러오는 중...
-        </p>
+      <main className="flex min-h-screen items-center justify-center bg-[#fff8fb] px-5">
+        <div className="w-full max-w-sm rounded-[30px] border border-pink-100 bg-white/90 p-7 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-pink-50 text-2xl">
+            💕
+          </div>
+
+          <p className="mt-4 text-sm font-black text-gray-600">
+            우리의 약속을 불러오는 중...
+          </p>
+
+          <p className="mt-2 text-xs text-gray-400">
+            함께한 기록을 정리하고 있어요 ♡
+          </p>
+        </div>
       </main>
     );
   }
-
-  // =========================================
-  // 진행 / 종료 약속 분리
-  // =========================================
 
   const activePromises =
     promises.filter(
@@ -531,118 +794,200 @@ export default function PromisesPage() {
       ? activePromises
       : endedPromises;
 
+  function isPromiseSuccessOnDate(
+    promise:
+      PromiseItem,
+    dateKey:
+      string
+  ) {
+    const rows =
+      recentVerifications.filter(
+        (row) =>
+          row.promise_id ===
+            promise.id &&
+          row.verification_date ===
+            dateKey &&
+          row.status ===
+            "approved"
+      );
+
+    if (
+      promise.is_joint
+    ) {
+      return (
+        members.length >
+          0 &&
+        members.every(
+          (member) =>
+            rows.some(
+              (row) =>
+                row.user_id ===
+                member.user_id
+            )
+        )
+      );
+    }
+
+    return rows.some(
+      (row) =>
+        row.user_id ===
+        promise.assigned_to
+    );
+  }
+
+  function getTodayMemberStatus(
+    promise:
+      PromiseItem,
+    memberId:
+      string
+  ) {
+    const today =
+      formatDateKey(
+        new Date()
+      );
+
+    const row =
+      recentVerifications.find(
+        (verification) =>
+          verification.promise_id ===
+            promise.id &&
+          verification.user_id ===
+            memberId &&
+          verification.verification_date ===
+            today
+      );
+
+    return (
+      row?.status ?? null
+    );
+  }
+
+  function getNextReward(
+    promiseId: string
+  ) {
+    return (
+      promiseRewards
+        .filter(
+          (reward) =>
+            reward.promise_id ===
+              promiseId &&
+            !reward.is_unlocked
+        )
+        .sort(
+          (a, b) =>
+            a.required_days -
+            b.required_days
+        )[0] ??
+      null
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
 
       <div className="mx-auto max-w-md pb-28">
 
-        {/* =========================================
-            헤더
-        ========================================== */}
+        {/* HEADER */}
 
         <header className="flex items-end justify-between gap-4">
-
           <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
+            <p className="text-xs font-black tracking-[0.22em] text-pink-400">
               OUR PROMISES
             </p>
 
-            <h1 className="mt-2 text-3xl font-bold">
+            <h1 className="mt-2 text-[30px] font-black tracking-tight">
               우리의 약속
             </h1>
 
             <p className="mt-2 text-sm leading-6 text-gray-500">
-              함께 시작한 약속과 지나온 기록을 모아봤어요 ♡
+              둘이 함께 키워가는 작은 약속들을 모아봤어요 ♡
             </p>
           </div>
 
           <Link
             href="/promise/new"
             prefetch={false}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pink-500 text-2xl text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.98]"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-fuchsia-500 text-2xl text-white shadow-sm transition active:scale-[0.98]"
           >
             +
           </Link>
-
         </header>
 
-        {/* =========================================
-            탭
-        ========================================== */}
+        {/* SUMMARY */}
 
-        <section className="mt-7 rounded-[22px] border border-pink-100 bg-white p-1.5 shadow-sm">
-
-          <div className="grid grid-cols-2 gap-1">
-
-            <button
-              type="button"
-              onClick={() => {
-                setTab(
-                  "active"
-                );
-                setExpandedPromiseId(
-                  null
-                );
-              }}
-              className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                tab ===
+        <section className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setTab(
                 "active"
-                  ? "bg-pink-500 text-white shadow-sm"
-                  : "text-gray-400 hover:bg-pink-50"
-              }`}
-            >
-              진행 중{" "}
-              {
-                activePromises.length
-              }
-            </button>
+              );
 
-            <button
-              type="button"
-              onClick={() => {
-                setTab(
-                  "ended"
-                );
-                setExpandedPromiseId(
-                  null
-                );
-              }}
-              className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                tab ===
+              setExpandedPromiseId(
+                null
+              );
+            }}
+            className={`rounded-[24px] border p-4 text-left shadow-sm transition ${
+              tab ===
+              "active"
+                ? "border-pink-200 bg-gradient-to-br from-pink-500 to-fuchsia-500 text-white"
+                : "border-pink-100 bg-white text-gray-500"
+            }`}
+          >
+            <p className="text-[10px] font-black tracking-[0.16em] opacity-80">
+              ACTIVE
+            </p>
+
+            <p className="mt-2 text-2xl font-black">
+              {activePromises.length}
+            </p>
+
+            <p className="mt-1 text-xs font-bold opacity-80">
+              진행 중인 약속
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTab(
                 "ended"
-                  ? "bg-pink-500 text-white shadow-sm"
-                  : "text-gray-400 hover:bg-pink-50"
-              }`}
-            >
-              종료됨{" "}
-              {
-                endedPromises.length
-              }
-            </button>
+              );
 
-          </div>
+              setExpandedPromiseId(
+                null
+              );
+            }}
+            className={`rounded-[24px] border p-4 text-left shadow-sm transition ${
+              tab ===
+              "ended"
+                ? "border-purple-200 bg-gradient-to-br from-purple-400 to-violet-500 text-white"
+                : "border-purple-100 bg-white text-gray-500"
+            }`}
+          >
+            <p className="text-[10px] font-black tracking-[0.16em] opacity-80">
+              MEMORY
+            </p>
 
+            <p className="mt-2 text-2xl font-black">
+              {endedPromises.length}
+            </p>
+
+            <p className="mt-1 text-xs font-bold opacity-80">
+              함께 끝낸 약속
+            </p>
+          </button>
         </section>
 
-        {/* =========================================
-            메시지
-        ========================================== */}
-
         {message && (
-          <div className="mt-4 rounded-2xl border border-pink-100 bg-white/80 px-4 py-3 text-center text-xs text-gray-500 shadow-sm">
+          <div className="mt-4 rounded-2xl border border-pink-100 bg-white/90 px-4 py-3 text-center text-xs font-semibold text-gray-500 shadow-sm">
             {message}
           </div>
         )}
 
-        {/* =========================================
-            약속 없음
-        ========================================== */}
-
         {visiblePromises.length ===
         0 ? (
-
           <section className="mt-6 rounded-[30px] border border-dashed border-pink-200 bg-white p-8 text-center shadow-sm">
-
             <div className="text-4xl">
               {tab ===
               "active"
@@ -650,53 +995,42 @@ export default function PromisesPage() {
                 : "📖"}
             </div>
 
-            <h2 className="mt-4 text-lg font-bold">
+            <h2 className="mt-4 text-lg font-black">
               {tab ===
               "active"
                 ? "진행 중인 약속이 없어요"
-                : "종료된 약속이 없어요"}
+                : "아직 마무리한 약속이 없어요"}
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-gray-500">
-
               {tab ===
               "active" ? (
                 <>
-                  둘이 함께 지킬
+                  둘이 함께 이어갈
                   <br />
-                  새로운 약속을 만들어보세요.
+                  첫 번째 약속을 만들어보세요.
                 </>
               ) : (
                 <>
                   함께 끝낸 약속이 생기면
                   <br />
-                  이곳에 기록으로 남아요.
+                  우리만의 기록으로 남아요.
                 </>
               )}
-
             </p>
 
             {tab ===
               "active" && (
-
               <Link
                 href="/promise/new"
                 prefetch={false}
-                className="mt-6 block w-full rounded-2xl bg-pink-500 px-5 py-4 text-center font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99]"
+                className="mt-6 block w-full rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-500 px-5 py-4 text-center font-black text-white shadow-sm"
               >
-                새 약속 만들기
+                + 새 약속 만들기
               </Link>
-
             )}
-
           </section>
-
         ) : (
-
-          /* =========================================
-              약속 목록
-          ========================================== */
-
           <section className="mt-6">
 
             <button
@@ -706,39 +1040,47 @@ export default function PromisesPage() {
                   (prev) => !prev
                 );
 
-                if (showPromiseList) {
+                if (
+                  showPromiseList
+                ) {
                   setExpandedPromiseId(
                     null
                   );
                 }
               }}
-              className="flex w-full items-center justify-between rounded-[24px] border border-pink-100 bg-white px-4 py-3.5 text-left shadow-sm transition hover:bg-pink-50/50"
+              className="flex w-full items-center justify-between rounded-[24px] border border-pink-100 bg-white px-4 py-3.5 text-left shadow-sm"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-pink-50 text-base">
-                  {tab === "active"
-                    ? "✅"
+                <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                  tab === "active"
+                    ? "bg-pink-50"
+                    : "bg-purple-50"
+                }`}>
+                  {tab ===
+                  "active"
+                    ? "💕"
                     : "📖"}
                 </div>
 
                 <div>
-                  <p className="text-sm font-semibold">
-                    {tab === "active"
-                      ? "진행 중인 약속"
-                      : "종료된 약속"}
+                  <p className="text-sm font-black">
+                    {tab ===
+                    "active"
+                      ? "함께 이어가는 약속"
+                      : "우리의 지난 약속"}
                   </p>
 
                   <p className="mt-0.5 text-[11px] text-gray-400">
-                    {visiblePromises.length}개의 약속
+                    {visiblePromises.length}개의 기록
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-pink-400">
+                <span className="text-[11px] font-black text-pink-400">
                   {showPromiseList
-                    ? "전체 접기"
-                    : "전체 보기"}
+                    ? "접기"
+                    : "보기"}
                 </span>
 
                 <span
@@ -755,206 +1097,494 @@ export default function PromisesPage() {
 
             {showPromiseList && (
               <div className="mt-4 space-y-4">
+                {visiblePromises.map(
+                  (
+                    promise,
+                    index
+                  ) => {
+                    const assignee =
+                      members.find(
+                        (member) =>
+                          member.user_id ===
+                          promise.assigned_to
+                      );
 
-            {visiblePromises.map(
-              (promise) => {
+                    const repeatLabel =
+                      promise.repeat_type ===
+                      "daily"
+                        ? "매일"
+                        : promise.repeat_type ===
+                          "weekdays"
+                        ? "평일"
+                        : "사용자 지정";
 
-                const assignee =
-                  members.find(
-                    (member) =>
-                      member.user_id ===
-                      promise.assigned_to
-                  );
+                    const theme =
+                      CARD_THEMES[
+                        index %
+                          CARD_THEMES.length
+                      ];
 
-                const repeatLabel =
-                  promise.repeat_type ===
-                  "daily"
-                    ? "매일"
-                    : promise.repeat_type ===
-                      "weekdays"
-                    ? "평일"
-                    : "사용자 지정";
+                    const recentSuccess =
+                      recentSevenDays.map(
+                        (day) => ({
+                          ...day,
+                          success:
+                            isPromiseSuccessOnDate(
+                              promise,
+                              day.key
+                            ),
+                        })
+                      );
 
-                return (
-                  <article
-                    key={
-                      promise.id
-                    }
-                    className="overflow-hidden rounded-[30px] border border-pink-100 bg-white p-5 shadow-sm"
-                  >
+                    const weeklySuccessCount =
+                      recentSuccess.filter(
+                        (day) =>
+                          day.success
+                      ).length;
 
-                    {/* 상단 */}
+                    const weeklyPercent =
+                      Math.round(
+                        (
+                          weeklySuccessCount /
+                          7
+                        ) * 100
+                      );
 
-                    <div className="flex items-start justify-between gap-4">
+                    const nextGoal =
+                      getNextGoal(
+                        promise.current_streak
+                      );
 
-                      <div>
+                    const remainingDays =
+                      Math.max(
+                        nextGoal -
+                          promise.current_streak,
+                        0
+                      );
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-semibold tracking-[0.1em] text-pink-500">
-                            {repeatLabel}
-                          </span>
+                    const nextReward =
+                      getNextReward(
+                        promise.id
+                      );
 
-                          <span className="text-[11px] text-gray-400">
-                            {promise.is_joint
-                              ? "💕 서로의 약속"
-                              : `${assignee?.nickname ?? "이름 없음"}님의 약속`}
-                          </span>
-                        </div>
+                    const startedDays =
+                      Math.max(
+                        1,
+                        Math.floor(
+                          (
+                            Date.now() -
+                            new Date(
+                              promise.created_at
+                            ).getTime()
+                          ) /
+                            (
+                              1000 *
+                              60 *
+                              60 *
+                              24
+                            )
+                        ) + 1
+                      );
 
-                        <h2 className="mt-3 break-words text-xl font-bold leading-7">
-                          {promise.title}
-                        </h2>
-
-                      </div>
-
-                      {promise.is_active ? (
-
-                        <span className="shrink-0 rounded-2xl bg-pink-50 px-3 py-2 text-xs font-semibold text-pink-500">
-                          진행 중
-                        </span>
-
-                      ) : (
-
-                        <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-semibold text-gray-500">
-                          종료됨
-                        </span>
-
-                      )}
-
-                    </div>
-
-                    {/* =========================================
-                        펼치기 / 접기
-                    ========================================== */}
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedPromiseId(
-                          expandedPromiseId ===
-                            promise.id
-                            ? null
-                            : promise.id
-                        )
-                      }
-                      className="mt-4 flex w-full items-center justify-between rounded-2xl bg-[#fff8fb] px-4 py-3 text-left transition hover:bg-pink-50"
-                    >
-                      <span className="text-xs font-medium text-gray-500">
-                        🔥 현재 {promise.current_streak}일
-                        <span className="mx-2 text-pink-200">·</span>
-                        🏆 최고 {promise.best_streak}일
-                        <span className="mx-2 text-pink-200">·</span>
-                        ✓ 성공 {promise.total_success}일
-                      </span>
-
-                      <span
-                        className={`ml-2 shrink-0 text-sm text-pink-300 transition ${
-                          expandedPromiseId ===
+                    return (
+                      <article
+                        key={
                           promise.id
-                            ? "rotate-180"
-                            : ""
-                        }`}
+                        }
+                        className={`overflow-hidden rounded-[30px] border p-5 shadow-sm ${theme.card}`}
                       >
-                        ⌄
-                      </span>
-                    </button>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black tracking-[0.1em] ${theme.soft} ${theme.accent}`}>
+                                {repeatLabel}
+                              </span>
 
-                    {expandedPromiseId ===
-                      promise.id && (
-                      <div className="pt-1">
-                        {/* 인증 방식 */}
+                              <span className="text-[11px] font-semibold text-gray-400">
+                                {promise.is_joint
+                                  ? "💕 우리의 약속"
+                                  : `${assignee?.nickname ?? "이름 없음"}님의 약속`}
+                              </span>
+                            </div>
 
-                        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[11px] text-gray-400">
-                          {promise.is_joint && (
-                            <span className="font-semibold text-pink-500">
-                              💕 공동
-                            </span>
-                          )}
+                            <h2 className="mt-3 break-words text-[22px] font-black leading-7">
+                              {promise.title}
+                            </h2>
 
-                          {promise.photo_required && (
-                            <span>📷 사진</span>
-                          )}
-
-                          {promise.partner_approval_required && (
-                            <span>♡ 상대 확인</span>
-                          )}
-
-                          {!promise.is_joint &&
-                            !promise.photo_required &&
-                            !promise.partner_approval_required && (
-                              <span>✓ 기본 인증</span>
-                            )}
-                        </div>
-
-                        {/* 진행 중 약속 */}
-
-                        {promise.is_active && (
-                          <>
-                            <Link
-                              href={`/verify/${promise.id}`}
-                              prefetch={false}
-                              className="mt-4 block w-full rounded-2xl bg-pink-500 px-4 py-3.5 text-center font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.99]"
-                            >
-                              📸 오늘 인증하기
-                            </Link>
-
-                            <button
-                              type="button"
-                              disabled={
-                                endingPromiseId ===
-                                promise.id
-                              }
-                              onClick={() => {
-                                void endPromise(
-                                  promise
-                                );
-                              }}
-                              className="mt-3 w-full rounded-2xl border border-pink-100 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-400 transition hover:bg-pink-50 hover:text-pink-500 disabled:opacity-50"
-                            >
-                              {endingPromiseId ===
-                              promise.id
-                                ? "종료 처리 중..."
-                                : "📖 약속 종료하기"}
-                            </button>
-                          </>
-                        )}
-
-                        {/* 종료된 약속 */}
-
-                        {!promise.is_active &&
-                          promise.deleted_at && (
-                            <p className="mt-4 text-center text-xs text-gray-400">
-                              종료일{" "}
+                            <p className="mt-2 text-[11px] font-semibold text-gray-400">
                               {new Date(
-                                promise.deleted_at
+                                promise.created_at
                               ).toLocaleDateString(
                                 "ko-KR"
                               )}
+                              부터 · 함께한 지{" "}
+                              {startedDays}일
                             </p>
+                          </div>
+
+                          {promise.is_active ? (
+                            <div className={`shrink-0 rounded-[18px] px-3 py-2 text-center ${theme.soft}`}>
+                              <p className="text-[9px] font-bold text-gray-400">
+                                연속
+                              </p>
+
+                              <p className={`mt-0.5 text-lg font-black ${theme.accent}`}>
+                                🔥{" "}
+                                {
+                                  promise.current_streak
+                                }
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="shrink-0 rounded-full bg-gray-100 px-3 py-1.5 text-[10px] font-black text-gray-500">
+                              기록 완료
+                            </span>
                           )}
-                      </div>
-                    )}
+                        </div>
 
-                  </article>
-                );
-              }
-            )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedPromiseId(
+                              expandedPromiseId ===
+                                promise.id
+                                ? null
+                                : promise.id
+                            )
+                          }
+                          className={`mt-4 w-full rounded-[22px] px-4 py-3.5 text-left ${theme.stat}`}
+                        >
+                          <div className="grid grid-cols-3 divide-x divide-white/80">
+                            <div className="text-center">
+                              <p className="text-[9px] font-bold text-gray-400">
+                                현재
+                              </p>
 
+                              <p className="mt-1 text-sm font-black text-gray-700">
+                                🔥{" "}
+                                {promise.current_streak}일
+                              </p>
+                            </div>
+
+                            <div className="text-center">
+                              <p className="text-[9px] font-bold text-gray-400">
+                                최고
+                              </p>
+
+                              <p className="mt-1 text-sm font-black text-gray-700">
+                                🏆{" "}
+                                {promise.best_streak}일
+                              </p>
+                            </div>
+
+                            <div className="text-center">
+                              <p className="text-[9px] font-bold text-gray-400">
+                                성공
+                              </p>
+
+                              <p className="mt-1 text-sm font-black text-gray-700">
+                                ✓{" "}
+                                {promise.total_success}일
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex justify-end">
+                            <span
+                              className={`text-xs text-gray-300 transition ${
+                                expandedPromiseId ===
+                                promise.id
+                                  ? "rotate-180"
+                                  : ""
+                              }`}
+                            >
+                              ⌄
+                            </span>
+                          </div>
+                        </button>
+
+                        {expandedPromiseId ===
+                          promise.id && (
+                          <div className="mt-4 space-y-3">
+
+                            {/* 최근 7일 */}
+
+                            <div className="rounded-[22px] border border-white/80 bg-white/70 p-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-xs font-black text-gray-700">
+                                    최근 7일
+                                  </p>
+
+                                  <p className="mt-1 text-[10px] text-gray-400">
+                                    이번 주{" "}
+                                    {weeklySuccessCount}
+                                    /7 ·{" "}
+                                    {weeklyPercent}%
+                                  </p>
+                                </div>
+
+                                <span className={`text-xs font-black ${theme.accent}`}>
+                                  {weeklyPercent}%
+                                </span>
+                              </div>
+
+                              <div className="mt-3 grid grid-cols-7 gap-1.5">
+                                {recentSuccess.map(
+                                  (day) => (
+                                    <div
+                                      key={
+                                        day.key
+                                      }
+                                      className="text-center"
+                                    >
+                                      <p className="text-[9px] font-bold text-gray-400">
+                                        {day.label}
+                                      </p>
+
+                                      <div
+                                        className={`mx-auto mt-2 h-3.5 w-3.5 rounded-full ${
+                                          day.success
+                                            ? "bg-pink-400 shadow-sm"
+                                            : "bg-gray-100"
+                                        }`}
+                                      />
+                                    </div>
+                                  )
+                                )}
+                              </div>
+
+                              <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100">
+                                <div
+                                  className={`h-full rounded-full bg-gradient-to-r ${theme.progress}`}
+                                  style={{
+                                    width:
+                                      `${weeklyPercent}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* 다음 목표 */}
+
+                            {promise.is_active && (
+                              <div className="rounded-[22px] border border-amber-100 bg-amber-50/75 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <p className="text-xs font-black text-amber-700">
+                                      🎯 다음 목표 {nextGoal}일
+                                    </p>
+
+                                    <p className="mt-1 text-[11px] text-amber-600">
+                                      {remainingDays >
+                                      0
+                                        ? `앞으로 ${remainingDays}일 남았어요`
+                                        : "목표를 달성했어요!"}
+                                    </p>
+                                  </div>
+
+                                  <span className="text-xl">
+                                    ✨
+                                  </span>
+                                </div>
+
+                                {nextReward && (
+                                  <div className="mt-3 rounded-2xl bg-white/80 px-3 py-2.5">
+                                    <p className="text-[10px] font-bold text-gray-400">
+                                      NEXT REWARD
+                                    </p>
+
+                                    <p className="mt-1 text-xs font-black text-pink-500">
+                                      🎁 {nextReward.required_days}일 · {nextReward.title}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* 공동 약속 오늘 상태 */}
+
+                            {promise.is_joint && (
+                              <div className="rounded-[22px] border border-pink-100 bg-white/75 p-4">
+                                <p className="text-xs font-black text-gray-700">
+                                  💕 오늘 우리 상태
+                                </p>
+
+                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                  {members.map(
+                                    (member) => {
+                                      const status =
+                                        getTodayMemberStatus(
+                                          promise,
+                                          member.user_id
+                                        );
+
+                                      const label =
+                                        status ===
+                                        "approved"
+                                          ? "✅ 완료"
+                                          : status ===
+                                            "pending"
+                                          ? "🕒 확인 중"
+                                          : status ===
+                                            "rejected"
+                                          ? "↻ 다시 인증"
+                                          : "⏳ 아직";
+
+                                      return (
+                                        <div
+                                          key={
+                                            member.user_id
+                                          }
+                                          className="rounded-2xl bg-pink-50/70 px-3 py-3 text-center"
+                                        >
+                                          <p className="truncate text-[10px] font-bold text-gray-400">
+                                            {member.nickname}
+                                          </p>
+
+                                          <p className="mt-1 text-xs font-black text-gray-700">
+                                            {label}
+                                          </p>
+                                        </div>
+                                      );
+                                    }
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* 인증 방식 */}
+
+                            <div className="flex flex-wrap items-center gap-2 px-1 text-[10px] font-bold text-gray-400">
+                              {promise.is_joint && (
+                                <span className="rounded-full bg-pink-50 px-2.5 py-1 text-pink-500">
+                                  💕 공동 약속
+                                </span>
+                              )}
+
+                              {promise.photo_required && (
+                                <span className="rounded-full bg-purple-50 px-2.5 py-1 text-purple-500">
+                                  📷 사진 인증
+                                </span>
+                              )}
+
+                              {promise.partner_approval_required && (
+                                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-600">
+                                  ♡ 상대 확인
+                                </span>
+                              )}
+
+                              {!promise.is_joint &&
+                                !promise.photo_required &&
+                                !promise.partner_approval_required && (
+                                  <span className="rounded-full bg-gray-50 px-2.5 py-1 text-gray-500">
+                                    ✓ 기본 인증
+                                  </span>
+                                )}
+                            </div>
+
+                            {promise.is_active && (
+                              <>
+                                <Link
+                                  href={`/verify/${promise.id}`}
+                                  prefetch={false}
+                                  className="block w-full rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-500 px-4 py-4 text-center text-sm font-black text-white shadow-sm transition active:scale-[0.99]"
+                                >
+                                  📸 오늘 인증하기
+                                </Link>
+
+                                <button
+                                  type="button"
+                                  disabled={
+                                    endingPromiseId ===
+                                    promise.id
+                                  }
+                                  onClick={() => {
+                                    void endPromise(
+                                      promise
+                                    );
+                                  }}
+                                  className="w-full px-4 py-3 text-center text-xs font-black text-gray-400 transition active:opacity-60 disabled:opacity-50"
+                                >
+                                  {endingPromiseId ===
+                                  promise.id
+                                    ? "약속 마무리 중..."
+                                    : "이 약속 마무리하기"}
+                                </button>
+                              </>
+                            )}
+
+                            {!promise.is_active && (
+                              <div className="rounded-[22px] border border-purple-100 bg-purple-50/70 p-4">
+                                <p className="text-[10px] font-black tracking-[0.14em] text-purple-400">
+                                  OUR MEMORY
+                                </p>
+
+                                <div className="mt-3 grid grid-cols-3 gap-2">
+                                  <div>
+                                    <p className="text-[9px] text-gray-400">
+                                      함께한 기간
+                                    </p>
+
+                                    <p className="mt-1 text-sm font-black">
+                                      {startedDays}일
+                                    </p>
+                                  </div>
+
+                                  <div>
+                                    <p className="text-[9px] text-gray-400">
+                                      최고 연속
+                                    </p>
+
+                                    <p className="mt-1 text-sm font-black">
+                                      {promise.best_streak}일
+                                    </p>
+                                  </div>
+
+                                  <div>
+                                    <p className="text-[9px] text-gray-400">
+                                      총 성공
+                                    </p>
+
+                                    <p className="mt-1 text-sm font-black">
+                                      {promise.total_success}일
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {promise.deleted_at && (
+                                  <p className="mt-3 text-[10px] text-gray-400">
+                                    마무리한 날{" "}
+                                    {new Date(
+                                      promise.deleted_at
+                                    ).toLocaleDateString(
+                                      "ko-KR"
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  }
+                )}
               </div>
             )}
-
           </section>
-
         )}
 
-        {/* =========================================
-            공통 하단 메뉴
-        ========================================== */}
+        <Link
+          href="/couple"
+          prefetch={false}
+          className="mt-6 block w-full rounded-2xl border border-pink-100 bg-white/80 px-4 py-3 text-center text-xs font-black text-gray-400 shadow-sm"
+        >
+          홈으로 돌아가기
+        </Link>
 
         <BottomNav />
-
       </div>
-
     </main>
   );
 }
