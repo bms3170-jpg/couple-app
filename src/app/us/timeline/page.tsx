@@ -772,7 +772,7 @@ export default function UsTimelinePage() {
           <img
             src={TIMELINE_IMAGES.header}
             alt="우리의 타임라인"
-            className="h-full w-full scale-[1.01] object-cover object-[center_54%]"
+            className="h-full w-full object-cover object-[center_36%]"
           />
         </header>
 
