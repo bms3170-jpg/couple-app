@@ -498,7 +498,7 @@ export default function InventoryPage() {
         if (
           itemIds.length > 0
         ) {
-          const {
+                    const {
             data: storeRows,
             error: storeError,
           } = await supabase
@@ -541,7 +541,7 @@ export default function InventoryPage() {
             );
 
             setNotice(
-              "내 옷장 정보를 불러오지 못했어요."
+              "보유 아이템 정보를 불러오지 못했어요."
             );
           } else {
             setItems(
@@ -661,6 +661,7 @@ export default function InventoryPage() {
       item.id
     );
 
+    // 아이템을 누르면 바로 핏 조정 열기
     setEditMode(
       true
     );
@@ -696,7 +697,7 @@ export default function InventoryPage() {
 
     if (!data) {
       setNotice(
-        "착용 결과를 확인하지 못했어요."
+        "꾸미기 결과를 확인하지 못했어요."
       );
 
       return;
@@ -710,6 +711,10 @@ export default function InventoryPage() {
 
     await loadPosition(
       item
+    );
+
+    setEditMode(
+      true
     );
 
     setNotice(
@@ -747,9 +752,9 @@ export default function InventoryPage() {
   ) {
     updateFit({
       y: Math.max(
-        0,
+        -30,
         Math.min(
-          100,
+          110,
           fit.y + amount
         )
       ),
@@ -968,30 +973,43 @@ export default function InventoryPage() {
             {characterImagePath ? (
               <div className="relative mb-4 w-[76%] max-w-[270px]">
                 <img
-                  src={characterImagePath}
+                  src={
+                    characterImagePath
+                  }
                   alt="내 캐릭터"
                   className="block h-auto w-full object-contain"
                   style={{
-                    maxHeight: "290px",
+                    maxHeight:
+                      "290px",
                   }}
                 />
 
                 {selectedImagePath && (
                   <img
-                    src={selectedImagePath}
+                    src={
+                      selectedImagePath
+                    }
                     alt=""
                     aria-hidden="true"
                     className="pointer-events-none absolute object-contain"
                     style={{
-                      left: `${fit.x}%`,
-                      top: `${fit.y}%`,
-                      width: `${fit.scale}%`,
+                      left:
+                        `${fit.x}%`,
+
+                      top:
+                        `${fit.y}%`,
+
+                      width:
+                        `${fit.scale}%`,
+
                       transform: `
                         translate(-50%, -50%)
                         rotate(${fit.rotation}deg)
                       `,
+
                       transformOrigin:
                         "center center",
+
                       zIndex: 20,
                     }}
                   />
