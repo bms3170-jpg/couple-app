@@ -768,40 +768,28 @@ export default function UsTimelinePage() {
           <span>우리로 돌아가기</span>
         </Link>
 
-        <header className="relative mt-5 overflow-hidden rounded-[34px] border border-pink-100/80 bg-white shadow-[0_18px_50px_rgba(236,72,153,0.10)]">
-          <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#fff3f8]">
+        <header className="mt-5 overflow-hidden rounded-[34px] border border-pink-100/80 bg-white shadow-[0_18px_50px_rgba(236,72,153,0.10)]">
+          <div className="relative overflow-hidden bg-[#fff3f8] px-2 pt-2">
             <img
               src={TIMELINE_IMAGES.header}
               alt="우리의 타임라인"
-              className="h-full w-full object-cover"
+              className="aspect-[3/2] w-full object-contain"
             />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/50 via-transparent to-transparent" />
-
-            <div className="absolute right-3 top-3 rounded-[18px] border border-white/80 bg-white/90 px-3.5 py-2.5 text-center shadow-lg shadow-pink-100/60 backdrop-blur">
-              <p className="text-[8px] font-extrabold tracking-[0.18em] text-gray-400">
-                MOMENTS
-              </p>
-              <p className="mt-0.5 text-xl font-black text-pink-500">
-                {events.length}
-              </p>
-            </div>
           </div>
 
-          <div className="relative px-5 pb-5 pt-3">
-            <div className="absolute -top-7 left-5 rounded-full border border-pink-100 bg-white px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-pink-400 shadow-sm">
-              OUR TIMELINE
+          <div className="flex items-center justify-between gap-3 border-t border-pink-50 bg-white px-5 py-3.5">
+            <div className="min-w-0">
+              <p className="text-[10px] font-extrabold tracking-[0.18em] text-pink-400">
+                OUR TIMELINE
+              </p>
+              <p className="mt-0.5 truncate text-xs font-semibold text-gray-500">
+                처음부터 오늘까지 함께 만든 순간들
+              </p>
             </div>
 
-            <h1 className="text-[25px] font-black tracking-tight">
-              처음부터 오늘까지,
-              <br />
-              둘이 만든 모든 순간 💕
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              약속하고, 인증하고, 보상받고, 기억하고.
-              <br />
-              우리 둘의 이야기를 한곳에 차곡차곡 모아요.
-            </p>
+            <div className="shrink-0 rounded-full bg-pink-50 px-3 py-1.5 text-xs font-bold text-pink-500">
+              {events.length} MOMENTS
+            </div>
           </div>
         </header>
 
@@ -812,63 +800,60 @@ export default function UsTimelinePage() {
         )}
 
         {events.length > 0 && (
-          <section className="mt-4 overflow-hidden rounded-[30px] border border-pink-100 bg-white shadow-[0_12px_35px_rgba(236,72,153,0.07)]">
-            <div className="relative h-[155px] overflow-hidden bg-[#fff3f8] sm:h-[170px]">
-              <img
-                src={TIMELINE_IMAGES.story}
-                alt="Our Story"
-                className="h-full w-full object-cover"
-              />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
+          <section className="mt-4 rounded-[30px] border border-pink-100 bg-white p-4 shadow-[0_12px_35px_rgba(236,72,153,0.07)]">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-extrabold tracking-[0.2em] text-pink-400">
+                  OUR STORY
+                </p>
+                <h2 className="mt-1 text-lg font-black">
+                  지금까지 함께 만든 기록
+                </h2>
+                <p className="mt-1 text-[11px] leading-5 text-gray-400">
+                  둘이 쌓아온 이야기를 숫자로 한눈에 봐요.
+                </p>
+              </div>
+
+              <div className="h-[74px] w-[106px] shrink-0 overflow-hidden rounded-[20px] bg-[#fff3f8]">
+                <img
+                  src={TIMELINE_IMAGES.story}
+                  alt="Our Story"
+                  className="h-full w-full object-cover"
+                />
+              </div>
             </div>
 
-            <div className="relative -mt-3 px-4 pb-4">
-              <div className="rounded-[24px] border border-pink-100/80 bg-white/95 p-4 shadow-sm backdrop-blur">
-                <div className="flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-extrabold tracking-[0.2em] text-pink-400">
-                      OUR STORY
-                    </p>
-                    <h2 className="mt-1 text-lg font-black">
-                      지금까지 함께 만든 기록
-                    </h2>
-                  </div>
-                  <span className="text-2xl">💗</span>
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              {[
+                { label: "전체", value: counts.total },
+                { label: "약속", value: counts.promise },
+                { label: "인증", value: counts.verification },
+                { label: "추억", value: counts.memory },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-[18px] border border-pink-50 bg-[#fff8fb] px-2 py-3 text-center"
+                >
+                  <p className="text-lg font-black">
+                    {item.value}
+                  </p>
+                  <p className="mt-0.5 text-[10px] font-medium text-gray-400">
+                    {item.label}
+                  </p>
                 </div>
+              ))}
+            </div>
 
-                <div className="mt-4 grid grid-cols-4 gap-2">
-                  {[
-                    { label: "전체", value: counts.total },
-                    { label: "약속", value: counts.promise },
-                    { label: "인증", value: counts.verification },
-                    { label: "추억", value: counts.memory },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className="rounded-[18px] border border-pink-50 bg-[#fff8fb] px-2 py-3 text-center"
-                    >
-                      <p className="text-lg font-black">
-                        {item.value}
-                      </p>
-                      <p className="mt-0.5 text-[10px] font-medium text-gray-400">
-                        {item.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-gray-500">
-                  <span className="rounded-full bg-amber-50 px-2.5 py-1.5">
-                    ✨ 레벨업 {counts.level}
-                  </span>
-                  <span className="rounded-full bg-orange-50 px-2.5 py-1.5">
-                    🎁 보상 {counts.reward}
-                  </span>
-                  <span className="rounded-full bg-pink-50 px-2.5 py-1.5 text-pink-500">
-                    ♥ 대표 순간 {counts.important}
-                  </span>
-                </div>
-              </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-gray-500">
+              <span className="rounded-full bg-amber-50 px-2.5 py-1.5">
+                ✨ 레벨업 {counts.level}
+              </span>
+              <span className="rounded-full bg-orange-50 px-2.5 py-1.5">
+                🎁 보상 {counts.reward}
+              </span>
+              <span className="rounded-full bg-pink-50 px-2.5 py-1.5 text-pink-500">
+                ♥ 대표 순간 {counts.important}
+              </span>
             </div>
           </section>
         )}
