@@ -768,11 +768,11 @@ export default function UsTimelinePage() {
           <span>우리로 돌아가기</span>
         </Link>
 
-        <header className="mt-5 aspect-[16/9] overflow-hidden rounded-[32px] border border-pink-100/80 bg-[#fff4f9] shadow-[0_14px_40px_rgba(236,72,153,0.08)]">
+        <header className="mt-5 aspect-[16/10] overflow-hidden rounded-[32px] border border-pink-100/80 bg-[#fff4f9] shadow-[0_14px_40px_rgba(236,72,153,0.08)]">
           <img
             src={TIMELINE_IMAGES.header}
             alt="우리의 타임라인"
-            className="h-full w-full scale-[1.02] object-cover object-[center_58%]"
+            className="h-full w-full scale-[1.01] object-cover object-[center_54%]"
           />
         </header>
 
