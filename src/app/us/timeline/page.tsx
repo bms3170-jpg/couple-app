@@ -48,12 +48,12 @@ type TimelineOrder =
 const KOREA_TIME_ZONE = "Asia/Seoul";
 
 const TIMELINE_IMAGES = {
-  header: "/timeline/TIMELINE_01_HEADER.png",
-  story: "/timeline/TIMELINE_02_STORY.png",
-  memory: "/timeline/TIMELINE_03_MEMORY.png",
-  rewards: "/timeline/TIMELINE_04_REWARDS.png",
-  promises: "/timeline/TIMELINE_05_PROMISES.png",
-  moments: "/timeline/TIMELINE_06_MOMENTS.png",
+  header: "/timeline/TIMELINE_01_HEADER.PNG",
+  story: "/timeline/TIMELINE_02_STORY.PNG",
+  memory: "/timeline/TIMELINE_03_MEMORY.PNG",
+  rewards: "/timeline/TIMELINE_04_REWARDS.PNG",
+  promises: "/timeline/TIMELINE_05_PROMISES.PNG",
+  moments: "/timeline/TIMELINE_06_MOMENTS.PNG",
 } as const;
 
 const FILTERS: {
