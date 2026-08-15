@@ -1,4 +1,4 @@
-"use client";
+use client";
 
 import Link from "next/link";
 import {
@@ -118,6 +118,7 @@ type GrowthStage = {
   unlock_message: string | null;
 };
 
+
 type EquipmentRow = {
   id: string;
   couple_id: string;
@@ -145,16 +146,13 @@ type ItemPosition = {
   user_id: string;
   item_id: string;
   animal: CharacterType;
-  stage:
-    | "baby"
-    | "child"
-    | "teen"
-    | "adult";
+  stage: "baby" | "child" | "teen" | "adult";
   x: number;
   y: number;
   scale: number;
   rotation: number;
 };
+
 
 export default function CouplePage() {
   const supabase = useMemo(
@@ -271,6 +269,7 @@ export default function CouplePage() {
       null
     );
 
+
   const [
     equippedItems,
     setEquippedItems,
@@ -280,6 +279,11 @@ export default function CouplePage() {
     itemPositions,
     setItemPositions,
   ] = useState<ItemPosition[]>([]);
+
+  const [
+    showCoinInfo,
+    setShowCoinInfo,
+  ] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -298,6 +302,10 @@ export default function CouplePage() {
       setCurrentUserId(
         user.id
       );
+
+      // =====================================
+      // 내가 속한 커플
+      // =====================================
 
       const {
         data: membership,
@@ -336,6 +344,10 @@ export default function CouplePage() {
 
       const coupleId =
         membership.couple_id;
+
+      // =====================================
+      // 확인하지 않은 보상 알림
+      // =====================================
 
       const {
         data:
@@ -395,6 +407,10 @@ export default function CouplePage() {
         );
       }
 
+      // =====================================
+      // 커플 레벨 / XP
+      // =====================================
+
       const {
         data: coupleData,
         error: coupleError,
@@ -428,6 +444,10 @@ export default function CouplePage() {
         return;
       }
 
+      // =====================================
+      // 커플 캐릭터 종류
+      // =====================================
+
       const {
         data: characterData,
         error: characterError,
@@ -459,6 +479,10 @@ export default function CouplePage() {
             : null
         );
       }
+
+      // =====================================
+      // 내 코인
+      // =====================================
 
       const {
         data: walletData,
@@ -504,6 +528,10 @@ export default function CouplePage() {
               }
         );
       }
+
+      // =====================================
+      // 성장 단계
+      // =====================================
 
       const {
         data: growthData,
@@ -551,6 +579,10 @@ export default function CouplePage() {
         );
       }
 
+      // =====================================
+      // 커플 멤버 + 각자 캐릭터 색상
+      // =====================================
+
       const {
         data: memberRows,
         error: memberError,
@@ -594,6 +626,10 @@ export default function CouplePage() {
           (member) =>
             member.user_id
         ) ?? [];
+
+      // =====================================
+      // 프로필
+      // =====================================
 
       const {
         data: profileRows,
@@ -664,6 +700,12 @@ export default function CouplePage() {
             };
           }
         );
+
+
+
+      // =====================================
+      // 착용 아이템 + 아이템 PNG + 저장 위치
+      // =====================================
 
       const {
         data: equipmentRows,
@@ -802,29 +844,22 @@ export default function CouplePage() {
                 (row: any) => ({
                   user_id:
                     row.user_id,
-
                   item_id:
                     row.item_id,
-
                   animal:
                     row.animal as CharacterType,
-
                   stage:
                     row.stage as
                       | "baby"
                       | "child"
                       | "teen"
                       | "adult",
-
                   x:
                     Number(row.x),
-
                   y:
                     Number(row.y),
-
                   scale:
                     Number(row.scale),
-
                   rotation:
                     Number(row.rotation),
                 })
@@ -858,10 +893,8 @@ export default function CouplePage() {
                 return {
                   user_id:
                     row.user_id,
-
                   slot:
                     row.slot,
-
                   item,
                 };
               }
@@ -881,7 +914,8 @@ export default function CouplePage() {
       // =====================================
       // 해금된 보상 수
       // =====================================
-          const {
+
+      const {
         count: unlockedCount,
         error:
           rewardCountError,
@@ -1490,6 +1524,7 @@ export default function CouplePage() {
     );
   }
 
+
   // =========================================
   // 로딩
   // =========================================
@@ -1560,6 +1595,7 @@ export default function CouplePage() {
   const coins =
     wallet.coins;
 
+  // 캐릭터 성장 단계는 2레벨마다 변경
   const growthName =
     level <= 2
       ? "아기"
@@ -1569,8 +1605,15 @@ export default function CouplePage() {
       ? "청년"
       : "성년";
 
+  // =========================================
+  // 현재 로그인한 사람의 캐릭터 선택 상태
+  // =========================================
   const needsCharacterSetup =
     !character?.character_type;
+
+  // =========================================
+  // 캐릭터 자동 성장
+  // =========================================
 
   const characterImageLevel =
     level <= 2
@@ -1609,14 +1652,21 @@ export default function CouplePage() {
 
     return `/characters/${animalFolder}/${stage}.png`;
   }
-    const characterDisplayWidth =
-    characterImageLevel === 1
+
+
+  const characterDisplayWidth =
+    characterImageLevel ===
+    1
       ? 105
-      : characterImageLevel === 2
+      : characterImageLevel ===
+        2
       ? 116
-      : characterImageLevel === 3
+      : characterImageLevel ===
+        3
       ? 128
       : 140;
+
+
 
   function getUserItem(
     userId: string,
@@ -1624,8 +1674,10 @@ export default function CouplePage() {
   ) {
     return equippedItems.find(
       (row) =>
-        row.user_id === userId &&
-        row.slot === slot
+        row.user_id ===
+          userId &&
+        row.slot ===
+          slot
     )?.item;
   }
 
@@ -1633,7 +1685,9 @@ export default function CouplePage() {
     userId: string,
     itemId: string
   ) {
-    if (!character?.character_type) {
+    if (
+      !character?.character_type
+    ) {
       return null;
     }
 
@@ -1649,11 +1703,16 @@ export default function CouplePage() {
     return (
       itemPositions.find(
         (row) =>
-          row.user_id === userId &&
-          row.item_id === itemId &&
-          row.animal === character.character_type &&
-          row.stage === stage
-      ) ?? null
+          row.user_id ===
+            userId &&
+          row.item_id ===
+            itemId &&
+          row.animal ===
+            character.character_type &&
+          row.stage ===
+            stage
+      ) ??
+      null
     );
   }
 
@@ -1694,9 +1753,12 @@ export default function CouplePage() {
           promise.id
       );
 
-    if (promise.is_joint) {
+    if (
+      promise.is_joint
+    ) {
       return (
-        members.length > 0 &&
+        members.length >
+          0 &&
         members.every(
           (member) =>
             promiseVerifications.some(
@@ -1728,7 +1790,8 @@ export default function CouplePage() {
           promiseId &&
         item.user_id ===
           currentUserId
-    ) ?? null;
+    ) ??
+    null;
 
   const incompletePromises =
     promises.filter(
@@ -1753,7 +1816,8 @@ export default function CouplePage() {
     completedPromises.length;
 
   const todayProgressPercent =
-    todayTotalCount > 0
+    todayTotalCount >
+    0
       ? Math.round(
           (
             todayCompletedCount /
@@ -1763,9 +1827,66 @@ export default function CouplePage() {
       : 0;
 
   const isTodayAllCompleted =
-    todayTotalCount > 0 &&
+    todayTotalCount >
+      0 &&
     todayCompletedCount ===
       todayTotalCount;
+
+
+  // =========================================
+  // 새 홈 디자인 표시값
+  // =========================================
+
+  const currentStreak =
+    promises.reduce(
+      (max, promise) =>
+        Math.max(
+          max,
+          promise.current_streak ?? 0
+        ),
+      0
+    );
+
+  const affection =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        character?.affection ?? 0
+      )
+    );
+
+  function getDisplayedCoinReward(
+    streak: number
+  ) {
+    if (streak <= 0) return 1;
+    if (streak === 1) return 1;
+    if (streak <= 3) return 2;
+    if (streak <= 5) return 3;
+    if (streak === 6) return 4;
+    if (streak === 7) return 5;
+    if (streak <= 13) return 5;
+    if (streak === 14) return 8;
+    if (streak <= 29) return 6;
+    if (streak === 30) return 15;
+    return 6;
+  }
+
+  const todayCoinReward =
+    getDisplayedCoinReward(
+      Math.max(
+        currentStreak,
+        1
+      )
+    );
+
+  const nextCoinReward =
+    getDisplayedCoinReward(
+      Math.max(
+        currentStreak + 1,
+        1
+      )
+    );
 
   // =========================================
   // 캐릭터 한 마리
@@ -1777,7 +1898,9 @@ export default function CouplePage() {
       | undefined,
     index: number
   ) {
-    if (!member) {
+    if (
+      !member
+    ) {
       return (
         <div className="flex w-[46%] items-center justify-center">
           <span className="pointer-events-none text-4xl opacity-30">
@@ -1790,10 +1913,11 @@ export default function CouplePage() {
     const nickname =
       member.profiles
         ?.nickname ??
-      (index === 0
-        ? "나"
-        : "파트너");
-
+      (
+        index === 0
+          ? "나"
+          : "파트너"
+      );
     const isMe =
       member.user_id ===
       currentUserId;
@@ -1824,20 +1948,17 @@ export default function CouplePage() {
     return (
       <div className="relative flex w-[46%] min-w-0 flex-col items-center">
 
-        <div className="relative flex h-[145px] w-full items-end justify-center">
+        <div className="relative flex h-[188px] w-full items-end justify-center">
 
           {characterImagePath ? (
             <div
               className="relative z-10 shrink-0"
               style={{
-                width:
-                  `${characterDisplayWidth}px`,
+                width: `${characterDisplayWidth}px`,
               }}
             >
               <img
-                src={
-                  characterImagePath
-                }
+                src={characterImagePath}
                 alt={
                   character?.character_type === "dog"
                     ? "강아지 캐릭터"
@@ -1849,8 +1970,7 @@ export default function CouplePage() {
                 }
                 className="block h-auto w-full object-contain drop-shadow-sm"
                 style={{
-                  maxHeight:
-                    "135px",
+                  maxHeight: "178px",
                 }}
               />
 
@@ -1885,7 +2005,9 @@ export default function CouplePage() {
                       item
                     );
 
-                  if (!imageSrc) {
+                  if (
+                    !imageSrc
+                  ) {
                     return null;
                   }
 
@@ -1931,21 +2053,16 @@ export default function CouplePage() {
                       style={{
                         left:
                           `${fit.x}%`,
-
                         top:
                           `${fit.y}%`,
-
                         width:
                           `${fit.scale}%`,
-
                         transform: `
                           translate(-50%, -50%)
                           rotate(${fit.rotation}deg)
                         `,
-
                         transformOrigin:
                           "center center",
-
                         zIndex,
                       }}
                     />
@@ -1954,12 +2071,14 @@ export default function CouplePage() {
               )}
             </div>
           ) : (
+
             <div
               aria-label="캐릭터 미선택"
               className="pointer-events-none absolute inset-x-2 bottom-1 top-2 flex select-none items-center justify-center rounded-[24px] border border-dashed border-pink-200 bg-white/60 text-4xl"
             >
               🐾
             </div>
+
           )}
 
         </div>
@@ -1988,103 +2107,84 @@ export default function CouplePage() {
       <div className="mx-auto max-w-md pb-28">
 
         {/* =================================
-            HEADER
+            NEW OURQUEST HERO
         ================================= */}
 
-        <header className="flex items-end justify-between gap-4">
-
+        <header className="flex items-center justify-between gap-4">
           <div>
-
-            <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
+            <p className="text-xs font-black tracking-[0.22em] text-pink-400">
               OURQUEST
             </p>
 
-            <h1 className="mt-2 text-3xl font-bold">
-              {first} ♡ {second}
+            <h1 className="mt-2 text-[28px] font-black tracking-tight text-gray-800">
+              {first} <span className="text-pink-400">♡</span> {second}
             </h1>
 
-            <p className="mt-2 text-sm text-gray-500">
-              오늘도 둘만의 퀘스트를 이어가요 ♡
+            <p className="mt-1.5 text-xs font-medium text-gray-400">
+              오늘도 둘만의 퀘스트를 이어가요
             </p>
-
           </div>
 
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
-            💕
-          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setShowCoinInfo(true)
+            }
+            className="flex items-center gap-2 rounded-2xl border border-amber-100 bg-white px-3 py-2.5 shadow-sm transition active:scale-[0.98]"
+          >
+            <img
+              src="/images/coin.png"
+              alt="코인"
+              className="h-7 w-7 object-contain"
+            />
 
+            <span className="text-base font-black text-gray-700">
+              {coins}
+            </span>
+          </button>
         </header>
 
-        {/* =================================
-            OUR LEVEL
-        ================================= */}
+        <section className="relative mt-5 overflow-hidden rounded-[34px] border border-pink-100 bg-gradient-to-b from-[#fffefe] via-[#fff8fb] to-[#ffeef5] px-4 pb-5 pt-4 shadow-sm">
 
-        <section className="mt-7 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/60 p-5 shadow-sm">
+          <div className="pointer-events-none absolute -right-5 -top-5 h-24 w-24 rounded-full bg-pink-100/60 blur-2xl" />
+          <div className="pointer-events-none absolute -left-7 bottom-10 h-24 w-24 rounded-full bg-amber-50/80 blur-2xl" />
 
-          <div className="flex items-start justify-between gap-3">
-
-            <div>
-
-              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
-                OUR LEVEL
-              </p>
-
-              <p className="mt-2 text-4xl font-bold tracking-tight">
+          <div className="relative z-10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-pink-500 px-3 py-1.5 text-[11px] font-black text-white shadow-sm">
                 LV.{level}
-              </p>
+              </span>
 
-              <p className="mt-1 text-[10px] font-semibold text-pink-400">
+              <span className="rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-bold text-pink-500 shadow-sm">
                 {growthName}
-              </p>
-
+              </span>
             </div>
 
             <div className="flex items-center gap-2">
-
-              <div className="rounded-2xl bg-white/90 px-3 py-2 text-center shadow-sm">
-
-                <p className="text-[10px] text-gray-400">
-                  내 코인
-                </p>
-
-                <p className="mt-0.5 text-sm font-bold text-amber-500">
-                  🪙 {coins}개
-                </p>
-
-              </div>
-
               <Link
                 href="/inventory"
                 prefetch={false}
-                className="flex h-[50px] items-center justify-center rounded-2xl border border-pink-100 bg-white px-3 text-[11px] font-bold text-pink-500 shadow-sm transition active:scale-[0.98]"
+                className="flex h-10 items-center justify-center rounded-2xl border border-pink-100 bg-white/90 px-3 text-[11px] font-black text-pink-500 shadow-sm transition active:scale-[0.98]"
               >
-                옷장
+                👕 옷장
               </Link>
 
               <Link
                 href="/store"
                 prefetch={false}
-                className="flex h-[50px] items-center justify-center rounded-2xl bg-pink-500 px-3 text-[11px] font-bold text-white shadow-sm transition active:scale-[0.98]"
+                className="flex h-10 items-center justify-center rounded-2xl bg-pink-500 px-3 text-[11px] font-black text-white shadow-sm transition active:scale-[0.98]"
               >
                 STORE
               </Link>
-
             </div>
-
           </div>
 
-          {/* =================================
-              두 캐릭터
-          ================================= */}
-
-          <div className="relative mt-4 overflow-hidden rounded-[26px] border border-pink-100 bg-gradient-to-b from-white/90 to-pink-50/70 px-3 pb-4 pt-3">
-
-            <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 text-xl text-pink-300">
+          <div className="relative z-10 mt-2">
+            <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 text-2xl text-pink-300">
               ♡
             </div>
 
-            <div className="flex items-end justify-center -space-x-3">
-
+            <div className="flex items-end justify-center -space-x-4">
               {renderUserCharacter(
                 members[0],
                 0
@@ -2094,260 +2194,268 @@ export default function CouplePage() {
                 members[1],
                 1
               )}
-
             </div>
-
-            {needsCharacterSetup ? (
-              <Link
-                href="/character"
-                prefetch={false}
-                className="relative z-20 mt-3 block rounded-2xl bg-pink-500 px-4 py-3 text-center text-xs font-bold text-white"
-              >
-                우리 캐릭터 선택하기
-              </Link>
-            ) : (
-              <Link
-                href="/store"
-                prefetch={false}
-                className="mt-2 block text-center text-[10px] font-semibold text-pink-400"
-              >
-                각자 원하는 아이템으로 캐릭터를 꾸며보세요 ♡
-              </Link>
-            )}
-
           </div>
 
-          {/* =================================
-              XP
-          ================================= */}
+          {needsCharacterSetup ? (
+            <Link
+              href="/character"
+              prefetch={false}
+              className="relative z-20 mt-2 block rounded-2xl bg-pink-500 px-4 py-3 text-center text-xs font-black text-white"
+            >
+              우리 캐릭터 선택하기
+            </Link>
+          ) : (
+            <p className="relative z-20 mt-1 text-center text-[10px] font-semibold text-pink-400">
+              각자 원하는 아이템으로 캐릭터를 꾸며보세요 ♡
+            </p>
+          )}
 
-          <div className="mt-4">
-
-            <div className="flex items-end justify-between">
-
-              <div>
-
-                <p className="text-[10px] text-gray-400">
-                  현재 XP
+          <div className="relative z-10 mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-[22px] border border-pink-100 bg-white/85 p-3.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black tracking-[0.12em] text-pink-400">
+                  AFFECTION
                 </p>
 
-                <p className="mt-1 text-xl font-bold text-pink-500">
-                  {xp}
-
-                  <span className="ml-1 text-xs font-semibold text-gray-300">
-                    / {xpForNextLevel}
-                  </span>
-                </p>
-
+                <span className="text-xs font-black text-pink-500">
+                  {affection}%
+                </span>
               </div>
 
-              <p className="text-xs font-semibold text-pink-500">
+              <div className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-pink-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-pink-300 to-pink-500 transition-all"
+                  style={{
+                    width: `${affection}%`,
+                  }}
+                />
+              </div>
+
+              <p className="mt-2 text-[10px] font-semibold text-gray-400">
+                💕 우리 애정도
+              </p>
+            </div>
+
+            <div className="rounded-[22px] border border-amber-100 bg-white/85 p-3.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black tracking-[0.12em] text-amber-500">
+                  LEVEL XP
+                </p>
+
+                <span className="text-xs font-black text-gray-700">
+                  {xp}/{xpForNextLevel}
+                </span>
+              </div>
+
+              <div className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-amber-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-all"
+                  style={{
+                    width: `${xpPercent}%`,
+                  }}
+                />
+              </div>
+
+              <p className="mt-2 text-[10px] font-semibold text-gray-400">
                 다음 레벨까지{" "}
                 {Math.max(
                   xpForNextLevel - xp,
                   0
                 )} XP
               </p>
-
             </div>
-
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-pink-100/70">
-
-              <div
-                className="h-full rounded-full bg-pink-400 transition-all"
-                style={{
-                  width:
-                    `${xpPercent}%`,
-                }}
-              />
-
-            </div>
-
           </div>
-
         </section>
 
         {/* =================================
-            TODAY
+            TODAY SUMMARY
         ================================= */}
 
         <section className="mt-5">
-
           <div className="mb-3 flex items-end justify-between">
-
             <div>
-
-              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+              <p className="text-xs font-black tracking-[0.18em] text-pink-400">
                 TODAY
               </p>
 
-              <h2 className="mt-1 text-lg font-bold">
-                오늘 한눈에 보기
+              <h2 className="mt-1 text-xl font-black">
+                오늘의 우리
               </h2>
-
             </div>
 
-            <span className="text-[11px] text-gray-400">
-              우리 둘의 오늘 ♡
+            <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-bold text-gray-400 shadow-sm">
+              {todayCompletedCount}/{todayTotalCount} 완료
             </span>
-
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-
-            <div className="rounded-[26px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/60 p-5 shadow-sm">
-
+            <div className="rounded-[26px] border border-pink-100 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+                  🔥
+                </div>
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-lg">
+                <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-black text-pink-500">
+                  STREAK
+                </span>
+              </div>
+
+              <p className="mt-4 text-[11px] font-semibold text-gray-400">
+                연속 인증
+              </p>
+
+              <p className="mt-1 text-3xl font-black text-gray-800">
+                {currentStreak}
+                <span className="ml-1 text-sm font-bold text-gray-400">
+                  일
+                </span>
+              </p>
+
+              <div className="mt-3 flex items-center gap-1.5 rounded-2xl bg-amber-50 px-3 py-2">
+                <img
+                  src="/images/coin.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="h-5 w-5 object-contain"
+                />
+
+                <p className="text-[11px] font-black text-amber-600">
+                  오늘 예상 +{todayCoinReward}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-[26px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/70 p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
                   ✅
                 </div>
 
-                <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-semibold text-pink-400">
+                <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-pink-500 shadow-sm">
                   QUEST
                 </span>
-
               </div>
 
-              <p className="mt-4 text-xs text-gray-400">
+              <p className="mt-4 text-[11px] font-semibold text-gray-400">
                 오늘의 약속
               </p>
-                            <p className="mt-1 text-3xl font-bold tracking-tight">
 
-                {promises.length}
-
-                <span className="ml-1 text-sm font-semibold text-gray-400">
-                  개
+              <p className="mt-1 text-3xl font-black text-gray-800">
+                {todayCompletedCount}
+                <span className="mx-1 text-base text-gray-300">
+                  /
                 </span>
-
+                {todayTotalCount}
               </p>
 
-              <p className="mt-2 text-[11px] leading-5 text-gray-400">
-                오늘도 함께 이어가요 ♡
-              </p>
-
+              <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white">
+                <div
+                  className="h-full rounded-full bg-pink-500 transition-all"
+                  style={{
+                    width: `${todayProgressPercent}%`,
+                  }}
+                />
+              </div>
             </div>
+          </div>
 
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <Link
               href="/us/history"
               prefetch={false}
-              className="group rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm"
+              className="flex items-center justify-between rounded-[22px] border border-pink-100 bg-white px-4 py-3.5 shadow-sm"
             >
-
-              <div className="flex items-center justify-between">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-50 text-lg">
-                  📖
-                </div>
-
-                <span className="text-lg text-pink-200">
-                  ›
-                </span>
-
+              <div>
+                <p className="text-[10px] font-bold text-gray-400">
+                  OUR MEMORY
+                </p>
+                <p className="mt-0.5 text-sm font-black">
+                  우리 기록
+                </p>
               </div>
 
-              <p className="mt-4 text-xs text-gray-400">
-                우리 기록
-              </p>
-
-              <p className="mt-1 font-bold">
-                추억 모아보기
-              </p>
-
-              <p className="mt-2 text-[11px] leading-5 text-gray-400">
-                약속과 인증 기록을 확인해요.
-              </p>
-
+              <span className="text-xl">
+                📖
+              </span>
             </Link>
 
+            <Link
+              href="/rewards"
+              prefetch={false}
+              className="flex items-center justify-between rounded-[22px] border border-pink-100 bg-white px-4 py-3.5 shadow-sm"
+            >
+              <div>
+                <p className="text-[10px] font-bold text-gray-400">
+                  REWARDS
+                </p>
+                <p className="mt-0.5 text-sm font-black">
+                  보상 {unlockedRewardCount}
+                </p>
+              </div>
+
+              <span className="text-xl">
+                🎁
+              </span>
+            </Link>
           </div>
 
           {pendingVerificationCount >
             0 && (
-
             <Link
               href="/verifications"
               prefetch={false}
-              className="mt-3 flex items-center justify-between rounded-[26px] border border-pink-100 bg-white p-4 shadow-sm"
+              className="mt-3 flex items-center justify-between rounded-[24px] border border-pink-100 bg-white p-4 shadow-sm"
             >
-
               <div className="flex min-w-0 items-center gap-3">
-
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
                   💌
                 </div>
 
                 <div className="min-w-0">
-
-                  <p className="font-bold">
+                  <p className="text-sm font-black">
                     확인을 기다리고 있어요
                   </p>
 
-                  <p className="mt-1 truncate text-xs text-gray-400">
+                  <p className="mt-1 truncate text-[11px] font-medium text-gray-400">
                     상대방이 보낸 인증 {pendingVerificationCount}개
                   </p>
-
                 </div>
-
               </div>
 
-              <span className="shrink-0 rounded-full bg-pink-500 px-3 py-2 text-[11px] font-semibold text-white">
-                확인하기
+              <span className="rounded-full bg-pink-500 px-3 py-2 text-[10px] font-black text-white">
+                확인
               </span>
-
             </Link>
-
           )}
 
           {recentReward && (
-
             <Link
               href="/rewards"
               prefetch={false}
-              className="mt-3 flex items-center justify-between rounded-[26px] border border-pink-100 bg-white p-4 shadow-sm"
+              className="mt-3 flex items-center justify-between rounded-[24px] border border-amber-100 bg-gradient-to-r from-amber-50/70 to-white p-4 shadow-sm"
             >
-
               <div className="flex min-w-0 items-center gap-3">
-
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-xl">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
                   🎁
                 </div>
 
                 <div className="min-w-0">
-
-                  <p className="text-[10px] font-semibold tracking-[0.12em] text-pink-400">
+                  <p className="text-[10px] font-black tracking-[0.12em] text-amber-500">
                     RECENT REWARD
                   </p>
 
-                  <p className="mt-1 truncate font-bold">
+                  <p className="mt-1 truncate text-sm font-black">
                     {recentReward.title}
                   </p>
-
-                  <p className="mt-1 truncate text-xs text-gray-400">
-
-                    {recentReward.promises
-                      ?.title ??
-                      "약속"}{" "}
-
-                    ·{" "}
-
-                    {recentReward.required_days}
-                    일 달성
-
-                  </p>
-
                 </div>
-
               </div>
 
-              <span className="text-lg text-pink-200">
+              <span className="text-lg text-amber-300">
                 ›
               </span>
-
             </Link>
-
           )}
-
         </section>
 
         {/* =================================
@@ -2909,7 +3017,8 @@ export default function CouplePage() {
                 )}
 
               </section>
-                            {/* 완료 */}
+
+              {/* 완료 */}
 
               <section className="overflow-hidden rounded-[26px] border border-pink-100 bg-white shadow-sm">
 
@@ -3087,6 +3196,134 @@ export default function CouplePage() {
       </div>
 
       {/* =================================
+          코인 안내 팝업
+      ================================= */}
+
+      {showCoinInfo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5"
+          onClick={() =>
+            setShowCoinInfo(false)
+          }
+        >
+          <div
+            className="w-full max-w-sm rounded-[32px] bg-white p-6 shadow-2xl"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/images/coin.png"
+                  alt="OURQUEST 코인"
+                  className="h-12 w-12 object-contain"
+                />
+
+                <div>
+                  <p className="text-[10px] font-black tracking-[0.18em] text-pink-400">
+                    OURQUEST COIN
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-black">
+                    코인 획득 방법
+                  </h2>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowCoinInfo(false)
+                }
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-50 text-gray-400"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-[24px] bg-[#fff8fb] p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-black">
+                  🔥 현재 {currentStreak}일 연속
+                </p>
+
+                <div className="flex items-center gap-1.5">
+                  <img
+                    src="/images/coin.png"
+                    alt=""
+                    aria-hidden="true"
+                    className="h-5 w-5 object-contain"
+                  />
+
+                  <span className="text-sm font-black text-amber-600">
+                    {coins}
+                  </span>
+                </div>
+              </div>
+
+              <p className="mt-2 text-xs leading-5 text-gray-500">
+                매일 인증을 이어가면 연속 보너스가 커져요.
+                하루라도 놓치면 연속 보너스는 다시 1일차부터 시작해요.
+              </p>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {[
+                ["1일차", "1"],
+                ["2~3일차", "2"],
+                ["4~5일차", "3"],
+                ["6일차", "4"],
+                ["7일차", "5"],
+                ["14일차", "8"],
+                ["30일차", "15"],
+              ].map(
+                ([day, reward]) => (
+                  <div
+                    key={day}
+                    className="flex items-center justify-between rounded-2xl border border-pink-50 px-4 py-3"
+                  >
+                    <span className="text-sm font-bold text-gray-600">
+                      {day}
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <img
+                        src="/images/coin.png"
+                        alt=""
+                        aria-hidden="true"
+                        className="h-5 w-5 object-contain"
+                      />
+
+                      <span className="text-sm font-black text-amber-600">
+                        +{reward}
+                      </span>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-amber-50 px-4 py-3">
+              <p className="text-xs font-bold text-amber-700">
+                다음 연속 인증 예상 보상: +{nextCoinReward}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowCoinInfo(false)
+              }
+              className="mt-5 w-full rounded-2xl bg-pink-500 px-5 py-4 text-sm font-black text-white"
+            >
+              확인했어요 ♡
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* =================================
           보상 팝업
       ================================= */}
 
@@ -3111,6 +3348,7 @@ export default function CouplePage() {
               {rewardNotification.rewards
                 ?.required_days ??
                 0}
+
               일 달성!
 
             </h2>
