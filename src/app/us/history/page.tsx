@@ -567,7 +567,7 @@ export default function UsHistoryPage() {
     ? allRecentVerifications.find((item) => item.id === featuredRecordId) ?? null
     : null;
 
-  const searchResults: SearchResult[] = useMemo(() => {
+  const searchResults: SearchResult[] = (() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return [];
 
@@ -614,7 +614,7 @@ export default function UsHistoryPage() {
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       )
       .slice(0, 20);
-  }, [searchQuery, promises, allRecentVerifications, levelRewardMemories]);
+  })();
 
   function setFeaturedVerificationRecord(id: string) {
     const next = featuredRecordId === id ? null : id;
