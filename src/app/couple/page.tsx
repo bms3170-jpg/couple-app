@@ -2133,7 +2133,7 @@ export default function CouplePage() {
             className="flex items-center gap-2 rounded-2xl border border-amber-100 bg-white px-3 py-2.5 shadow-sm transition active:scale-[0.98]"
           >
             <img
-              src="/images/coin.png"
+              src="/images/coin.PNG"
               alt="코인"
               className="h-7 w-7 object-contain"
             />
