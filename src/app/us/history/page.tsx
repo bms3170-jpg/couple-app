@@ -780,116 +780,185 @@ export default function UsHistoryPage() {
   return (
     <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
       <div className="mx-auto max-w-md pb-28">
-        <header>
-          <Link
-            href="/us"
-            prefetch={false}
-            className="inline-flex items-center gap-1 text-sm font-semibold text-gray-500"
-          >
-            ← 우리로 돌아가기
-          </Link>
+        <header className="relative overflow-hidden rounded-[34px] border border-pink-100/80 bg-gradient-to-br from-[#fffdfd] via-[#fff8fb] to-[#fff0f7] px-5 pb-5 pt-5 shadow-[0_12px_34px_rgba(236,72,153,0.07)]">
+          <div className="pointer-events-none absolute -right-10 -top-8 h-44 w-52 rounded-full bg-pink-100/55 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-10 h-36 w-36 rounded-full bg-orange-50/80 blur-3xl" />
 
-          <div className="mt-7 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-black tracking-[0.2em] text-pink-400">
-                OUR HISTORY
-              </p>
-              <h1 className="mt-2 text-[34px] font-black tracking-[-0.03em]">우리 기록</h1>
-              <p className="mt-2 text-sm leading-6 text-gray-500">
-                약속하고, 인증하고, 기억한 모든 순간을
-                <br />
-                둘만의 기록으로 모아봤어요 ♡
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[17px] border border-pink-100 bg-white text-lg shadow-[0_5px_16px_rgba(236,72,153,0.08)] transition active:scale-95"
-              aria-label="기록 검색"
-            >
-              🔎
-            </button>
-          </div>
-        </header>
-
-        <section className="relative mt-6 overflow-hidden rounded-[32px] border border-pink-100 bg-gradient-to-br from-white via-[#fffafd] to-[#fff1f7] p-5 shadow-[0_10px_28px_rgba(236,72,153,0.07)]">
           <img
             src={HISTORY_IMAGES.story}
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute -right-7 -top-5 h-36 w-44 object-contain opacity-[0.11]"
+            className="pointer-events-none absolute right-0 top-3 h-[178px] w-[210px] object-contain object-right opacity-[0.76]"
           />
 
           <div className="relative z-10">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[20px] bg-white shadow-sm">
-                  <img
-                    src={HISTORY_IMAGES.record}
-                    alt=""
-                    aria-hidden="true"
-                    className="h-12 w-12 object-contain"
-                  />
+            <Link
+              href="/us"
+              prefetch={false}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400"
+            >
+              ← 우리로 돌아가기
+            </Link>
+
+            <div className="mt-5 max-w-[58%]">
+              <p className="text-[10px] font-black tracking-[0.24em] text-pink-400">
+                ♡ OUR HISTORY ♡
+              </p>
+
+              <h1 className="mt-2 text-[34px] font-black tracking-[-0.04em] text-[#242424]">
+                우리 기록
+              </h1>
+
+              <p className="mt-2 text-[12px] leading-5 text-gray-500">
+                약속하고, 인증하고, 기억한 모든 순간을
+                <br />
+                둘만의 기록으로 모아봤어요 ♡
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="mt-4 flex h-10 w-10 items-center justify-center rounded-[15px] border border-pink-200/80 bg-white/80 text-lg text-pink-500 shadow-sm backdrop-blur transition active:scale-95"
+                aria-label="기록 검색"
+              >
+                ⌕
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-[28px] border border-white/90 bg-white/82 p-4 shadow-[0_8px_24px_rgba(236,72,153,0.05)] backdrop-blur">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[20px] bg-[#fff6f9] shadow-sm">
+                    <img
+                      src={HISTORY_IMAGES.record}
+                      alt=""
+                      aria-hidden="true"
+                      className="h-12 w-12 object-contain"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-gray-400">
+                      우리가 함께 쌓은 기록
+                    </p>
+
+                    <p className="mt-0.5 text-[25px] font-black tracking-[-0.035em]">
+                      <span className="text-pink-500">{approvedCount}</span>
+                      번의 성공
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-400">우리가 함께 쌓은 기록</p>
-                  <p className="mt-1 text-2xl font-black">{approvedCount}번의 성공</p>
+
+                <div className="shrink-0 rounded-[20px] border border-pink-100 bg-white/90 px-3.5 py-3 text-center shadow-sm">
+                  <p className="text-[9px] font-black tracking-[0.12em] text-gray-400">
+                    OUR XP
+                  </p>
+                  <p className="mt-1 text-lg font-black text-pink-500">
+                    {coupleXp} XP
+                  </p>
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-white/85 px-3.5 py-2.5 text-right shadow-sm">
-                <p className="text-[10px] font-semibold text-gray-400">OUR XP</p>
-                <p className="mt-1 font-black text-pink-500">{coupleXp} XP</p>
+              <div className="mt-4 h-px bg-gradient-to-r from-transparent via-pink-100 to-transparent" />
+
+              <div className="mt-3 grid grid-cols-3 divide-x divide-pink-100/80">
+                {[
+                  {
+                    label: "약속",
+                    value: totalPromiseCount,
+                    emoji: "✅",
+                    tone: "from-emerald-50/75 to-white",
+                  },
+                  {
+                    label: "인증",
+                    value: approvedCount,
+                    emoji: "📸",
+                    tone: "from-violet-50/75 to-white",
+                  },
+                  {
+                    label: "추억",
+                    value: levelRewardMemories.length,
+                    emoji: "💕",
+                    tone: "from-pink-50/80 to-white",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`mx-1 rounded-[18px] bg-gradient-to-b ${item.tone} px-2 py-3 text-center`}
+                  >
+                    <span className="text-[18px]">{item.emoji}</span>
+                    <p className="mt-1 text-[22px] font-black tracking-[-0.03em]">
+                      {item.value}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-medium text-gray-400">
+                      {item.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section className="relative mt-4 overflow-hidden rounded-[30px] border border-pink-100/80 bg-gradient-to-br from-white via-[#fffaf8] to-[#fff4fb] p-5 shadow-[0_9px_28px_rgba(236,72,153,0.055)]">
+          <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-sky-50/80 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-10 -left-8 h-28 w-28 rounded-full bg-purple-50/80 blur-2xl" />
+
+          <img
+            src={HISTORY_IMAGES.record}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute right-[108px] top-3 h-20 w-20 object-contain opacity-[0.55]"
+          />
+
+          <div className="relative z-10">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black tracking-[0.22em] text-pink-400">
+                  MONTHLY RECAP
+                </p>
+                <h2 className="mt-1 text-[21px] font-black tracking-[-0.03em]">
+                  이번 달 우리 기록 💕
+                </h2>
+              </div>
+
+              <div className="rounded-full border border-pink-200/80 bg-pink-50/80 px-3.5 py-2 text-[11px] font-black text-pink-500">
+                {currentMonthApproved}번 성공
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-2.5">
-              {[
-                { label: "약속", value: totalPromiseCount, emoji: "✅" },
-                { label: "인증", value: approvedCount, emoji: "📸" },
-                { label: "추억", value: levelRewardMemories.length, emoji: "💕" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-[18px] border border-white/90 bg-white/78 px-2 py-3.5 text-center shadow-[0_3px_12px_rgba(236,72,153,0.035)]"
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              <div className="rounded-[20px] bg-gradient-to-br from-purple-50 via-white to-purple-50/40 px-2 py-4 text-center">
+                <p className="text-[10px] font-medium text-gray-400">
+                  지난달 대비
+                </p>
+                <p
+                  className={`mt-2 text-xl font-black ${
+                    monthDelta >= 0 ? "text-purple-500" : "text-gray-500"
+                  }`}
                 >
-                  <span className="text-base">{item.emoji}</span>
-                  <p className="mt-1 text-lg font-black">{item.value}</p>
-                  <p className="text-[10px] text-gray-400">{item.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+                  {monthDelta >= 0 ? "+" : ""}
+                  {monthDelta}
+                </p>
+              </div>
 
-        <section className="mt-4 rounded-[28px] border border-pink-100 bg-white p-4 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black tracking-[0.16em] text-pink-400">
-                MONTHLY RECAP
-              </p>
-              <h2 className="mt-1 text-base font-black">이번 달 우리 기록</h2>
-            </div>
-            <div className="rounded-full border border-pink-100 bg-pink-50/70 px-3 py-1.5 text-[11px] font-black text-pink-500">
-              {currentMonthApproved}번 성공
-            </div>
-          </div>
+              <div className="rounded-[20px] bg-gradient-to-br from-orange-50 via-white to-amber-50/50 px-2 py-4 text-center">
+                <p className="text-[10px] font-medium text-gray-400">
+                  추억 추가
+                </p>
+                <p className="mt-2 text-xl font-black text-orange-500">
+                  {currentMonthMemories}개
+                </p>
+              </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <div className="rounded-2xl bg-[#fff8fb] p-3 text-center">
-              <p className="text-[10px] text-gray-400">지난달 대비</p>
-              <p className={`mt-1 font-black ${monthDelta >= 0 ? "text-pink-500" : "text-gray-500"}`}>
-                {monthDelta >= 0 ? "+" : ""}{monthDelta}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-[#fff8fb] p-3 text-center">
-              <p className="text-[10px] text-gray-400">추억 추가</p>
-              <p className="mt-1 font-black">{currentMonthMemories}개</p>
-            </div>
-            <div className="rounded-2xl bg-[#fff8fb] p-3 text-center">
-              <p className="text-[10px] text-gray-400">최고 연속</p>
-              <p className="mt-1 font-black">{bestPromise?.best_streak ?? 0}일</p>
+              <div className="rounded-[20px] bg-gradient-to-br from-emerald-50 via-white to-teal-50/45 px-2 py-4 text-center">
+                <p className="text-[10px] font-medium text-gray-400">
+                  최고 연속
+                </p>
+                <p className="mt-2 text-xl font-black text-emerald-500">
+                  {bestPromise?.best_streak ?? 0}일
+                </p>
+              </div>
             </div>
           </div>
         </section>
