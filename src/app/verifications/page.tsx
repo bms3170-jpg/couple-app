@@ -794,13 +794,13 @@ export default function VerificationsPage() {
 
         <section className="relative mt-6 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-[#fff9fc] via-white to-[#fff7f2] p-5 shadow-sm">
           <div className="pointer-events-none absolute -right-8 -top-5 h-36 w-36 rounded-full bg-pink-100/60 blur-2xl" />
-          <div className="pointer-events-none absolute right-5 top-8">
-            <div className="relative flex h-24 w-24 items-center justify-center">
-              <span className="absolute left-1 top-2 text-lg">💕</span>
-              <span className="absolute right-0 top-0 text-xl">💗</span>
-              <span className="absolute right-3 top-8 text-sm">💞</span>
-              <span className="text-6xl drop-shadow-sm">💌</span>
-            </div>
+          <div className="pointer-events-none absolute right-2 top-5 flex h-28 w-28 items-center justify-center">
+            <img
+              src="/images/heart-letter.PNG"
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-contain drop-shadow-sm"
+            />
           </div>
 
           <div className="relative z-10 max-w-[72%]">
@@ -966,8 +966,13 @@ export default function VerificationsPage() {
         <section className="mt-5 rounded-[26px] border border-purple-100 bg-gradient-to-br from-white via-[#fcf9ff] to-[#f7f0ff] p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-violet-500 text-xl text-white shadow-sm">
-                ✓
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center">
+                <img
+                  src="/images/verification-check.PNG"
+                  alt=""
+                  aria-hidden="true"
+                  className="h-11 w-11 object-contain drop-shadow-sm"
+                />
               </div>
 
               <div className="min-w-0">
@@ -1130,8 +1135,13 @@ export default function VerificationsPage() {
               className="mt-4 flex w-full items-center justify-between gap-3 rounded-[22px] border border-pink-50 bg-[#fffafd] p-4 text-left"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
-                  ⏰
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50/70">
+                  <img
+                    src="/images/memory-clock.PNG"
+                    alt=""
+                    aria-hidden="true"
+                    className="h-10 w-10 object-contain"
+                  />
                 </div>
 
                 <div className="min-w-0">
@@ -1184,10 +1194,13 @@ export default function VerificationsPage() {
               </p>
             </div>
 
-            <div className="flex items-end gap-1 text-3xl">
-              <span>🐱</span>
-              <span className="-ml-1 text-2xl">💗</span>
-              <span className="-ml-1">🐶</span>
+            <div className="flex h-20 w-28 shrink-0 items-center justify-center">
+              <img
+                src="/images/couple-cheer.PNG"
+                alt=""
+                aria-hidden="true"
+                className="h-full w-full object-contain"
+              />
             </div>
           </div>
 
