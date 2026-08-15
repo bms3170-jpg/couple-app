@@ -285,6 +285,16 @@ export default function CouplePage() {
     setShowCoinInfo,
   ] = useState(false);
 
+  const [
+    levelUpInfo,
+    setLevelUpInfo,
+  ] = useState<LevelUpInfo | null>(null);
+
+  const [
+    coinGain,
+    setCoinGain,
+  ] = useState<number | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1299,6 +1309,104 @@ export default function CouplePage() {
   ]);
 
   // =========================================
+  // 레벨업 / 코인 변화 연출
+  // =========================================
+
+  useEffect(() => {
+    if (
+      loading ||
+      !user ||
+      !couple
+    ) {
+      return;
+    }
+
+    const key =
+      `ourquest:last-level:${user.id}`;
+
+    const saved =
+      window.localStorage.getItem(key);
+
+    if (saved !== null) {
+      const previousLevel =
+        Number(saved);
+
+      if (
+        Number.isFinite(previousLevel) &&
+        couple.level > previousLevel
+      ) {
+        setLevelUpInfo({
+          previousLevel,
+          level: couple.level,
+        });
+      }
+    }
+
+    window.localStorage.setItem(
+      key,
+      String(couple.level)
+    );
+  }, [
+    loading,
+    user,
+    couple,
+  ]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      !user
+    ) {
+      return;
+    }
+
+    const key =
+      `ourquest:last-coins:${user.id}`;
+
+    const saved =
+      window.localStorage.getItem(key);
+
+    if (saved !== null) {
+      const previousCoins =
+        Number(saved);
+
+      if (
+        Number.isFinite(previousCoins) &&
+        wallet.coins > previousCoins
+      ) {
+        const gained =
+          wallet.coins - previousCoins;
+
+        setCoinGain(gained);
+
+        const timer =
+          window.setTimeout(
+            () =>
+              setCoinGain(null),
+            2400
+          );
+
+        window.localStorage.setItem(
+          key,
+          String(wallet.coins)
+        );
+
+        return () =>
+          window.clearTimeout(timer);
+      }
+    }
+
+    window.localStorage.setItem(
+      key,
+      String(wallet.coins)
+    );
+  }, [
+    loading,
+    user,
+    wallet.coins,
+  ]);
+
+  // =========================================
   // 삭제 요청
   // =========================================
 
@@ -1533,7 +1641,7 @@ export default function CouplePage() {
     authLoading
   ) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
+      <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#fffafd] to-[#faf8ff]">
         <p className="text-sm text-gray-500">
           로그인 정보 확인 중...
         </p>
@@ -1545,7 +1653,7 @@ export default function CouplePage() {
     loading
   ) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
+      <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#fffafd] to-[#faf8ff]">
         <p className="text-sm text-gray-500">
           우리 공간 불러오는 중...
         </p>
@@ -1657,14 +1765,14 @@ export default function CouplePage() {
   const characterDisplayWidth =
     characterImageLevel ===
     1
-      ? 105
+      ? 126
       : characterImageLevel ===
         2
-      ? 116
+      ? 138
       : characterImageLevel ===
         3
-      ? 128
-      : 140;
+      ? 150
+      : 162;
 
 
 
@@ -1888,6 +1996,29 @@ export default function CouplePage() {
       )
     );
 
+
+  const nextGrowthName =
+    level < 3
+      ? "꼬마"
+      : level < 5
+      ? "청년"
+      : level < 7
+      ? "성년"
+      : "최고 단계";
+
+  const characterMessage =
+    isTodayAllCompleted
+      ? "오늘 퀘스트 COMPLETE ♡"
+      : pendingVerificationCount > 0
+      ? "상대방의 인증이 기다리고 있어요 💌"
+      : currentStreak >= 7
+      ? `벌써 ${currentStreak}일 연속! 정말 멋져요 🔥`
+      : todayTotalCount === 0
+      ? "우리만의 첫 약속을 만들어볼까요? 🌱"
+      : todayCompletedCount > 0
+      ? "좋아요! 오늘도 조금씩 채워가요 ♡"
+      : "오늘도 둘이 같이 시작해볼까요? ✨";
+
   // =========================================
   // 캐릭터 한 마리
   // =========================================
@@ -2102,26 +2233,29 @@ export default function CouplePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fffafd_0%,#fff8fb_55%,#faf8ff_100%)] px-4 pb-8 pt-6 text-[#202331] sm:px-5">
 
-      <div className="mx-auto max-w-md pb-28">
+      <div className="mx-auto w-full max-w-[430px] pb-[calc(7rem+env(safe-area-inset-bottom))]">
 
         {/* =================================
-            NEW OURQUEST HERO
+            OURQUEST HERO
+            캐릭터 배경은 추후 상점 background 슬롯과 연결 가능
         ================================= */}
 
-        <header className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-black tracking-[0.22em] text-pink-400">
+        <header className="flex items-center justify-between gap-4 px-1">
+          <div className="min-w-0">
+            <p className="text-[11px] font-black tracking-[0.24em] text-pink-500">
               OURQUEST
             </p>
 
-            <h1 className="mt-2 text-[28px] font-black tracking-tight text-gray-800">
-              {first} <span className="text-pink-400">♡</span> {second}
+            <h1 className="mt-2 truncate text-[27px] font-black tracking-[-0.03em] text-slate-900">
+              {first}{" "}
+              <span className="text-pink-400">♡</span>{" "}
+              {second}
             </h1>
 
-            <p className="mt-1.5 text-xs font-medium text-gray-400">
-              오늘도 둘만의 퀘스트를 이어가요
+            <p className="mt-1 text-[12px] font-medium text-slate-400">
+              우리만의 하루를 더 특별하게 ✨
             </p>
           </div>
 
@@ -2130,7 +2264,7 @@ export default function CouplePage() {
             onClick={() =>
               setShowCoinInfo(true)
             }
-            className="flex items-center gap-2 rounded-2xl border border-amber-100 bg-white px-3 py-2.5 shadow-sm transition active:scale-[0.98]"
+            className="flex shrink-0 items-center gap-2 rounded-[20px] border border-amber-100 bg-white/95 px-3 py-2.5 shadow-[0_8px_24px_rgba(245,158,11,0.12)] transition active:scale-[0.97]"
           >
             <img
               src="/images/coin.PNG"
@@ -2138,24 +2272,34 @@ export default function CouplePage() {
               className="h-7 w-7 object-contain"
             />
 
-            <span className="text-base font-black text-gray-700">
+            <span className="text-base font-black text-slate-800">
               {coins}
             </span>
           </button>
         </header>
 
-        <section className="relative mt-5 overflow-hidden rounded-[34px] border border-pink-100 bg-gradient-to-b from-[#fffefe] via-[#fff8fb] to-[#ffeef5] px-4 pb-5 pt-4 shadow-sm">
+        <section
+          className="relative mt-5 overflow-hidden rounded-[32px] border border-violet-200/50 px-3 pb-3 pt-3 shadow-[0_18px_40px_rgba(108,92,231,0.14)]"
+          style={{
+            background:
+              "linear-gradient(180deg, #766fe2 0%, #9d8bea 48%, #e8afd3 100%)",
+          }}
+        >
+          <div className="pointer-events-none absolute inset-0 opacity-70">
+            <div className="absolute left-[11%] top-[18%] h-1.5 w-1.5 rounded-full bg-white/80" />
+            <div className="absolute right-[13%] top-[24%] h-1 w-1 rounded-full bg-white" />
+            <div className="absolute left-[46%] top-[9%] h-1 w-1 rounded-full bg-white/70" />
+            <div className="absolute right-[31%] top-[13%] text-[12px] text-white/70">✦</div>
+            <div className="absolute left-[20%] top-[35%] text-[9px] text-white/60">✦</div>
+          </div>
 
-          <div className="pointer-events-none absolute -right-5 -top-5 h-24 w-24 rounded-full bg-pink-100/60 blur-2xl" />
-          <div className="pointer-events-none absolute -left-7 bottom-10 h-24 w-24 rounded-full bg-amber-50/80 blur-2xl" />
-
-          <div className="relative z-10 flex items-center justify-between">
+          <div className="relative z-20 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-pink-500 px-3 py-1.5 text-[11px] font-black text-white shadow-sm">
+              <span className="rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500 px-3 py-1.5 text-[11px] font-black text-white shadow-sm">
                 LV.{level}
               </span>
 
-              <span className="rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-bold text-pink-500 shadow-sm">
+              <span className="rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-black text-violet-500 shadow-sm backdrop-blur">
                 {growthName}
               </span>
             </div>
@@ -2164,7 +2308,7 @@ export default function CouplePage() {
               <Link
                 href="/inventory"
                 prefetch={false}
-                className="flex h-10 items-center justify-center rounded-2xl border border-pink-100 bg-white/90 px-3 text-[11px] font-black text-pink-500 shadow-sm transition active:scale-[0.98]"
+                className="flex h-9 items-center justify-center rounded-2xl bg-white/92 px-3 text-[11px] font-black text-pink-500 shadow-sm backdrop-blur transition active:scale-[0.97]"
               >
                 👕 옷장
               </Link>
@@ -2172,19 +2316,20 @@ export default function CouplePage() {
               <Link
                 href="/store"
                 prefetch={false}
-                className="flex h-10 items-center justify-center rounded-2xl bg-pink-500 px-3 text-[11px] font-black text-white shadow-sm transition active:scale-[0.98]"
+                className="flex h-9 items-center justify-center rounded-2xl bg-white/92 px-3 text-[11px] font-black text-pink-500 shadow-sm backdrop-blur transition active:scale-[0.97]"
               >
-                STORE
+                🛍️ 상점
               </Link>
             </div>
           </div>
 
-          <div className="relative z-10 mt-2">
-            <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 text-2xl text-pink-300">
+          <div className="relative z-10 mt-1 overflow-hidden rounded-[26px] bg-gradient-to-b from-white/5 to-violet-950/10 px-1 pb-2 pt-2">
+            <div className="pointer-events-none absolute inset-x-[-15%] bottom-[-54px] h-[120px] rounded-[50%] bg-[#7666cc]/65" />
+            <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 text-3xl text-pink-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.9)]">
               ♡
             </div>
 
-            <div className="flex items-end justify-center -space-x-4">
+            <div className="relative z-10 flex items-end justify-center -space-x-4">
               {renderUserCharacter(
                 members[0],
                 0
@@ -2195,74 +2340,89 @@ export default function CouplePage() {
                 1
               )}
             </div>
+
+            {!needsCharacterSetup && (
+              <div className="relative z-20 mx-auto mt-1 w-fit max-w-[92%] rounded-full bg-white/18 px-3 py-1.5 text-center text-[10px] font-bold text-white backdrop-blur-sm">
+                {characterMessage}
+              </div>
+            )}
           </div>
 
-          {needsCharacterSetup ? (
+          {needsCharacterSetup && (
             <Link
               href="/character"
               prefetch={false}
-              className="relative z-20 mt-2 block rounded-2xl bg-pink-500 px-4 py-3 text-center text-xs font-black text-white"
+              className="relative z-20 mt-2 block rounded-2xl bg-white/95 px-4 py-3 text-center text-xs font-black text-pink-500 shadow-sm"
             >
               우리 캐릭터 선택하기
             </Link>
-          ) : (
-            <p className="relative z-20 mt-1 text-center text-[10px] font-semibold text-pink-400">
-              각자 원하는 아이템으로 캐릭터를 꾸며보세요 ♡
-            </p>
           )}
 
-          <div className="relative z-10 mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-[22px] border border-pink-100 bg-white/85 p-3.5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black tracking-[0.12em] text-pink-400">
-                  AFFECTION
-                </p>
+          <div className="relative z-20 mt-3 grid grid-cols-2 gap-2.5">
+            <div className="rounded-[22px] border border-white/70 bg-white/92 p-3.5 shadow-[0_8px_20px_rgba(190,24,93,0.08)] backdrop-blur">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-pink-100 text-base">
+                    💗
+                  </span>
 
-                <span className="text-xs font-black text-pink-500">
+                  <p className="text-[11px] font-black text-pink-500">
+                    애정도
+                  </p>
+                </div>
+
+                <span className="text-sm font-black text-pink-500">
                   {affection}%
                 </span>
               </div>
 
-              <div className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-pink-100">
+              <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-pink-100">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-pink-300 to-pink-500 transition-all"
+                  className="h-full rounded-full bg-gradient-to-r from-pink-300 via-pink-400 to-fuchsia-500 transition-all"
                   style={{
                     width: `${affection}%`,
                   }}
                 />
               </div>
 
-              <p className="mt-2 text-[10px] font-semibold text-gray-400">
+              <p className="mt-2 text-[10px] font-semibold text-slate-400">
                 💕 우리 애정도
               </p>
             </div>
 
-            <div className="rounded-[22px] border border-amber-100 bg-white/85 p-3.5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black tracking-[0.12em] text-amber-500">
-                  LEVEL XP
-                </p>
+            <div className="rounded-[22px] border border-amber-100 bg-[#fffdf4]/95 p-3.5 shadow-[0_8px_20px_rgba(245,158,11,0.08)] backdrop-blur">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-base">
+                    ⭐
+                  </span>
 
-                <span className="text-xs font-black text-gray-700">
+                  <p className="text-[11px] font-black text-amber-600">
+                    레벨 XP
+                  </p>
+                </div>
+
+                <span className="text-xs font-black text-slate-700">
                   {xp}/{xpForNextLevel}
                 </span>
               </div>
 
-              <div className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-amber-100">
+              <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-amber-100">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-all"
+                  className="h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400 transition-all"
                   style={{
                     width: `${xpPercent}%`,
                   }}
                 />
               </div>
 
-              <p className="mt-2 text-[10px] font-semibold text-gray-400">
-                다음 레벨까지{" "}
-                {Math.max(
-                  xpForNextLevel - xp,
-                  0
-                )} XP
+              <p className="mt-2 text-[10px] font-semibold text-slate-400">
+                {nextGrowthName === "최고 단계"
+                  ? "최고 성장 단계예요 ✨"
+                  : `다음 성장: ${nextGrowthName} · ${Math.max(
+                      xpForNextLevel - xp,
+                      0
+                    )} XP`}
               </p>
             </div>
           </div>
@@ -2272,47 +2432,47 @@ export default function CouplePage() {
             TODAY SUMMARY
         ================================= */}
 
-        <section className="mt-5">
-          <div className="mb-3 flex items-end justify-between">
+        <section className="mt-6">
+          <div className="mb-3 flex items-end justify-between px-1">
             <div>
-              <p className="text-xs font-black tracking-[0.18em] text-pink-400">
+              <p className="text-[11px] font-black tracking-[0.2em] text-pink-500">
                 TODAY
               </p>
 
-              <h2 className="mt-1 text-xl font-black">
+              <h2 className="mt-1 text-[22px] font-black tracking-[-0.02em] text-slate-900">
                 오늘의 우리
               </h2>
             </div>
 
-            <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-bold text-gray-400 shadow-sm">
+            <span className="rounded-full border border-slate-100 bg-white px-3 py-1.5 text-[10px] font-bold text-slate-400 shadow-sm">
               {todayCompletedCount}/{todayTotalCount} 완료
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-[26px] border border-pink-100 bg-white p-4 shadow-sm">
+            <div className="rounded-[26px] border border-pink-100 bg-gradient-to-br from-[#fff6f9] to-[#fffdf6] p-4 shadow-[0_10px_28px_rgba(244,114,182,0.10)]">
               <div className="flex items-center justify-between">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
                   🔥
                 </div>
 
-                <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-black text-pink-500">
+                <span className="rounded-full bg-white/80 px-2.5 py-1 text-[9px] font-black text-pink-500 shadow-sm">
                   STREAK
                 </span>
               </div>
 
-              <p className="mt-4 text-[11px] font-semibold text-gray-400">
+              <p className="mt-4 text-[11px] font-semibold text-slate-400">
                 연속 인증
               </p>
 
-              <p className="mt-1 text-3xl font-black text-gray-800">
+              <p className="mt-1 text-3xl font-black text-slate-900">
                 {currentStreak}
-                <span className="ml-1 text-sm font-bold text-gray-400">
+                <span className="ml-1 text-sm font-bold text-slate-400">
                   일
                 </span>
               </p>
 
-              <div className="mt-3 flex items-center gap-1.5 rounded-2xl bg-amber-50 px-3 py-2">
+              <div className="mt-3 flex items-center gap-1.5 rounded-2xl bg-amber-50/90 px-3 py-2">
                 <img
                   src="/images/coin.PNG"
                   alt=""
@@ -2326,32 +2486,30 @@ export default function CouplePage() {
               </div>
             </div>
 
-            <div className="rounded-[26px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/70 p-4 shadow-sm">
+            <div className="rounded-[26px] border border-emerald-100 bg-gradient-to-br from-[#f6fff9] to-[#fbfffd] p-4 shadow-[0_10px_28px_rgba(16,185,129,0.08)]">
               <div className="flex items-center justify-between">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
                   ✅
                 </div>
 
-                <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-pink-500 shadow-sm">
+                <span className="rounded-full bg-white/85 px-2.5 py-1 text-[9px] font-black text-emerald-600 shadow-sm">
                   QUEST
                 </span>
               </div>
 
-              <p className="mt-4 text-[11px] font-semibold text-gray-400">
+              <p className="mt-4 text-[11px] font-semibold text-slate-400">
                 오늘의 약속
               </p>
 
-              <p className="mt-1 text-3xl font-black text-gray-800">
+              <p className="mt-1 text-3xl font-black text-slate-900">
                 {todayCompletedCount}
-                <span className="mx-1 text-base text-gray-300">
-                  /
-                </span>
+                <span className="mx-1 text-base text-slate-300">/</span>
                 {todayTotalCount}
               </p>
 
               <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white">
                 <div
-                  className="h-full rounded-full bg-pink-500 transition-all"
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-emerald-500 transition-all"
                   style={{
                     width: `${todayProgressPercent}%`,
                   }}
@@ -2364,66 +2522,60 @@ export default function CouplePage() {
             <Link
               href="/us/history"
               prefetch={false}
-              className="flex items-center justify-between rounded-[22px] border border-pink-100 bg-white px-4 py-3.5 shadow-sm"
+              className="flex items-center justify-between rounded-[22px] border border-violet-100 bg-gradient-to-br from-[#faf7ff] to-white px-4 py-3.5 shadow-sm"
             >
               <div>
-                <p className="text-[10px] font-bold text-gray-400">
+                <p className="text-[9px] font-black tracking-[0.12em] text-violet-400">
                   OUR MEMORY
                 </p>
-                <p className="mt-0.5 text-sm font-black">
+                <p className="mt-0.5 text-sm font-black text-slate-800">
                   우리 기록
                 </p>
               </div>
 
-              <span className="text-xl">
-                📖
-              </span>
+              <span className="text-xl">📖</span>
             </Link>
 
             <Link
               href="/rewards"
               prefetch={false}
-              className="flex items-center justify-between rounded-[22px] border border-pink-100 bg-white px-4 py-3.5 shadow-sm"
+              className="flex items-center justify-between rounded-[22px] border border-orange-100 bg-gradient-to-br from-[#fffaf4] to-white px-4 py-3.5 shadow-sm"
             >
               <div>
-                <p className="text-[10px] font-bold text-gray-400">
+                <p className="text-[9px] font-black tracking-[0.12em] text-orange-400">
                   REWARDS
                 </p>
-                <p className="mt-0.5 text-sm font-black">
+                <p className="mt-0.5 text-sm font-black text-slate-800">
                   보상 {unlockedRewardCount}
                 </p>
               </div>
 
-              <span className="text-xl">
-                🎁
-              </span>
+              <span className="text-xl">🎁</span>
             </Link>
           </div>
 
-          {pendingVerificationCount >
-            0 && (
+          {pendingVerificationCount > 0 && (
             <Link
               href="/verifications"
               prefetch={false}
-              className="mt-3 flex items-center justify-between rounded-[24px] border border-pink-100 bg-white p-4 shadow-sm"
+              className="mt-3 flex items-center justify-between rounded-[22px] border border-sky-100 bg-gradient-to-r from-[#f5fbff] to-[#fffafd] p-3.5 shadow-sm"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
                   💌
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-sm font-black">
+                  <p className="text-sm font-black text-slate-800">
                     확인을 기다리고 있어요
                   </p>
-
-                  <p className="mt-1 truncate text-[11px] font-medium text-gray-400">
+                  <p className="mt-0.5 truncate text-[10px] font-medium text-slate-400">
                     상대방이 보낸 인증 {pendingVerificationCount}개
                   </p>
                 </div>
               </div>
 
-              <span className="rounded-full bg-pink-500 px-3 py-2 text-[10px] font-black text-white">
+              <span className="rounded-full bg-pink-500 px-3 py-1.5 text-[10px] font-black text-white">
                 확인
               </span>
             </Link>
@@ -2433,27 +2585,24 @@ export default function CouplePage() {
             <Link
               href="/rewards"
               prefetch={false}
-              className="mt-3 flex items-center justify-between rounded-[24px] border border-amber-100 bg-gradient-to-r from-amber-50/70 to-white p-4 shadow-sm"
+              className="mt-3 flex items-center justify-between rounded-[22px] border border-amber-100 bg-gradient-to-r from-amber-50/80 to-white p-3.5 shadow-sm"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">
                   🎁
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black tracking-[0.12em] text-amber-500">
+                  <p className="text-[9px] font-black tracking-[0.12em] text-amber-500">
                     RECENT REWARD
                   </p>
-
-                  <p className="mt-1 truncate text-sm font-black">
+                  <p className="mt-0.5 truncate text-sm font-black text-slate-800">
                     {recentReward.title}
                   </p>
                 </div>
               </div>
 
-              <span className="text-lg text-amber-300">
-                ›
-              </span>
+              <span className="text-lg text-amber-300">›</span>
             </Link>
           )}
         </section>
@@ -2468,11 +2617,11 @@ export default function CouplePage() {
 
             <div>
 
-              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+              <p className="text-[11px] font-black tracking-[0.2em] text-pink-500">
                 TODAY QUEST
               </p>
 
-              <h2 className="mt-1 text-2xl font-bold">
+              <h2 className="mt-1 text-[22px] font-black tracking-[-0.02em] text-slate-900">
                 오늘도 같이 해볼까요?
               </h2>
 
@@ -2481,7 +2630,7 @@ export default function CouplePage() {
             <Link
               href="/promise/new"
               prefetch={false}
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pink-500 text-2xl text-white shadow-sm"
+              className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-gradient-to-br from-pink-500 to-fuchsia-500 text-2xl text-white shadow-[0_10px_24px_rgba(236,72,153,0.24)] transition active:scale-95"
             >
               +
             </Link>
@@ -2491,7 +2640,7 @@ export default function CouplePage() {
           {promises.length >
             0 && (
 
-            <div className="mt-5 rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm">
+            <div className={`mt-5 rounded-[26px] border p-5 shadow-[0_10px_28px_rgba(148,163,184,0.10)] ${isTodayAllCompleted ? "border-pink-200 bg-gradient-to-br from-pink-50 to-violet-50" : "border-pink-100 bg-gradient-to-br from-white to-[#fff8fb]"}`}>
 
               <div className="flex items-end justify-between gap-4">
 
@@ -2517,10 +2666,10 @@ export default function CouplePage() {
 
               </div>
 
-              <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-pink-50">
+              <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-pink-100/60">
 
                 <div
-                  className="h-full rounded-full bg-pink-500 transition-all"
+                  className="h-full rounded-full bg-gradient-to-r from-pink-400 via-pink-500 to-fuchsia-500 transition-all"
                   style={{
                     width:
                       `${todayProgressPercent}%`,
@@ -2536,7 +2685,7 @@ export default function CouplePage() {
           {promises.length ===
           0 ? (
 
-            <div className="mt-5 rounded-3xl border border-dashed border-pink-200 bg-white p-8 text-center">
+            <div className="mt-5 rounded-[28px] border border-dashed border-pink-200 bg-gradient-to-br from-white to-pink-50/40 p-7 text-center shadow-sm">
 
               <div className="text-4xl">
                 🌱
@@ -2555,7 +2704,7 @@ export default function CouplePage() {
               <Link
                 href="/promise/new"
                 prefetch={false}
-                className="mt-6 block rounded-2xl bg-pink-500 px-5 py-4 font-semibold text-white"
+                className="mt-6 block rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-500 px-5 py-4 font-black text-white shadow-[0_10px_24px_rgba(236,72,153,0.20)]"
               >
                 첫 약속 만들기
               </Link>
@@ -2568,7 +2717,7 @@ export default function CouplePage() {
 
               {/* 미완료 */}
 
-              <section className="overflow-hidden rounded-[26px] border border-pink-100 bg-white shadow-sm">
+              <section className="overflow-hidden rounded-[28px] border border-violet-100 bg-gradient-to-b from-[#fcf9ff] to-white shadow-[0_10px_30px_rgba(139,92,246,0.08)]">
 
                 <button
                   type="button"
@@ -2583,7 +2732,7 @@ export default function CouplePage() {
 
                   <div className="flex items-center gap-3">
 
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-50">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-100/70">
                       ⏳
                     </div>
 
@@ -2615,12 +2764,12 @@ export default function CouplePage() {
 
                 {showIncompletePromises && (
 
-                  <div className="border-t border-pink-50 bg-[#fffdfd] p-3">
+                  <div className="border-t border-violet-100/50 bg-white/65 p-3">
 
                     {incompletePromises.length ===
                     0 ? (
 
-                      <div className="rounded-[22px] bg-white px-4 py-7 text-center">
+                      <div className="rounded-[22px] bg-gradient-to-br from-pink-50 to-violet-50 px-4 py-7 text-center">
 
                         <p className="font-semibold text-pink-500">
                           🎉 오늘 약속을 모두 완료했어요!
@@ -2722,7 +2871,7 @@ export default function CouplePage() {
                                 key={
                                   promise.id
                                 }
-                                className="overflow-hidden rounded-[30px] border border-pink-100 bg-white shadow-sm"
+                                className="overflow-hidden rounded-[26px] border border-pink-100/80 bg-gradient-to-br from-white via-white to-pink-50/50 shadow-[0_8px_24px_rgba(236,72,153,0.07)]"
                               >
 
                                 <div className="p-5">
@@ -2753,7 +2902,7 @@ export default function CouplePage() {
 
                                     </div>
 
-                                    <div className="shrink-0 rounded-2xl bg-[#fff8fb] px-3 py-2 text-center">
+                                    <div className="shrink-0 rounded-2xl bg-pink-50/90 px-3 py-2 text-center">
 
                                       <p className="text-[10px] text-gray-400">
                                         연속
@@ -2767,7 +2916,7 @@ export default function CouplePage() {
 
                                   </div>
 
-                                  <div className="mt-4 rounded-2xl bg-[#fff8fb] px-4 py-3">
+                                  <div className="mt-4 rounded-2xl bg-gradient-to-r from-pink-50/80 to-violet-50/70 px-4 py-3">
 
                                     <p className="text-xs font-medium text-gray-500">
 
@@ -2870,7 +3019,7 @@ export default function CouplePage() {
 
                                 </div>
 
-                                <div className="border-t border-pink-50 bg-[#fffdfd] px-5 py-4">
+                                <div className="border-t border-pink-100/60 bg-white/70 px-5 py-4">
 
                                   {isMyRejected ? (
 
@@ -2884,13 +3033,13 @@ export default function CouplePage() {
 
                                   ) : isMyPending ? (
 
-                                    <div className="w-full rounded-2xl bg-amber-50 px-4 py-3.5 text-center font-semibold text-amber-600">
+                                    <div className="w-full rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3.5 text-center font-black text-amber-700">
                                       🕒 상대방 확인 대기 중
                                     </div>
 
                                   ) : isMyApproved ? (
 
-                                    <div className="w-full rounded-2xl bg-green-50 px-4 py-3.5 text-center font-semibold text-green-600">
+                                    <div className="w-full rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-green-50 px-4 py-3.5 text-center font-black text-emerald-600">
                                       ✓ 오늘 인증 완료
                                     </div>
 
@@ -2899,7 +3048,7 @@ export default function CouplePage() {
                                     <Link
                                       href={`/verify/${promise.id}`}
                                       prefetch={false}
-                                      className="block w-full rounded-2xl bg-pink-500 px-4 py-3.5 text-center font-semibold text-white"
+                                      className="block w-full rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-500 px-4 py-3.5 text-center font-black text-white shadow-[0_8px_18px_rgba(236,72,153,0.18)]"
                                     >
                                       📸 오늘 인증하기
                                     </Link>
@@ -2931,7 +3080,7 @@ export default function CouplePage() {
                                     deleteRequest.requested_by ===
                                       currentUserId && (
 
-                                      <div className="mt-4 rounded-2xl bg-yellow-50 p-4">
+                                      <div className="mt-4 rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 p-4">
 
                                         <p className="font-semibold text-yellow-700">
                                           🕒 삭제 협의 중
@@ -2961,7 +3110,7 @@ export default function CouplePage() {
                                     deleteRequest.requested_by !==
                                       currentUserId && (
 
-                                      <div className="mt-4 rounded-2xl bg-[#fff8fb] p-4">
+                                      <div className="mt-4 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-pink-50 p-4">
 
                                         <p className="font-semibold">
                                           💌 삭제 협의 요청
@@ -3020,7 +3169,7 @@ export default function CouplePage() {
 
               {/* 완료 */}
 
-              <section className="overflow-hidden rounded-[26px] border border-pink-100 bg-white shadow-sm">
+              <section className="overflow-hidden rounded-[28px] border border-emerald-100 bg-gradient-to-b from-[#f7fff9] to-white shadow-[0_10px_30px_rgba(16,185,129,0.08)]">
 
                 <button
                   type="button"
@@ -3131,7 +3280,7 @@ export default function CouplePage() {
 
           <div className="mb-3">
 
-            <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+            <p className="text-[11px] font-black tracking-[0.2em] text-pink-500">
               OUR STATS
             </p>
 
@@ -3143,7 +3292,7 @@ export default function CouplePage() {
 
           <div className="grid grid-cols-2 gap-3">
 
-            <div className="rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm">
+            <div className="rounded-[26px] border border-orange-100 bg-gradient-to-br from-[#fff9f5] to-white p-5 shadow-[0_10px_24px_rgba(249,115,22,0.07)]">
 
               <div className="text-xl">
                 🔥
@@ -3165,7 +3314,7 @@ export default function CouplePage() {
 
             </div>
 
-            <div className="rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm">
+            <div className="rounded-[26px] border border-violet-100 bg-gradient-to-br from-[#faf7ff] to-white p-5 shadow-[0_10px_24px_rgba(139,92,246,0.07)]">
 
               <div className="text-xl">
                 🎁
@@ -3196,18 +3345,93 @@ export default function CouplePage() {
       </div>
 
       {/* =================================
+          코인 획득 연출
+      ================================= */}
+
+      {coinGain !== null && coinGain > 0 && (
+        <div className="pointer-events-none fixed inset-x-0 top-[18%] z-[70] flex justify-center px-5">
+          <div className="flex animate-bounce items-center gap-2 rounded-full border border-amber-100 bg-white/95 px-5 py-3 shadow-[0_16px_40px_rgba(245,158,11,0.22)] backdrop-blur">
+            <img
+              src="/images/coin.PNG"
+              alt=""
+              aria-hidden="true"
+              className="h-8 w-8 object-contain"
+            />
+            <span className="text-lg font-black text-amber-600">
+              +{coinGain}
+            </span>
+            <span className="text-xs font-bold text-slate-400">
+              코인 획득!
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* =================================
+          레벨업 팝업
+      ================================= */}
+
+      {levelUpInfo && (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/45 px-5 backdrop-blur-[2px]">
+          <div className="relative w-full max-w-sm overflow-hidden rounded-[34px] border border-violet-100 bg-white p-6 text-center shadow-[0_30px_80px_rgba(76,29,149,0.28)]">
+            <div className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-pink-200/50 blur-3xl" />
+            <div className="pointer-events-none absolute -right-8 top-14 h-36 w-36 rounded-full bg-violet-200/50 blur-3xl" />
+
+            <div className="relative">
+              <p className="text-[11px] font-black tracking-[0.24em] text-violet-500">
+                LEVEL UP!
+              </p>
+
+              <div className="mx-auto mt-4 flex h-24 w-24 items-center justify-center rounded-[30px] bg-gradient-to-br from-pink-100 via-violet-100 to-amber-50 text-5xl shadow-inner">
+                ✨
+              </div>
+
+              <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-900">
+                LV.{levelUpInfo.level}
+              </h2>
+
+              <p className="mt-2 text-sm font-bold text-pink-500">
+                우리 캐릭터가 한 단계 성장했어요 ♡
+              </p>
+
+              <div className="mt-5 rounded-[24px] bg-gradient-to-r from-violet-50 to-pink-50 p-4">
+                <p className="text-xs font-semibold text-slate-500">
+                  LV.{levelUpInfo.previousLevel}
+                  <span className="mx-2 text-pink-300">→</span>
+                  LV.{levelUpInfo.level}
+                </p>
+                <p className="mt-2 font-black text-slate-800">
+                  현재 성장 단계 · {growthName}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setLevelUpInfo(null)
+                }
+                className="mt-6 w-full rounded-2xl bg-gradient-to-r from-pink-500 to-violet-500 px-5 py-4 text-sm font-black text-white shadow-[0_12px_26px_rgba(168,85,247,0.22)]"
+              >
+                성장한 모습 만나보기 ♡
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================
           코인 안내 팝업
       ================================= */}
 
       {showCoinInfo && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-5 backdrop-blur-[2px]"
           onClick={() =>
             setShowCoinInfo(false)
           }
         >
           <div
-            className="w-full max-w-sm rounded-[32px] bg-white p-6 shadow-2xl"
+            className="w-full max-w-sm rounded-[32px] border border-amber-100 bg-gradient-to-b from-white to-amber-50/30 p-6 shadow-[0_28px_70px_rgba(120,53,15,0.18)]"
             onClick={(event) =>
               event.stopPropagation()
             }
@@ -3242,7 +3466,7 @@ export default function CouplePage() {
               </button>
             </div>
 
-            <div className="mt-5 rounded-[24px] bg-[#fff8fb] p-4">
+            <div className="mt-5 rounded-[24px] border border-pink-100 bg-gradient-to-r from-pink-50 to-amber-50 p-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-black">
                   🔥 현재 {currentStreak}일 연속
@@ -3281,7 +3505,7 @@ export default function CouplePage() {
                 ([day, reward]) => (
                   <div
                     key={day}
-                    className="flex items-center justify-between rounded-2xl border border-pink-50 px-4 py-3"
+                    className="flex items-center justify-between rounded-2xl border border-amber-100/70 bg-white/80 px-4 py-3"
                   >
                     <span className="text-sm font-bold text-gray-600">
                       {day}
@@ -3315,7 +3539,7 @@ export default function CouplePage() {
               onClick={() =>
                 setShowCoinInfo(false)
               }
-              className="mt-5 w-full rounded-2xl bg-pink-500 px-5 py-4 text-sm font-black text-white"
+              className="mt-5 w-full rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-500 px-5 py-4 text-sm font-black text-white shadow-[0_10px_24px_rgba(236,72,153,0.18)]"
             >
               확인했어요 ♡
             </button>
@@ -3329,11 +3553,11 @@ export default function CouplePage() {
 
       {rewardNotification && (
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-5 backdrop-blur-[2px]">
 
-          <div className="w-full max-w-sm rounded-[34px] bg-white p-6 text-center shadow-2xl">
+          <div className="relative w-full max-w-sm overflow-hidden rounded-[34px] border border-pink-100 bg-gradient-to-b from-white via-white to-pink-50/60 p-6 text-center shadow-[0_30px_80px_rgba(190,24,93,0.24)]">
 
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[26px] bg-pink-50 text-5xl">
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] bg-gradient-to-br from-pink-100 via-violet-100 to-amber-50 text-5xl shadow-inner">
               🎁
             </div>
 
@@ -3361,7 +3585,7 @@ export default function CouplePage() {
 
             </p>
 
-            <div className="mt-6 rounded-[24px] bg-[#fff8fb] p-5">
+            <div className="mt-6 rounded-[24px] border border-violet-100 bg-gradient-to-r from-violet-50 to-pink-50 p-5">
 
               <p className="text-[11px] text-pink-400">
                 NEW REWARD
@@ -3383,7 +3607,7 @@ export default function CouplePage() {
               onClick={() =>
                 void closeRewardNotification()
               }
-              className="mt-6 block rounded-2xl bg-pink-500 px-5 py-4 font-semibold text-white"
+              className="mt-6 block rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-500 px-5 py-4 font-black text-white shadow-[0_10px_24px_rgba(236,72,153,0.20)]"
             >
               🎁 보상 보러가기
             </Link>
