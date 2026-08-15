@@ -47,6 +47,15 @@ type TimelineOrder =
 
 const KOREA_TIME_ZONE = "Asia/Seoul";
 
+const TIMELINE_IMAGES = {
+  header: "/timeline/TIMELINE_01_HEADER.png",
+  story: "/timeline/TIMELINE_02_STORY.png",
+  memory: "/timeline/TIMELINE_03_MEMORY.png",
+  rewards: "/timeline/TIMELINE_04_REWARDS.png",
+  promises: "/timeline/TIMELINE_05_PROMISES.png",
+  moments: "/timeline/TIMELINE_06_MOMENTS.png",
+} as const;
+
 const FILTERS: {
   key: TimelineFilter;
   label: string;
@@ -732,8 +741,12 @@ export default function UsTimelinePage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-2xl shadow-sm">
-            💕
+          <div className="mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-[22px] border border-pink-100 bg-white p-1 shadow-sm">
+            <img
+              src={TIMELINE_IMAGES.header}
+              alt="OurQuest"
+              className="h-full w-full rounded-[18px] object-cover"
+            />
           </div>
           <p className="mt-4 text-sm text-gray-500">
             우리의 시간 불러오는 중...
@@ -744,49 +757,51 @@ export default function UsTimelinePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
+    <main className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,_#fff0f7_0,_#fff8fb_34%,_#fff8fb_100%)] px-4 py-7 text-[#2b2b2b] sm:px-5 sm:py-8">
       <div className="mx-auto max-w-md pb-28">
         <Link
           href="/us"
           prefetch={false}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-gray-500 transition hover:text-pink-500"
+          className="inline-flex items-center gap-1.5 rounded-full px-1 py-1 text-sm font-semibold text-gray-500 transition hover:text-pink-500"
         >
           <span>←</span>
           <span>우리로 돌아가기</span>
         </Link>
 
-        <header className="relative mt-7 overflow-hidden rounded-[34px] border border-pink-100 bg-gradient-to-br from-white via-white to-pink-50/80 p-6 shadow-sm">
-          <div className="pointer-events-none absolute -right-12 -top-14 h-36 w-36 rounded-full bg-pink-100/70 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-16 -left-10 h-32 w-32 rounded-full bg-violet-100/40 blur-3xl" />
+        <header className="relative mt-5 overflow-hidden rounded-[34px] border border-pink-100/80 bg-white shadow-[0_18px_50px_rgba(236,72,153,0.10)]">
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#fff3f8]">
+            <img
+              src={TIMELINE_IMAGES.header}
+              alt="우리의 타임라인"
+              className="h-full w-full object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/50 via-transparent to-transparent" />
 
-          <div className="relative">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold tracking-[0.22em] text-pink-400">
-                  OUR TIMELINE
-                </p>
-
-                <h1 className="mt-2 text-[30px] font-bold tracking-tight">
-                  우리의 타임라인
-                  <span className="ml-2 text-2xl">💕</span>
-                </h1>
-
-                <p className="mt-3 text-sm leading-6 text-gray-500">
-                  처음부터 오늘까지
-                  <br />
-                  둘이 만든 순간들을 차곡차곡 모았어요.
-                </p>
-              </div>
-
-              <div className="shrink-0 rounded-[20px] border border-pink-100 bg-white/90 px-3.5 py-3 text-center shadow-sm">
-                <p className="text-[9px] font-bold tracking-[0.18em] text-gray-400">
-                  MOMENTS
-                </p>
-                <p className="mt-1 text-xl font-bold text-pink-500">
-                  {events.length}
-                </p>
-              </div>
+            <div className="absolute right-3 top-3 rounded-[18px] border border-white/80 bg-white/90 px-3.5 py-2.5 text-center shadow-lg shadow-pink-100/60 backdrop-blur">
+              <p className="text-[8px] font-extrabold tracking-[0.18em] text-gray-400">
+                MOMENTS
+              </p>
+              <p className="mt-0.5 text-xl font-black text-pink-500">
+                {events.length}
+              </p>
             </div>
+          </div>
+
+          <div className="relative px-5 pb-5 pt-3">
+            <div className="absolute -top-7 left-5 rounded-full border border-pink-100 bg-white px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-pink-400 shadow-sm">
+              OUR TIMELINE
+            </div>
+
+            <h1 className="text-[25px] font-black tracking-tight">
+              처음부터 오늘까지,
+              <br />
+              둘이 만든 모든 순간 💕
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-gray-500">
+              약속하고, 인증하고, 보상받고, 기억하고.
+              <br />
+              우리 둘의 이야기를 한곳에 차곡차곡 모아요.
+            </p>
           </div>
         </header>
 
@@ -797,74 +812,143 @@ export default function UsTimelinePage() {
         )}
 
         {events.length > 0 && (
-          <section className="mt-4 rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
+          <section className="mt-4 overflow-hidden rounded-[30px] border border-pink-100 bg-white shadow-[0_12px_35px_rgba(236,72,153,0.07)]">
+            <div className="relative h-[155px] overflow-hidden bg-[#fff3f8] sm:h-[170px]">
+              <img
+                src={TIMELINE_IMAGES.story}
+                alt="Our Story"
+                className="h-full w-full object-cover"
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
+            </div>
+
+            <div className="relative -mt-3 px-4 pb-4">
+              <div className="rounded-[24px] border border-pink-100/80 bg-white/95 p-4 shadow-sm backdrop-blur">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-extrabold tracking-[0.2em] text-pink-400">
+                      OUR STORY
+                    </p>
+                    <h2 className="mt-1 text-lg font-black">
+                      지금까지 함께 만든 기록
+                    </h2>
+                  </div>
+                  <span className="text-2xl">💗</span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  {[
+                    { label: "전체", value: counts.total },
+                    { label: "약속", value: counts.promise },
+                    { label: "인증", value: counts.verification },
+                    { label: "추억", value: counts.memory },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className="rounded-[18px] border border-pink-50 bg-[#fff8fb] px-2 py-3 text-center"
+                    >
+                      <p className="text-lg font-black">
+                        {item.value}
+                      </p>
+                      <p className="mt-0.5 text-[10px] font-medium text-gray-400">
+                        {item.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-gray-500">
+                  <span className="rounded-full bg-amber-50 px-2.5 py-1.5">
+                    ✨ 레벨업 {counts.level}
+                  </span>
+                  <span className="rounded-full bg-orange-50 px-2.5 py-1.5">
+                    🎁 보상 {counts.reward}
+                  </span>
+                  <span className="rounded-full bg-pink-50 px-2.5 py-1.5 text-pink-500">
+                    ♥ 대표 순간 {counts.important}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {events.length > 0 && (
+          <section className="mt-5">
+            <div className="mb-3 flex items-end justify-between px-1">
               <div>
-                <p className="text-[10px] font-bold tracking-[0.2em] text-pink-400">
-                  OUR STORY
+                <p className="text-[10px] font-extrabold tracking-[0.18em] text-pink-400">
+                  STORY COLLECTION
                 </p>
-                <h2 className="mt-1 text-lg font-bold">
-                  함께 만든 이야기
+                <h2 className="mt-1 text-base font-black">
+                  우리 이야기 골라보기
                 </h2>
               </div>
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-pink-50 text-xl">
-                💗
-              </div>
+              <button
+                type="button"
+                onClick={() => setFilter("all")}
+                className="text-[11px] font-semibold text-gray-400"
+              >
+                전체 보기
+              </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-4 gap-2">
+            <div className="-mr-4 flex gap-3 overflow-x-auto pb-2 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[
                 {
-                  label: "전체",
-                  value: counts.total,
+                  key: "promise" as TimelineFilter,
+                  image: TIMELINE_IMAGES.promises,
+                  eyebrow: "PROMISE",
+                  title: "함께하는 약속",
+                  count: counts.promise,
                 },
                 {
-                  label: "약속",
-                  value: counts.promise,
+                  key: "reward" as TimelineFilter,
+                  image: TIMELINE_IMAGES.rewards,
+                  eyebrow: "REWARD",
+                  title: "우리의 보상",
+                  count: counts.reward,
                 },
                 {
-                  label: "인증",
-                  value: counts.verification,
-                },
-                {
-                  label: "추억",
-                  value: counts.memory,
+                  key: "memory" as TimelineFilter,
+                  image: TIMELINE_IMAGES.memory,
+                  eyebrow: "MEMORY",
+                  title: "우리의 추억",
+                  count: counts.memory,
                 },
               ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-2xl bg-[#fff8fb] px-2 py-3 text-center"
+                <button
+                  type="button"
+                  key={item.key}
+                  onClick={() => setFilter(item.key)}
+                  className={`w-[245px] shrink-0 overflow-hidden rounded-[26px] border bg-white text-left shadow-sm transition active:scale-[0.99] ${
+                    filter === item.key
+                      ? "border-pink-300 ring-2 ring-pink-100"
+                      : "border-pink-100"
+                  }`}
                 >
-                  <p className="text-lg font-bold">
-                    {item.value}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-gray-400">
-                    {item.label}
-                  </p>
-                </div>
+                  <div className="h-[120px] overflow-hidden bg-[#fff3f8]">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-extrabold tracking-[0.16em] text-pink-400">
+                        {item.eyebrow}
+                      </p>
+                      <p className="mt-0.5 truncate text-sm font-black">
+                        {item.title}
+                      </p>
+                    </div>
+                    <div className="flex h-9 min-w-9 items-center justify-center rounded-full bg-pink-50 px-2 text-xs font-black text-pink-500">
+                      {item.count}
+                    </div>
+                  </div>
+                </button>
               ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 px-1 text-[11px] text-gray-400">
-              <span>
-                레벨업{" "}
-                <b className="text-gray-600">
-                  {counts.level}
-                </b>
-              </span>
-              <span>
-                보상{" "}
-                <b className="text-gray-600">
-                  {counts.reward}
-                </b>
-              </span>
-              <span>
-                대표 순간{" "}
-                <b className="text-pink-500">
-                  {counts.important}
-                </b>
-              </span>
             </div>
           </section>
         )}
@@ -873,28 +957,29 @@ export default function UsTimelinePage() {
           <button
             type="button"
             onClick={() => setSelectedEvent(featuredEvent)}
-            className="mt-4 w-full overflow-hidden rounded-[28px] border border-pink-100 bg-gradient-to-br from-[#fffdf7] via-white to-pink-50 p-5 text-left shadow-sm transition active:scale-[0.99]"
+            className="mt-5 w-full overflow-hidden rounded-[30px] border border-pink-100 bg-white text-left shadow-[0_12px_35px_rgba(236,72,153,0.07)] transition active:scale-[0.99]"
           >
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
-                💖
+            <div className="relative h-[150px] overflow-hidden bg-[#fff3f8]">
+              <img
+                src={TIMELINE_IMAGES.moments}
+                alt="우리의 순간"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white via-white/55 to-transparent" />
+              <div className="absolute left-3 top-3 rounded-full bg-pink-500 px-3 py-1.5 text-[10px] font-bold text-white shadow-sm">
+                ♥ 대표 순간
               </div>
+            </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-bold tracking-[0.18em] text-pink-400">
-                    OUR FAVORITE MOMENT
-                  </p>
-                  <span className="text-xs text-pink-400">
-                    대표 순간
-                  </span>
-                </div>
-
-                <p className="mt-2 line-clamp-2 font-bold leading-6">
+            <div className="relative -mt-3 px-4 pb-4">
+              <div className="rounded-[22px] border border-pink-100/80 bg-white px-4 py-3 shadow-sm">
+                <p className="text-[9px] font-extrabold tracking-[0.18em] text-pink-400">
+                  OUR FAVORITE MOMENT
+                </p>
+                <p className="mt-1.5 line-clamp-2 font-black leading-6">
                   {featuredEvent.title}
                 </p>
-
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-[11px] text-gray-400">
                   {formatDateLabel(featuredEvent.event_date)}
                 </p>
               </div>
@@ -906,23 +991,30 @@ export default function UsTimelinePage() {
           <button
             type="button"
             onClick={() => setSelectedEvent(todayMemory)}
-            className="mt-4 w-full rounded-[26px] border border-pink-100 bg-white p-4 text-left shadow-sm"
+            className="mt-4 w-full overflow-hidden rounded-[26px] border border-pink-100 bg-white text-left shadow-sm"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
-                💌
+            <div className="flex items-center gap-3 p-3">
+              <div className="h-16 w-20 shrink-0 overflow-hidden rounded-[18px] bg-pink-50">
+                <img
+                  src={TIMELINE_IMAGES.memory}
+                  alt="오늘의 추억"
+                  className="h-full w-full object-cover"
+                />
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold tracking-[0.18em] text-pink-400">
+                <p className="text-[9px] font-extrabold tracking-[0.18em] text-pink-400">
                   ON THIS DAY
                 </p>
-                <p className="mt-1 truncate text-sm font-bold">
+                <p className="mt-1 truncate text-sm font-black">
                   오늘의 추억 · {todayMemory.title}
+                </p>
+                <p className="mt-1 text-[10px] text-gray-400">
+                  같은 날짜에 남긴 우리의 기록이에요.
                 </p>
               </div>
 
-              <span className="text-lg text-pink-300">›</span>
+              <span className="pr-1 text-lg text-pink-300">›</span>
             </div>
           </button>
         )}
@@ -940,7 +1032,7 @@ export default function UsTimelinePage() {
                     onClick={() => setFilter(item.key)}
                     className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-semibold transition ${
                       active
-                        ? "bg-pink-500 text-white shadow-sm"
+                        ? "bg-pink-500 text-white shadow-md shadow-pink-200/50"
                         : "border border-pink-100 bg-white text-gray-500 shadow-[0_2px_10px_rgba(236,72,153,0.04)]"
                     }`}
                   >
@@ -980,12 +1072,12 @@ export default function UsTimelinePage() {
           )}
 
         {events.length > 0 && (
-          <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-[22px] border border-pink-100/70 bg-white/70 px-3 py-2.5 shadow-sm backdrop-blur">
             <div>
-              <p className="text-[10px] font-bold tracking-[0.16em] text-pink-400">
+              <p className="text-[9px] font-extrabold tracking-[0.16em] text-pink-400">
                 STORY ARCHIVE
               </p>
-              <p className="mt-1 text-xs font-semibold text-gray-400">
+              <p className="mt-0.5 text-[11px] font-semibold text-gray-400">
                 {filteredEvents.length}개의 기록
               </p>
             </div>
@@ -1006,24 +1098,29 @@ export default function UsTimelinePage() {
         )}
 
         {events.length === 0 ? (
-          <section className="mt-7 rounded-[32px] border border-dashed border-pink-200 bg-white p-8 text-center shadow-sm">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-pink-50 text-3xl">
-              💗
+          <section className="mt-7 overflow-hidden rounded-[32px] border border-dashed border-pink-200 bg-white text-center shadow-sm">
+            <div className="h-[150px] overflow-hidden bg-[#fff3f8]">
+              <img
+                src={TIMELINE_IMAGES.moments}
+                alt="우리의 첫 이야기"
+                className="h-full w-full object-cover"
+              />
             </div>
+            <div className="p-7">
+              <p className="text-[10px] font-bold tracking-[0.2em] text-pink-400">
+                OUR FIRST STORY
+              </p>
 
-            <p className="mt-5 text-[10px] font-bold tracking-[0.2em] text-pink-400">
-              OUR FIRST STORY
-            </p>
+              <h2 className="mt-2 text-lg font-bold">
+                아직 타임라인이 없어요
+              </h2>
 
-            <h2 className="mt-2 text-lg font-bold">
-              아직 타임라인이 없어요
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              약속과 인증, 레벨업과 추억이 쌓이면
-              <br />
-              이곳에 둘만의 이야기가 만들어져요 ♡
-            </p>
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                약속과 인증, 레벨업과 추억이 쌓이면
+                <br />
+                이곳에 둘만의 이야기가 만들어져요 ♡
+              </p>
+            </div>
           </section>
         ) : filteredEvents.length === 0 ? (
           <section className="mt-7 rounded-[32px] border border-dashed border-pink-200 bg-white p-8 text-center shadow-sm">
@@ -1096,7 +1193,7 @@ export default function UsTimelinePage() {
                   }
                 >
                   {isNewMonth && (
-                    <div className="mb-5 rounded-[24px] border border-pink-100 bg-white/80 px-4 py-3 shadow-sm backdrop-blur">
+                    <div className="mb-5 rounded-[24px] border border-pink-100 bg-white/85 px-4 py-3 shadow-sm backdrop-blur">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-[10px] font-bold tracking-[0.2em] text-pink-400">
@@ -1127,7 +1224,7 @@ export default function UsTimelinePage() {
                       <p className="text-[10px] font-bold tracking-[0.16em] text-pink-400">
                         {chapter.month}
                       </p>
-                      <p className="mt-0.5 text-3xl font-bold tracking-tight">
+                      <p className="mt-0.5 text-3xl font-black tracking-tight">
                         {chapter.day}
                       </p>
                     </div>
@@ -1175,7 +1272,7 @@ export default function UsTimelinePage() {
                             </div>
 
                             <article
-                              className={`min-w-0 flex-1 overflow-hidden rounded-[28px] border shadow-sm transition active:scale-[0.995] ${style.card}`}
+                              className={`min-w-0 flex-1 overflow-hidden rounded-[28px] border shadow-[0_8px_28px_rgba(236,72,153,0.055)] transition active:scale-[0.995] ${style.card}`}
                             >
                               {event.image_url && (
                                 <div className="relative mx-4 mt-4 overflow-hidden rounded-[22px] bg-white shadow-sm">
