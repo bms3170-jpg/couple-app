@@ -27,24 +27,230 @@ type Member = {
   avatar_url: string | null;
 };
 
+type RecentMoment = {
+  id: string;
+  title: string;
+  description: string | null;
+  event_type: string;
+  event_date: string;
+};
+
+type NextLevelReward = {
+  id: string;
+  unlock_level: number;
+  title: string;
+  description: string | null;
+};
+
+type CoupleStats = {
+  approvedVerifications: number;
+  unlockedRewards: number;
+  usedRewards: number;
+};
+
+type AnniversaryInfo = {
+  label: string;
+  date: Date;
+  daysLeft: number;
+};
+
+function startOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function diffDays(from: Date, to: Date) {
+  const ms =
+    startOfDay(to).getTime() -
+    startOfDay(from).getTime();
+
+  return Math.ceil(
+    ms /
+      (1000 * 60 * 60 * 24)
+  );
+}
+
+function formatKoreanDate(
+  value: string | Date
+) {
+  const date =
+    value instanceof Date
+      ? value
+      : new Date(value);
+
+  return date.toLocaleDateString(
+    "ko-KR",
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }
+  );
+}
+
+function getRelativeDayLabel(
+  value: string
+) {
+  const date =
+    startOfDay(new Date(value));
+
+  const today =
+    startOfDay(new Date());
+
+  const diff =
+    Math.floor(
+      (
+        today.getTime() -
+        date.getTime()
+      ) /
+        (
+          1000 *
+          60 *
+          60 *
+          24
+        )
+    );
+
+  if (diff <= 0) {
+    return "오늘";
+  }
+
+  if (diff === 1) {
+    return "어제";
+  }
+
+  return `${diff}일 전`;
+}
+
+function getNextAnniversary(
+  relationshipStartedAt: string | null
+): AnniversaryInfo | null {
+  if (!relationshipStartedAt) {
+    return null;
+  }
+
+  const started =
+    startOfDay(
+      new Date(
+        relationshipStartedAt
+      )
+    );
+
+  const today =
+    startOfDay(new Date());
+
+  const candidates:
+    AnniversaryInfo[] = [];
+
+  const currentTogetherDays =
+    Math.floor(
+      (
+        today.getTime() -
+        started.getTime()
+      ) /
+        (
+          1000 *
+          60 *
+          60 *
+          24
+        )
+    ) + 1;
+
+  const nextHundred =
+    Math.max(
+      100,
+      Math.ceil(
+        currentTogetherDays /
+          100
+      ) * 100
+    );
+
+  const hundredDate =
+    new Date(started);
+
+  hundredDate.setDate(
+    hundredDate.getDate() +
+      nextHundred -
+      1
+  );
+
+  candidates.push({
+    label:
+      `${nextHundred}일`,
+    date:
+      hundredDate,
+    daysLeft:
+      diffDays(
+        today,
+        hundredDate
+      ),
+  });
+
+  const yearsTogether =
+    today.getFullYear() -
+    started.getFullYear();
+
+  for (
+    let yearOffset =
+      Math.max(
+        1,
+        yearsTogether
+      );
+    yearOffset <=
+    yearsTogether + 2;
+    yearOffset += 1
+  ) {
+    const anniversary =
+      new Date(
+        started.getFullYear() +
+          yearOffset,
+        started.getMonth(),
+        started.getDate()
+      );
+
+    if (
+      anniversary.getTime() >=
+      today.getTime()
+    ) {
+      candidates.push({
+        label:
+          `${yearOffset}주년`,
+        date:
+          anniversary,
+        daysLeft:
+          diffDays(
+            today,
+            anniversary
+          ),
+      });
+    }
+  }
+
+  return (
+    candidates
+      .filter(
+        (item) =>
+          item.daysLeft >= 0
+      )
+      .sort(
+        (a, b) =>
+          a.daysLeft -
+          b.daysLeft
+      )[0] ?? null
+  );
+}
+
 export default function UsPage() {
   const supabase = useMemo(
     () => createClient(),
     []
   );
 
-  // =========================================
-  // 공통 로그인 정보
-  // =========================================
-
   const {
     user,
     loading: authLoading,
   } = useAuth();
-
-  // =========================================
-  // 페이지 상태
-  // =========================================
 
   const [loading, setLoading] =
     useState(true);
@@ -60,33 +266,48 @@ export default function UsPage() {
   const [message, setMessage] =
     useState("");
 
-  // =========================================
-  // 우리 페이지 데이터 불러오기
-  // =========================================
+  const [
+    recentMoment,
+    setRecentMoment,
+  ] =
+    useState<RecentMoment | null>(
+      null
+    );
+
+  const [
+    nextLevelReward,
+    setNextLevelReward,
+  ] =
+    useState<NextLevelReward | null>(
+      null
+    );
+
+  const [
+    stats,
+    setStats,
+  ] =
+    useState<CoupleStats>({
+      approvedVerifications: 0,
+      unlockedRewards: 0,
+      usedRewards: 0,
+    });
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadUs() {
-      // AuthProvider가 세션 확인 중이면 기다림
       if (authLoading) {
         return;
       }
 
-      // AuthProvider 확인이 끝났는데 user가 없으면
-      // 실제 로그아웃 상태
       if (!user) {
         window.location.href =
           "/login";
-
         return;
       }
 
-      if (cancelled) return;
-
-      // =====================================
-      // 내가 속한 커플
-      // =====================================
+      setLoading(true);
+      setMessage("");
 
       const {
         data: membership,
@@ -94,27 +315,29 @@ export default function UsPage() {
       } = await supabase
         .from("couple_members")
         .select("couple_id")
-        .eq("user_id", user.id)
+        .eq(
+          "user_id",
+          user.id
+        )
         .maybeSingle();
 
-      if (cancelled) return;
-
-      if (membershipError) {
-        console.error(
-          `멤버십 조회 오류 | message=${membershipError.message} | code=${membershipError.code} | details=${membershipError.details ?? ""} | hint=${membershipError.hint ?? ""}`
-        );
-
-        setMessage(
-          `커플 정보를 불러오지 못했어요: ${membershipError.message}`
-        );
-
-        setLoading(false);
+      if (cancelled) {
         return;
       }
 
-      if (!membership) {
+      if (
+        membershipError ||
+        !membership
+      ) {
+        console.error(
+          "멤버십 조회 오류:",
+          membershipError
+        );
+
         setMessage(
-          "아직 연결된 커플이 없어요."
+          membershipError
+            ? `커플 정보를 불러오지 못했어요: ${membershipError.message}`
+            : "아직 연결된 커플이 없어요."
         );
 
         setLoading(false);
@@ -124,81 +347,158 @@ export default function UsPage() {
       const coupleId =
         membership.couple_id;
 
-      // =====================================
-      // 커플 정보
-      // =====================================
+      const [
+        coupleResult,
+        memberResult,
+        recentMomentResult,
+        verificationCountResult,
+        unlockedRewardCountResult,
+        usedRewardCountResult,
+      ] = await Promise.all([
+        supabase
+          .from("couples")
+          .select(`
+            id,
+            invite_code,
+            relationship_started_at,
+            level,
+            xp,
+            created_at
+          `)
+          .eq(
+            "id",
+            coupleId
+          )
+          .maybeSingle(),
 
-      const {
-        data: coupleData,
-        error: coupleError,
-      } = await supabase
-        .from("couples")
-        .select(`
-          id,
-          invite_code,
-          relationship_started_at,
-          level,
-          xp,
-          created_at
-        `)
-        .eq("id", coupleId)
-        .maybeSingle();
+        supabase
+          .from("couple_members")
+          .select(
+            "user_id, joined_at"
+          )
+          .eq(
+            "couple_id",
+            coupleId
+          )
+          .order(
+            "joined_at",
+            {
+              ascending: true,
+            }
+          ),
 
-      if (cancelled) return;
+        supabase
+          .from(
+            "couple_timeline_events"
+          )
+          .select(`
+            id,
+            title,
+            description,
+            event_type,
+            event_date
+          `)
+          .eq(
+            "couple_id",
+            coupleId
+          )
+          .order(
+            "event_date",
+            {
+              ascending: false,
+            }
+          )
+          .limit(1)
+          .maybeSingle(),
 
-      if (coupleError) {
+        supabase
+          .from(
+            "verifications"
+          )
+          .select(
+            "id",
+            {
+              count: "exact",
+              head: true,
+            }
+          )
+          .eq(
+            "couple_id",
+            coupleId
+          )
+          .eq(
+            "status",
+            "approved"
+          ),
+
+        supabase
+          .from("rewards")
+          .select(
+            "id",
+            {
+              count: "exact",
+              head: true,
+            }
+          )
+          .eq(
+            "couple_id",
+            coupleId
+          )
+          .eq(
+            "is_unlocked",
+            true
+          ),
+
+        supabase
+          .from("rewards")
+          .select(
+            "id",
+            {
+              count: "exact",
+              head: true,
+            }
+          )
+          .eq(
+            "couple_id",
+            coupleId
+          )
+          .eq(
+            "is_used",
+            true
+          ),
+      ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (
+        coupleResult.error ||
+        !coupleResult.data
+      ) {
         console.error(
-          `커플 정보 조회 오류 | message=${coupleError.message} | code=${coupleError.code} | details=${coupleError.details ?? ""} | hint=${coupleError.hint ?? ""}`
+          "커플 정보 조회 오류:",
+          coupleResult.error
         );
 
         setMessage(
-          `커플 정보를 불러오지 못했어요: ${coupleError.message}`
+          coupleResult.error
+            ? `커플 정보를 불러오지 못했어요: ${coupleResult.error.message}`
+            : "커플 정보를 찾을 수 없어요."
         );
 
         setLoading(false);
         return;
       }
 
-      if (!coupleData) {
+      if (memberResult.error) {
         console.error(
-          `커플 정보 없음 | coupleId=${coupleId}`
+          "멤버 조회 오류:",
+          memberResult.error
         );
 
         setMessage(
-          "커플 정보를 찾을 수 없어요."
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      // =====================================
-      // 커플 멤버
-      // =====================================
-
-      const {
-        data: memberRows,
-        error: memberError,
-      } = await supabase
-        .from("couple_members")
-        .select("user_id")
-        .eq(
-          "couple_id",
-          coupleId
-        )
-        .order("joined_at", {
-          ascending: true,
-        });
-
-      if (cancelled) return;
-
-      if (memberError) {
-        console.error(
-          `멤버 조회 오류 | message=${memberError.message} | code=${memberError.code} | details=${memberError.details ?? ""} | hint=${memberError.hint ?? ""}`
-        );
-
-        setMessage(
-          `멤버 정보를 불러오지 못했어요: ${memberError.message}`
+          `멤버 정보를 불러오지 못했어요: ${memberResult.error.message}`
         );
 
         setLoading(false);
@@ -206,14 +506,10 @@ export default function UsPage() {
       }
 
       const userIds =
-        memberRows?.map(
+        memberResult.data?.map(
           (item) =>
             item.user_id
         ) ?? [];
-
-      // =====================================
-      // 프로필 / 닉네임
-      // =====================================
 
       const {
         data: profileRows,
@@ -224,17 +520,23 @@ export default function UsPage() {
             .select(
               "id, nickname, avatar_path"
             )
-            .in("id", userIds)
+            .in(
+              "id",
+              userIds
+            )
         : {
             data: [],
             error: null,
           };
 
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       if (profileError) {
         console.error(
-          `프로필 조회 오류 | message=${profileError.message} | code=${profileError.code} | details=${profileError.details ?? ""} | hint=${profileError.hint ?? ""}`
+          "프로필 조회 오류:",
+          profileError
         );
 
         setMessage(
@@ -245,7 +547,8 @@ export default function UsPage() {
         return;
       }
 
-      const loadedMembers: Member[] =
+      const loadedMembers:
+        Member[] =
         userIds.map(
           (userId) => {
             const profile =
@@ -262,10 +565,13 @@ export default function UsPage() {
             const avatarUrl =
               avatarPath
                 ? supabase.storage
-                    .from("avatars")
+                    .from(
+                      "avatars"
+                    )
                     .getPublicUrl(
                       avatarPath
-                    ).data.publicUrl
+                    ).data
+                    .publicUrl
                 : null;
 
             return {
@@ -285,24 +591,127 @@ export default function UsPage() {
           }
         );
 
-      if (cancelled) return;
+      const loadedCouple =
+        coupleResult.data as CoupleInfo;
 
-      // =====================================
-      // 최종 데이터 적용
-      // =====================================
+      const {
+        data: nextLevelRewardRow,
+        error: nextLevelRewardError,
+      } = await supabase
+        .from(
+          "level_rewards"
+        )
+        .select(`
+          id,
+          unlock_level,
+          title,
+          description
+        `)
+        .eq(
+          "couple_id",
+          coupleId
+        )
+        .gt(
+          "unlock_level",
+          loadedCouple.level ??
+            1
+        )
+        .order(
+          "unlock_level",
+          {
+            ascending: true,
+          }
+        )
+        .limit(1)
+        .maybeSingle();
+
+      if (
+        nextLevelRewardError
+      ) {
+        console.error(
+          "다음 레벨 보상 조회 오류:",
+          nextLevelRewardError
+        );
+      }
+
+      if (
+        recentMomentResult.error
+      ) {
+        console.error(
+          "최근 타임라인 조회 오류:",
+          recentMomentResult.error
+        );
+      }
+
+      if (
+        verificationCountResult.error
+      ) {
+        console.error(
+          "인증 통계 조회 오류:",
+          verificationCountResult.error
+        );
+      }
+
+      if (
+        unlockedRewardCountResult.error
+      ) {
+        console.error(
+          "해금 보상 통계 조회 오류:",
+          unlockedRewardCountResult.error
+        );
+      }
+
+      if (
+        usedRewardCountResult.error
+      ) {
+        console.error(
+          "사용 보상 통계 조회 오류:",
+          usedRewardCountResult.error
+        );
+      }
+
+      if (cancelled) {
+        return;
+      }
 
       setCouple(
-        coupleData as CoupleInfo
+        loadedCouple
       );
 
       setMembers(
         loadedMembers
       );
 
+      setRecentMoment(
+        recentMomentResult.data
+          ? recentMomentResult.data as RecentMoment
+          : null
+      );
+
+      setNextLevelReward(
+        nextLevelRewardRow
+          ? nextLevelRewardRow as NextLevelReward
+          : null
+      );
+
+      setStats({
+        approvedVerifications:
+          verificationCountResult.count ??
+          0,
+
+        unlockedRewards:
+          unlockedRewardCountResult.count ??
+          0,
+
+        usedRewards:
+          usedRewardCountResult.count ??
+          0,
+      });
+
       setLoading(false);
     }
 
-    loadUs();
+    void loadUs();
 
     return () => {
       cancelled = true;
@@ -313,25 +722,10 @@ export default function UsPage() {
     authLoading,
   ]);
 
-  // =========================================
-  // AuthProvider 세션 확인 중
-  // =========================================
-
-  if (authLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
-        <p className="text-sm text-gray-500">
-          로그인 정보 확인 중...
-        </p>
-      </main>
-    );
-  }
-
-  // =========================================
-  // 페이지 데이터 로딩 중
-  // =========================================
-
-  if (loading) {
+  if (
+    authLoading ||
+    loading
+  ) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
         <p className="text-sm text-gray-500">
@@ -340,10 +734,6 @@ export default function UsPage() {
       </main>
     );
   }
-
-  // =========================================
-  // 표시용 데이터
-  // =========================================
 
   const firstMember =
     members[0] ?? null;
@@ -366,14 +756,27 @@ export default function UsPage() {
     couple?.xp ?? 0;
 
   const xpForNextLevel =
-    100 + ((level - 1) * 50);
+    100 +
+    (
+      level - 1
+    ) *
+      50;
 
   const xpPercent =
     Math.min(
-      (xp /
-        xpForNextLevel) *
+      (
+        xp /
+        xpForNextLevel
+      ) *
         100,
       100
+    );
+
+  const remainingXp =
+    Math.max(
+      xpForNextLevel -
+        xp,
+      0
     );
 
   const coupleTitle =
@@ -387,56 +790,45 @@ export default function UsPage() {
             ? "점점 가까워지는 중"
             : "우리 시작";
 
-  // =========================================
-  // D+ 계산
-  // =========================================
-
   let daysTogether:
     | number
     | null = null;
 
   if (
-    couple?.relationship_started_at
+    couple
+      ?.relationship_started_at
   ) {
     const started =
-      new Date(
-        couple.relationship_started_at
+      startOfDay(
+        new Date(
+          couple.relationship_started_at
+        )
       );
 
     const today =
-      new Date();
-
-    started.setHours(
-      0,
-      0,
-      0,
-      0
-    );
-
-    today.setHours(
-      0,
-      0,
-      0,
-      0
-    );
-
-    const diff =
-      today.getTime() -
-      started.getTime();
+      startOfDay(new Date());
 
     daysTogether =
       Math.floor(
-        diff /
-          (1000 *
+        (
+          today.getTime() -
+          started.getTime()
+        ) /
+          (
+            1000 *
             60 *
             60 *
-            24)
+            24
+          )
       ) + 1;
   }
 
-  // =========================================
-  // 초대코드 복사
-  // =========================================
+  const nextAnniversary =
+    getNextAnniversary(
+      couple
+        ?.relationship_started_at ??
+        null
+    );
 
   async function copyInviteCode() {
     if (
@@ -462,95 +854,105 @@ export default function UsPage() {
 
   return (
     <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
-
       <div className="mx-auto max-w-md pb-28">
 
         {/* =================================
-            헤더
+            HEADER
         ================================== */}
 
         <header>
-
-          <p className="text-sm font-semibold tracking-[0.2em] text-pink-400">
+          <p className="text-xs font-black tracking-[0.22em] text-pink-400">
             OURQUEST
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold">
+          <h1 className="mt-2 text-[32px] font-black tracking-tight">
             우리 ♡
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-gray-500">
-            함께 지켜온 약속과
+            함께 쌓아온 시간과
             <br />
-            우리 둘의 이야기를 모아봤어요.
+            우리 둘만의 이야기를 모아봤어요.
           </p>
-
         </header>
 
         {/* =================================
-            커플 카드
+            OUR DAY HERO
         ================================== */}
 
-        <section className="relative mt-7 overflow-hidden rounded-[34px] border border-pink-100 bg-gradient-to-br from-white via-white to-pink-50/80 p-6 shadow-sm">
+        <section className="relative mt-7 overflow-hidden rounded-[34px] border border-pink-100 bg-gradient-to-br from-white via-[#fffafd] to-[#fff4f8] p-6 shadow-sm">
+          <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-pink-100/60 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-rose-100/50 blur-3xl" />
 
-          <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-pink-100/50 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-10 -left-8 h-24 w-24 rounded-full bg-rose-100/40 blur-2xl" />
-
-          <div className="relative">
+          <div className="relative z-10">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold tracking-[0.2em] text-pink-400">
+              <p className="text-xs font-black tracking-[0.2em] text-pink-400">
                 OUR DAY
               </p>
 
-              <span className="rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-pink-400 shadow-sm">
+              <span className="rounded-full border border-pink-100 bg-white/85 px-3 py-1.5 text-[11px] font-black text-pink-400 shadow-sm">
                 함께하는 중 ♡
               </span>
             </div>
 
-            <div className="mt-5 flex items-center gap-5">
-              <div className="relative h-24 w-36 shrink-0">
-                <div className="absolute left-1 top-2 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-pink-50 text-3xl shadow-sm">
-                  {firstMember?.avatar_url ? (
+            <div className="mt-5 flex items-center gap-4">
+              <div className="relative h-24 w-[138px] shrink-0">
+                <div className="absolute left-0 top-1 flex h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-pink-50 to-purple-50 text-3xl shadow-sm">
+                  {firstMember
+                    ?.avatar_url ? (
                     <img
-                      src={firstMember.avatar_url}
+                      src={
+                        firstMember.avatar_url
+                      }
                       alt={`${first} 프로필 사진`}
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <span>👤</span>
+                    <span>
+                      👤
+                    </span>
                   )}
                 </div>
 
-                <div className="absolute right-1 top-2 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-pink-50 text-3xl shadow-sm">
-                  {secondMember?.avatar_url ? (
+                <div className="absolute right-0 top-1 flex h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-purple-50 to-pink-50 text-3xl shadow-sm">
+                  {secondMember
+                    ?.avatar_url ? (
                     <img
-                      src={secondMember.avatar_url}
+                      src={
+                        secondMember.avatar_url
+                      }
                       alt={`${second} 프로필 사진`}
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <span>👤</span>
+                    <span>
+                      👤
+                    </span>
                   )}
                 </div>
 
-                <div className="absolute left-1/2 top-[58px] z-10 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-pink-100 text-sm shadow-sm">
+                <div className="absolute left-1/2 top-[62px] z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-pink-100 text-sm font-black text-pink-500 shadow-sm">
                   ♡
                 </div>
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xl font-bold">
+                <p className="truncate text-lg font-black">
                   {first} ♡ {second}
                 </p>
 
-                {daysTogether !== null ? (
+                {daysTogether !==
+                null ? (
                   <>
-                    <p className="mt-2 text-xs text-gray-400">
-                      함께한 지
+                    <p className="mt-2 text-xs font-semibold text-gray-400">
+                      우리가 함께한 시간
                     </p>
 
-                    <p className="mt-1 text-4xl font-bold tracking-tight text-pink-500">
-                      D+{daysTogether}
+                    <p className="mt-1 text-[38px] font-black tracking-tight text-pink-500">
+                      D+
+                      {
+                        daysTogether
+                      }
                     </p>
                   </>
                 ) : (
@@ -563,82 +965,185 @@ export default function UsPage() {
               </div>
             </div>
 
-            {couple?.relationship_started_at && (
-              <div className="mt-5 flex items-center justify-between rounded-2xl border border-pink-100 bg-white/80 px-4 py-3">
-                <span className="text-xs text-gray-400">
+            {couple
+              ?.relationship_started_at && (
+              <div className="mt-5 flex items-center justify-between rounded-[20px] border border-pink-100 bg-white/75 px-4 py-3">
+                <span className="text-xs font-semibold text-gray-400">
                   우리가 시작한 날
                 </span>
 
-                <span className="text-xs font-semibold text-pink-500">
-                  {new Date(
+                <span className="text-xs font-black text-pink-500">
+                  {formatKoreanDate(
                     couple.relationship_started_at
-                  ).toLocaleDateString(
-                    "ko-KR",
-                    {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    }
                   )}
                 </span>
               </div>
             )}
           </div>
-
         </section>
 
         {/* =================================
-            레벨 / XP
+            ANNIVERSARY + STATS
         ================================== */}
 
-        <section className="mt-4 overflow-hidden rounded-[30px] border border-pink-100 bg-white p-5 shadow-sm">
+        <section className="mt-4 grid grid-cols-[1.05fr_0.95fr] gap-3">
+          <div className="rounded-[28px] border border-amber-100 bg-gradient-to-br from-white to-[#fff9eb] p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-xl">
+                🎂
+              </div>
 
+              <span className="text-[10px] font-black tracking-[0.12em] text-amber-500">
+                NEXT DAY
+              </span>
+            </div>
+
+            <p className="mt-4 text-xs font-semibold text-gray-400">
+              다음 기념일
+            </p>
+
+            {nextAnniversary ? (
+              <>
+                <p className="mt-1 text-xl font-black">
+                  {
+                    nextAnniversary.label
+                  }
+                </p>
+
+                <p className="mt-1 text-2xl font-black text-amber-500">
+                  D-
+                  {
+                    nextAnniversary.daysLeft
+                  }
+                </p>
+
+                <p className="mt-2 text-[11px] leading-5 text-gray-400">
+                  {formatKoreanDate(
+                    nextAnniversary.date
+                  )}
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-gray-400">
+                시작일을 설정하면
+                <br />
+                자동으로 계산해요.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+                ✨
+              </div>
+
+              <span className="text-[10px] font-black tracking-[0.12em] text-pink-400">
+                RECORD
+              </span>
+            </div>
+
+            <p className="mt-4 text-xs font-semibold text-gray-400">
+              함께 만든 기록
+            </p>
+
+            <div className="mt-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  인증
+                </span>
+
+                <span className="text-sm font-black">
+                  {
+                    stats.approvedVerifications
+                  }
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  해금 보상
+                </span>
+
+                <span className="text-sm font-black">
+                  {
+                    stats.unlockedRewards
+                  }
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  사용 보상
+                </span>
+
+                <span className="text-sm font-black">
+                  {
+                    stats.usedRewards
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =================================
+            LEVEL
+        ================================== */}
+
+        <section className="mt-4 overflow-hidden rounded-[30px] border border-purple-100 bg-gradient-to-br from-white via-white to-purple-50/55 p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+              <p className="text-xs font-black tracking-[0.18em] text-purple-400">
                 OUR LEVEL
               </p>
 
               <div className="mt-2 flex items-end gap-2">
-                <p className="text-4xl font-bold tracking-tight">
-                  LV.{level}
+                <p className="text-[38px] font-black tracking-tight">
+                  LV.
+                  {
+                    level
+                  }
                 </p>
 
-                <span className="mb-1 rounded-full bg-pink-50 px-2.5 py-1 text-[11px] font-semibold text-pink-500">
-                  {coupleTitle}
+                <span className="mb-1 rounded-full bg-purple-50 px-2.5 py-1 text-[11px] font-black text-purple-500">
+                  {
+                    coupleTitle
+                  }
                 </span>
               </div>
             </div>
 
-            <div className="shrink-0 rounded-2xl bg-[#fff8fb] px-4 py-3 text-right">
-              <p className="text-xs text-gray-400">
+            <div className="shrink-0 rounded-2xl bg-white/80 px-4 py-3 text-right shadow-sm">
+              <p className="text-xs font-semibold text-gray-400">
                 현재 XP
               </p>
 
-              <p className="mt-1 text-lg font-bold text-pink-500">
-                {xp}
+              <p className="mt-1 text-lg font-black text-purple-500">
+                {
+                  xp
+                }
               </p>
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl bg-[#fff8fb] p-4">
+          <div className="mt-5 rounded-[22px] border border-purple-100 bg-white/75 p-4">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-gray-500">
+              <span className="font-black text-gray-500">
                 다음 레벨까지
               </span>
 
-              <span className="font-semibold text-pink-500">
-                {Math.max(
-                  xpForNextLevel -
-                    xp,
-                  0
-                )} XP 남음
+              <span className="font-black text-purple-500">
+                {
+                  remainingXp
+                }{" "}
+                XP 남음
               </span>
             </div>
 
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-pink-100/70">
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-purple-100/70">
               <div
-                className="h-full rounded-full bg-pink-400 transition-all"
+                className="h-full rounded-full bg-gradient-to-r from-purple-300 to-pink-400 transition-all"
                 style={{
                   width:
                     `${xpPercent}%`,
@@ -648,86 +1153,155 @@ export default function UsPage() {
 
             <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400">
               <span>
-                {xp} XP
+                {
+                  xp
+                }{" "}
+                XP
               </span>
 
               <span>
-                {xpForNextLevel} XP
+                {
+                  xpForNextLevel
+                }{" "}
+                XP
               </span>
             </div>
           </div>
 
+          <div className="mt-3 rounded-[22px] border border-amber-100 bg-gradient-to-r from-[#fffaf0] to-white p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-xl">
+                🎁
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black tracking-[0.14em] text-amber-500">
+                  NEXT LEVEL REWARD
+                </p>
+
+                {nextLevelReward ? (
+                  <>
+                    <p className="mt-1 truncate text-sm font-black">
+                      LV.
+                      {
+                        nextLevelReward.unlock_level
+                      }{" "}
+                      ·{" "}
+                      {
+                        nextLevelReward.title
+                      }
+                    </p>
+
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-400">
+                      {
+                        nextLevelReward.description ??
+                        "다음 레벨에서 특별한 보상이 열려요 ♡"
+                      }
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-xs leading-5 text-gray-400">
+                    현재 등록된 다음 레벨 보상이 없어요.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* =================================
-            초대 코드
-        ================================== */}
-
-        <section className="mt-4 rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm">
-
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
-                INVITE
-              </p>
-
-              <p className="mt-1 text-sm font-bold">
-                우리의 초대코드
-              </p>
-            </div>
-
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-50 text-lg">
-              💌
-            </span>
-          </div>
-
-          <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#fff8fb] p-3">
-            <div className="min-w-0 flex-1 px-2">
-              <p className="truncate text-center text-xl font-bold tracking-[0.22em] text-gray-700">
-                {couple
-                  ?.invite_code ??
-                  "-"}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={
-                copyInviteCode
-              }
-              className="shrink-0 rounded-xl bg-pink-500 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-pink-600 active:scale-[0.98]"
-            >
-              복사
-            </button>
-          </div>
-
-          <p className="mt-3 text-center text-[11px] leading-5 text-gray-400">
-            초대코드를 공유해 둘만의 공간에 연결할 수 있어요 ♡
-          </p>
-
-        </section>
-
-        {/* =================================
-            상태 메시지
-        ================================== */}
-
-        {message && (
-          <div className="mt-4 rounded-2xl border border-pink-100 bg-white/80 px-4 py-3 text-center text-xs text-gray-500 shadow-sm">
-            {message}
-          </div>
-        )}
-
-        {/* =================================
-            우리 메뉴
+            RECENT MOMENT
         ================================== */}
 
         <section className="mt-5">
           <div className="mb-3 flex items-end justify-between">
             <div>
-              <p className="text-xs font-semibold tracking-[0.18em] text-pink-400">
+              <p className="text-xs font-black tracking-[0.18em] text-pink-400">
+                RECENT MOMENT
+              </p>
+
+              <h2 className="mt-1 text-lg font-black">
+                최근 우리 순간
+              </h2>
+            </div>
+
+            <Link
+              href="/us/timeline"
+              prefetch={false}
+              className="text-xs font-black text-pink-400"
+            >
+              전체보기 ›
+            </Link>
+          </div>
+
+          <Link
+            href="/us/timeline"
+            prefetch={false}
+            className="block rounded-[28px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/55 p-5 shadow-sm"
+          >
+            {recentMoment ? (
+              <div className="flex items-start gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
+                  💗
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 truncate font-black">
+                      {
+                        recentMoment.title
+                      }
+                    </p>
+
+                    <span className="shrink-0 text-[11px] font-black text-pink-400">
+                      {
+                        getRelativeDayLabel(
+                          recentMoment.event_date
+                        )
+                      }
+                    </span>
+                  </div>
+
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-400">
+                    {
+                      recentMoment.description ??
+                      "우리 둘의 새로운 기록이 남았어요 ♡"
+                    }
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="text-3xl">
+                  🌱
+                </div>
+
+                <p className="mt-3 font-black">
+                  아직 기록된 순간이 없어요
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-gray-400">
+                  함께 약속을 지키고 보상을 사용하면
+                  <br />
+                  우리 이야기가 여기에 쌓여요 ♡
+                </p>
+              </div>
+            )}
+          </Link>
+        </section>
+
+        {/* =================================
+            OUR STORY
+        ================================== */}
+
+        <section className="mt-5">
+          <div className="mb-3 flex items-end justify-between">
+            <div>
+              <p className="text-xs font-black tracking-[0.18em] text-pink-400">
                 OUR STORY
               </p>
-              <h3 className="mt-1 text-lg font-bold">
+
+              <h3 className="mt-1 text-lg font-black">
                 우리 이야기
               </h3>
             </div>
@@ -741,13 +1315,13 @@ export default function UsPage() {
             <Link
               href="/us/history"
               prefetch={false}
-              className="group rounded-[26px] border border-pink-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-50/50 hover:shadow-md"
+              className="group rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5"
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-pink-50 text-xl">
                 📖
               </div>
 
-              <p className="mt-4 font-bold">
+              <p className="mt-4 font-black">
                 우리 기록
               </p>
 
@@ -757,7 +1331,7 @@ export default function UsPage() {
                 인증 모아보기
               </p>
 
-              <div className="mt-4 text-right text-lg text-pink-300 transition group-hover:translate-x-0.5">
+              <div className="mt-4 text-right text-lg font-black text-pink-300">
                 ›
               </div>
             </Link>
@@ -765,13 +1339,13 @@ export default function UsPage() {
             <Link
               href="/us/timeline"
               prefetch={false}
-              className="group rounded-[26px] border border-pink-100 bg-gradient-to-br from-white to-pink-50/70 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="group rounded-[28px] border border-purple-100 bg-gradient-to-br from-white to-purple-50/60 p-5 shadow-sm transition hover:-translate-y-0.5"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-pink-100 text-xl">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-50 text-xl">
                 💕
               </div>
 
-              <p className="mt-4 font-bold">
+              <p className="mt-4 font-black">
                 타임라인
               </p>
 
@@ -781,59 +1355,103 @@ export default function UsPage() {
                 함께 만든 순간들
               </p>
 
-              <div className="mt-4 text-right text-lg text-pink-400 transition group-hover:translate-x-0.5">
+              <div className="mt-4 text-right text-lg font-black text-purple-300">
                 ›
               </div>
             </Link>
           </div>
-
-          <Link
-            href="/us/settings"
-            prefetch={false}
-            className="group mt-3 flex w-full items-center justify-between rounded-[26px] border border-pink-100 bg-white p-4 shadow-sm transition hover:bg-pink-50/50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-50 text-lg">
-                ⚙️
-              </div>
-
-              <div>
-                <p className="text-sm font-bold">
-                  우리 설정
-                </p>
-
-                <p className="mt-0.5 text-xs text-gray-400">
-                  함께한 날짜와 프로필 관리
-                </p>
-              </div>
-            </div>
-
-            <span className="text-lg text-gray-300 transition group-hover:translate-x-0.5">
-              ›
-            </span>
-          </Link>
         </section>
 
         {/* =================================
-            홈 바로가기
+            INVITE
         ================================== */}
+
+        <section className="mt-4 rounded-[26px] border border-pink-100 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black tracking-[0.16em] text-pink-400">
+                INVITE
+              </p>
+
+              <p className="mt-1 text-sm font-black">
+                우리의 초대코드
+              </p>
+            </div>
+
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-pink-50 text-base">
+              💌
+            </span>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2 rounded-[18px] bg-[#fff8fb] p-2.5">
+            <p className="min-w-0 flex-1 truncate px-2 text-center text-base font-black tracking-[0.18em] text-gray-700">
+              {
+                couple
+                  ?.invite_code ??
+                "-"
+              }
+            </p>
+
+            <button
+              type="button"
+              onClick={
+                copyInviteCode
+              }
+              className="shrink-0 rounded-xl bg-pink-500 px-4 py-2.5 text-xs font-black text-white shadow-sm active:scale-[0.98]"
+            >
+              복사
+            </button>
+          </div>
+        </section>
+
+        {message && (
+          <div className="mt-4 rounded-2xl border border-pink-100 bg-white/80 px-4 py-3 text-center text-xs font-semibold text-gray-500 shadow-sm">
+            {
+              message
+            }
+          </div>
+        )}
+
+        {/* =================================
+            SETTINGS
+        ================================== */}
+
+        <Link
+          href="/us/settings"
+          prefetch={false}
+          className="group mt-4 flex w-full items-center justify-between rounded-[26px] border border-gray-100 bg-white p-4 shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-50 text-lg">
+              ⚙️
+            </div>
+
+            <div>
+              <p className="text-sm font-black">
+                우리 설정
+              </p>
+
+              <p className="mt-0.5 text-xs text-gray-400">
+                함께한 날짜와 프로필 관리
+              </p>
+            </div>
+          </div>
+
+          <span className="text-lg text-gray-300">
+            ›
+          </span>
+        </Link>
 
         <Link
           href="/couple"
           prefetch={false}
-          className="mt-4 block w-full rounded-2xl border border-pink-100 bg-white/80 px-4 py-3.5 text-center text-xs font-semibold text-gray-400 transition hover:bg-pink-50 hover:text-pink-500"
+          className="mt-4 block w-full rounded-2xl border border-pink-100 bg-white/80 px-4 py-3.5 text-center text-xs font-black text-gray-400"
         >
           홈으로 돌아가기
         </Link>
 
-        {/* =================================
-            공통 하단 메뉴
-        ================================== */}
-
         <BottomNav />
-
       </div>
-
     </main>
   );
 }
