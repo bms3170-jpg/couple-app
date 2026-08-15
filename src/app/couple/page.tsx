@@ -2314,7 +2314,7 @@ export default function CouplePage() {
 
               <div className="mt-3 flex items-center gap-1.5 rounded-2xl bg-amber-50 px-3 py-2">
                 <img
-                  src="/images/coin.png"
+                  src="/images/coin.PNG"
                   alt=""
                   aria-hidden="true"
                   className="h-5 w-5 object-contain"
@@ -3215,7 +3215,7 @@ export default function CouplePage() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <img
-                  src="/images/coin.png"
+                  src="/images/coin.PNG"
                   alt="OURQUEST 코인"
                   className="h-12 w-12 object-contain"
                 />
@@ -3250,7 +3250,7 @@ export default function CouplePage() {
 
                 <div className="flex items-center gap-1.5">
                   <img
-                    src="/images/coin.png"
+                    src="/images/coin.PNG"
                     alt=""
                     aria-hidden="true"
                     className="h-5 w-5 object-contain"
@@ -3289,7 +3289,7 @@ export default function CouplePage() {
 
                     <div className="flex items-center gap-1.5">
                       <img
-                        src="/images/coin.png"
+                        src="/images/coin.PNG"
                         alt=""
                         aria-hidden="true"
                         className="h-5 w-5 object-contain"
@@ -3407,3 +3407,4 @@ export default function CouplePage() {
     </main>
   );
 }
+
