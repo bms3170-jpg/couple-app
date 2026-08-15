@@ -118,7 +118,6 @@ type GrowthStage = {
   unlock_message: string | null;
 };
 
-
 type EquipmentRow = {
   id: string;
   couple_id: string;
@@ -146,13 +145,16 @@ type ItemPosition = {
   user_id: string;
   item_id: string;
   animal: CharacterType;
-  stage: "baby" | "child" | "teen" | "adult";
+  stage:
+    | "baby"
+    | "child"
+    | "teen"
+    | "adult";
   x: number;
   y: number;
   scale: number;
   rotation: number;
 };
-
 
 export default function CouplePage() {
   const supabase = useMemo(
@@ -269,7 +271,6 @@ export default function CouplePage() {
       null
     );
 
-
   const [
     equippedItems,
     setEquippedItems,
@@ -297,10 +298,6 @@ export default function CouplePage() {
       setCurrentUserId(
         user.id
       );
-
-      // =====================================
-      // 내가 속한 커플
-      // =====================================
 
       const {
         data: membership,
@@ -339,10 +336,6 @@ export default function CouplePage() {
 
       const coupleId =
         membership.couple_id;
-
-      // =====================================
-      // 확인하지 않은 보상 알림
-      // =====================================
 
       const {
         data:
@@ -402,10 +395,6 @@ export default function CouplePage() {
         );
       }
 
-      // =====================================
-      // 커플 레벨 / XP
-      // =====================================
-
       const {
         data: coupleData,
         error: coupleError,
@@ -439,10 +428,6 @@ export default function CouplePage() {
         return;
       }
 
-      // =====================================
-      // 커플 캐릭터 종류
-      // =====================================
-
       const {
         data: characterData,
         error: characterError,
@@ -474,10 +459,6 @@ export default function CouplePage() {
             : null
         );
       }
-
-      // =====================================
-      // 내 코인
-      // =====================================
 
       const {
         data: walletData,
@@ -523,10 +504,6 @@ export default function CouplePage() {
               }
         );
       }
-
-      // =====================================
-      // 성장 단계
-      // =====================================
 
       const {
         data: growthData,
@@ -574,10 +551,6 @@ export default function CouplePage() {
         );
       }
 
-      // =====================================
-      // 커플 멤버 + 각자 캐릭터 색상
-      // =====================================
-
       const {
         data: memberRows,
         error: memberError,
@@ -621,10 +594,6 @@ export default function CouplePage() {
           (member) =>
             member.user_id
         ) ?? [];
-
-      // =====================================
-      // 프로필
-      // =====================================
 
       const {
         data: profileRows,
@@ -695,12 +664,6 @@ export default function CouplePage() {
             };
           }
         );
-
-
-
-      // =====================================
-      // 착용 아이템 + 아이템 PNG + 저장 위치
-      // =====================================
 
       const {
         data: equipmentRows,
@@ -839,22 +802,29 @@ export default function CouplePage() {
                 (row: any) => ({
                   user_id:
                     row.user_id,
+
                   item_id:
                     row.item_id,
+
                   animal:
                     row.animal as CharacterType,
+
                   stage:
                     row.stage as
                       | "baby"
                       | "child"
                       | "teen"
                       | "adult",
+
                   x:
                     Number(row.x),
+
                   y:
                     Number(row.y),
+
                   scale:
                     Number(row.scale),
+
                   rotation:
                     Number(row.rotation),
                 })
@@ -888,8 +858,10 @@ export default function CouplePage() {
                 return {
                   user_id:
                     row.user_id,
+
                   slot:
                     row.slot,
+
                   item,
                 };
               }
@@ -909,8 +881,7 @@ export default function CouplePage() {
       // =====================================
       // 해금된 보상 수
       // =====================================
-
-      const {
+          const {
         count: unlockedCount,
         error:
           rewardCountError,
@@ -1519,7 +1490,6 @@ export default function CouplePage() {
     );
   }
 
-
   // =========================================
   // 로딩
   // =========================================
@@ -1590,7 +1560,6 @@ export default function CouplePage() {
   const coins =
     wallet.coins;
 
-  // 캐릭터 성장 단계는 2레벨마다 변경
   const growthName =
     level <= 2
       ? "아기"
@@ -1600,15 +1569,8 @@ export default function CouplePage() {
       ? "청년"
       : "성년";
 
-  // =========================================
-  // 현재 로그인한 사람의 캐릭터 선택 상태
-  // =========================================
   const needsCharacterSetup =
     !character?.character_type;
-
-  // =========================================
-  // 캐릭터 자동 성장
-  // =========================================
 
   const characterImageLevel =
     level <= 2
@@ -1647,21 +1609,14 @@ export default function CouplePage() {
 
     return `/characters/${animalFolder}/${stage}.png`;
   }
-
-
-  const characterDisplayWidth =
-    characterImageLevel ===
-    1
+    const characterDisplayWidth =
+    characterImageLevel === 1
       ? 105
-      : characterImageLevel ===
-        2
+      : characterImageLevel === 2
       ? 116
-      : characterImageLevel ===
-        3
+      : characterImageLevel === 3
       ? 128
       : 140;
-
-
 
   function getUserItem(
     userId: string,
@@ -1669,10 +1624,8 @@ export default function CouplePage() {
   ) {
     return equippedItems.find(
       (row) =>
-        row.user_id ===
-          userId &&
-        row.slot ===
-          slot
+        row.user_id === userId &&
+        row.slot === slot
     )?.item;
   }
 
@@ -1680,9 +1633,7 @@ export default function CouplePage() {
     userId: string,
     itemId: string
   ) {
-    if (
-      !character?.character_type
-    ) {
+    if (!character?.character_type) {
       return null;
     }
 
@@ -1698,16 +1649,11 @@ export default function CouplePage() {
     return (
       itemPositions.find(
         (row) =>
-          row.user_id ===
-            userId &&
-          row.item_id ===
-            itemId &&
-          row.animal ===
-            character.character_type &&
-          row.stage ===
-            stage
-      ) ??
-      null
+          row.user_id === userId &&
+          row.item_id === itemId &&
+          row.animal === character.character_type &&
+          row.stage === stage
+      ) ?? null
     );
   }
 
@@ -1748,12 +1694,9 @@ export default function CouplePage() {
           promise.id
       );
 
-    if (
-      promise.is_joint
-    ) {
+    if (promise.is_joint) {
       return (
-        members.length >
-          0 &&
+        members.length > 0 &&
         members.every(
           (member) =>
             promiseVerifications.some(
@@ -1785,8 +1728,7 @@ export default function CouplePage() {
           promiseId &&
         item.user_id ===
           currentUserId
-    ) ??
-    null;
+    ) ?? null;
 
   const incompletePromises =
     promises.filter(
@@ -1811,8 +1753,7 @@ export default function CouplePage() {
     completedPromises.length;
 
   const todayProgressPercent =
-    todayTotalCount >
-    0
+    todayTotalCount > 0
       ? Math.round(
           (
             todayCompletedCount /
@@ -1822,8 +1763,7 @@ export default function CouplePage() {
       : 0;
 
   const isTodayAllCompleted =
-    todayTotalCount >
-      0 &&
+    todayTotalCount > 0 &&
     todayCompletedCount ===
       todayTotalCount;
 
@@ -1837,9 +1777,7 @@ export default function CouplePage() {
       | undefined,
     index: number
   ) {
-    if (
-      !member
-    ) {
+    if (!member) {
       return (
         <div className="flex w-[46%] items-center justify-center">
           <span className="pointer-events-none text-4xl opacity-30">
@@ -1852,11 +1790,10 @@ export default function CouplePage() {
     const nickname =
       member.profiles
         ?.nickname ??
-      (
-        index === 0
-          ? "나"
-          : "파트너"
-      );
+      (index === 0
+        ? "나"
+        : "파트너");
+
     const isMe =
       member.user_id ===
       currentUserId;
@@ -1893,11 +1830,14 @@ export default function CouplePage() {
             <div
               className="relative z-10 shrink-0"
               style={{
-                width: `${characterDisplayWidth}px`,
+                width:
+                  `${characterDisplayWidth}px`,
               }}
             >
               <img
-                src={characterImagePath}
+                src={
+                  characterImagePath
+                }
                 alt={
                   character?.character_type === "dog"
                     ? "강아지 캐릭터"
@@ -1909,7 +1849,8 @@ export default function CouplePage() {
                 }
                 className="block h-auto w-full object-contain drop-shadow-sm"
                 style={{
-                  maxHeight: "135px",
+                  maxHeight:
+                    "135px",
                 }}
               />
 
@@ -1944,9 +1885,7 @@ export default function CouplePage() {
                       item
                     );
 
-                  if (
-                    !imageSrc
-                  ) {
+                  if (!imageSrc) {
                     return null;
                   }
 
@@ -1992,16 +1931,21 @@ export default function CouplePage() {
                       style={{
                         left:
                           `${fit.x}%`,
+
                         top:
                           `${fit.y}%`,
+
                         width:
                           `${fit.scale}%`,
+
                         transform: `
                           translate(-50%, -50%)
                           rotate(${fit.rotation}deg)
                         `,
+
                         transformOrigin:
                           "center center",
+
                         zIndex,
                       }}
                     />
@@ -2010,14 +1954,12 @@ export default function CouplePage() {
               )}
             </div>
           ) : (
-
             <div
               aria-label="캐릭터 미선택"
               className="pointer-events-none absolute inset-x-2 bottom-1 top-2 flex select-none items-center justify-center rounded-[24px] border border-dashed border-pink-200 bg-white/60 text-4xl"
             >
               🐾
             </div>
-
           )}
 
         </div>
@@ -2112,6 +2054,14 @@ export default function CouplePage() {
               </div>
 
               <Link
+                href="/inventory"
+                prefetch={false}
+                className="flex h-[50px] items-center justify-center rounded-2xl border border-pink-100 bg-white px-3 text-[11px] font-bold text-pink-500 shadow-sm transition active:scale-[0.98]"
+              >
+                옷장
+              </Link>
+
+              <Link
                 href="/store"
                 prefetch={false}
                 className="flex h-[50px] items-center justify-center rounded-2xl bg-pink-500 px-3 text-[11px] font-bold text-white shadow-sm transition active:scale-[0.98]"
@@ -2147,24 +2097,15 @@ export default function CouplePage() {
 
             </div>
 
-            {/* =================================
-                캐릭터 선택 버튼
-            ================================= */}
-
             {needsCharacterSetup ? (
-
               <Link
                 href="/character"
                 prefetch={false}
                 className="relative z-20 mt-3 block rounded-2xl bg-pink-500 px-4 py-3 text-center text-xs font-bold text-white"
               >
-
-                "우리 캐릭터 선택하기"
-
+                우리 캐릭터 선택하기
               </Link>
-
             ) : (
-
               <Link
                 href="/store"
                 prefetch={false}
@@ -2172,7 +2113,6 @@ export default function CouplePage() {
               >
                 각자 원하는 아이템으로 캐릭터를 꾸며보세요 ♡
               </Link>
-
             )}
 
           </div>
@@ -2192,27 +2132,21 @@ export default function CouplePage() {
                 </p>
 
                 <p className="mt-1 text-xl font-bold text-pink-500">
-
                   {xp}
 
                   <span className="ml-1 text-xs font-semibold text-gray-300">
                     / {xpForNextLevel}
                   </span>
-
                 </p>
 
               </div>
 
               <p className="text-xs font-semibold text-pink-500">
-
                 다음 레벨까지{" "}
-
                 {Math.max(
-                  xpForNextLevel -
-                    xp,
+                  xpForNextLevel - xp,
                   0
                 )} XP
-
               </p>
 
             </div>
@@ -2278,8 +2212,7 @@ export default function CouplePage() {
               <p className="mt-4 text-xs text-gray-400">
                 오늘의 약속
               </p>
-
-              <p className="mt-1 text-3xl font-bold tracking-tight">
+                            <p className="mt-1 text-3xl font-bold tracking-tight">
 
                 {promises.length}
 
@@ -2976,8 +2909,7 @@ export default function CouplePage() {
                 )}
 
               </section>
-
-              {/* 완료 */}
+                            {/* 완료 */}
 
               <section className="overflow-hidden rounded-[26px] border border-pink-100 bg-white shadow-sm">
 
@@ -3179,7 +3111,6 @@ export default function CouplePage() {
               {rewardNotification.rewards
                 ?.required_days ??
                 0}
-
               일 달성!
 
             </h2>
@@ -3238,4 +3169,3 @@ export default function CouplePage() {
     </main>
   );
 }
-
