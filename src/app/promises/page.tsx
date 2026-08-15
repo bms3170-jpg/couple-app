@@ -907,7 +907,7 @@ export default function PromisesPage() {
           <Link
             href="/promise/new"
             prefetch={false}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-fuchsia-500 text-2xl text-white shadow-sm transition active:scale-[0.98]"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-pink-100 bg-pink-50 text-2xl font-light text-pink-500 shadow-sm transition active:scale-[0.98]"
           >
             +
           </Link>
@@ -930,20 +930,28 @@ export default function PromisesPage() {
             className={`rounded-[24px] border p-4 text-left shadow-sm transition ${
               tab ===
               "active"
-                ? "border-pink-200 bg-gradient-to-br from-pink-500 to-fuchsia-500 text-white"
-                : "border-pink-100 bg-white text-gray-500"
+                ? "border-pink-200 bg-gradient-to-br from-[#fff7fa] to-[#fff1f6]"
+                : "border-pink-100 bg-white"
             }`}
           >
-            <p className="text-[10px] font-black tracking-[0.16em] opacity-80">
-              ACTIVE
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
+                💞
+              </div>
 
-            <p className="mt-2 text-2xl font-black">
-              {activePromises.length}
-            </p>
+              <div>
+                <p className="text-sm font-black text-gray-800">
+                  진행 중인 약속
+                </p>
 
-            <p className="mt-1 text-xs font-bold opacity-80">
-              진행 중인 약속
+                <p className="mt-1 text-2xl font-black text-pink-500">
+                  {activePromises.length}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-3 text-[11px] font-semibold text-pink-400">
+              함께 지켜가는 중이에요
             </p>
           </button>
 
@@ -961,20 +969,28 @@ export default function PromisesPage() {
             className={`rounded-[24px] border p-4 text-left shadow-sm transition ${
               tab ===
               "ended"
-                ? "border-purple-200 bg-gradient-to-br from-purple-400 to-violet-500 text-white"
-                : "border-purple-100 bg-white text-gray-500"
+                ? "border-purple-200 bg-gradient-to-br from-[#fbf9ff] to-[#f5f1ff]"
+                : "border-purple-100 bg-white"
             }`}
           >
-            <p className="text-[10px] font-black tracking-[0.16em] opacity-80">
-              MEMORY
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl shadow-sm">
+                📖
+              </div>
 
-            <p className="mt-2 text-2xl font-black">
-              {endedPromises.length}
-            </p>
+              <div>
+                <p className="text-sm font-black text-gray-800">
+                  종료된 약속
+                </p>
 
-            <p className="mt-1 text-xs font-bold opacity-80">
-              함께 끝낸 약속
+                <p className="mt-1 text-2xl font-black text-purple-500">
+                  {endedPromises.length}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-3 text-[11px] font-semibold text-purple-400">
+              기록으로 남겨져 있어요
             </p>
           </button>
         </section>
@@ -1242,6 +1258,29 @@ export default function PromisesPage() {
                           )}
                         </div>
 
+                        <div className="mt-4 grid grid-cols-7 gap-1.5 px-1">
+                          {recentSuccess.map(
+                            (day) => (
+                              <div
+                                key={day.key}
+                                className="text-center"
+                              >
+                                <p className="text-[9px] font-bold text-gray-400">
+                                  {day.label}
+                                </p>
+
+                                <div
+                                  className={`mx-auto mt-1.5 h-3 w-3 rounded-full ${
+                                    day.success
+                                      ? "bg-pink-400 shadow-sm"
+                                      : "bg-gray-200"
+                                  }`}
+                                />
+                              </div>
+                            )
+                          )}
+                        </div>
+
                         <button
                           type="button"
                           onClick={() =>
@@ -1306,6 +1345,46 @@ export default function PromisesPage() {
                         {expandedPromiseId ===
                           promise.id && (
                           <div className="mt-4 space-y-3">
+
+                            <div className="grid grid-cols-3 overflow-hidden rounded-[22px] border border-pink-100 bg-white/80">
+                              <div className="p-3">
+                                <p className="text-[9px] font-bold text-gray-400">
+                                  이번 주 성공률
+                                </p>
+
+                                <p className="mt-1 text-sm font-black text-pink-500">
+                                  {weeklySuccessCount} / 7 · {weeklyPercent}%
+                                </p>
+                              </div>
+
+                              <div className="border-x border-pink-50 p-3">
+                                <p className="text-[9px] font-bold text-gray-400">
+                                  다음 목표
+                                </p>
+
+                                <p className="mt-1 text-sm font-black text-gray-700">
+                                  {nextGoal}일
+                                </p>
+
+                                <p className="mt-1 text-[10px] text-gray-400">
+                                  {remainingDays > 0
+                                    ? `앞으로 ${remainingDays}일`
+                                    : "목표 달성!"}
+                                </p>
+                              </div>
+
+                              <div className="p-3">
+                                <p className="text-[9px] font-bold text-gray-400">
+                                  다음 보상
+                                </p>
+
+                                <p className="mt-1 line-clamp-2 text-[11px] font-black text-amber-600">
+                                  {nextReward
+                                    ? `🎁 ${nextReward.required_days}일 · ${nextReward.title}`
+                                    : "보상 준비 중"}
+                                </p>
+                              </div>
+                            </div>
 
                             {/* 최근 7일 */}
 
@@ -1488,7 +1567,7 @@ export default function PromisesPage() {
                                 <Link
                                   href={`/verify/${promise.id}`}
                                   prefetch={false}
-                                  className="block w-full rounded-2xl bg-gradient-to-r from-pink-500 to-fuchsia-500 px-4 py-4 text-center text-sm font-black text-white shadow-sm transition active:scale-[0.99]"
+                                  className="block w-full rounded-2xl bg-gradient-to-r from-[#ff7fb1] to-[#f06db8] px-4 py-4 text-center text-sm font-black text-white shadow-sm transition active:scale-[0.99]"
                                 >
                                   📸 오늘 인증하기
                                 </Link>
@@ -1574,14 +1653,6 @@ export default function PromisesPage() {
             )}
           </section>
         )}
-
-        <Link
-          href="/couple"
-          prefetch={false}
-          className="mt-6 block w-full rounded-2xl border border-pink-100 bg-white/80 px-4 py-3 text-center text-xs font-black text-gray-400 shadow-sm"
-        >
-          홈으로 돌아가기
-        </Link>
 
         <BottomNav />
       </div>
