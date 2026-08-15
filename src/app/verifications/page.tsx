@@ -712,15 +712,66 @@ export default function VerificationsPage() {
   const pendingCount =
     pendingItems.length;
 
+  const latestCompleted =
+    completedItems[0] ?? null;
+
+  const latestCompletedRelative = (() => {
+    if (!latestCompleted?.verification_date) {
+      return "";
+    }
+
+    const todayKey =
+      new Intl.DateTimeFormat(
+        "en-CA",
+        {
+          timeZone: "Asia/Seoul",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }
+      ).format(new Date());
+
+    const today =
+      new Date(
+        `${todayKey}T00:00:00+09:00`
+      );
+
+    const target =
+      new Date(
+        `${latestCompleted.verification_date}T00:00:00+09:00`
+      );
+
+    const diff =
+      Math.max(
+        0,
+        Math.round(
+          (
+            today.getTime() -
+            target.getTime()
+          ) /
+            86400000
+        )
+      );
+
+    if (diff === 0) {
+      return "오늘";
+    }
+
+    if (diff === 1) {
+      return "1일 전";
+    }
+
+    return `${diff}일 전`;
+  })();
+
   return (
     <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
-
       <div className="mx-auto max-w-md pb-28">
 
         {/* HEADER */}
 
         <header className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-black tracking-[0.22em] text-pink-400">
               OURQUEST
             </p>
@@ -741,18 +792,23 @@ export default function VerificationsPage() {
 
         {/* TODAY'S HEART */}
 
-        <section className="relative mt-6 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-[#fff9fc] via-white to-[#fff8f3] p-5 shadow-sm">
-          <div className="pointer-events-none absolute -right-5 top-4 h-24 w-24 rounded-full bg-pink-100/50 blur-2xl" />
-          <div className="pointer-events-none absolute right-4 top-10 text-5xl opacity-90">
-            💌
+        <section className="relative mt-6 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-[#fff9fc] via-white to-[#fff7f2] p-5 shadow-sm">
+          <div className="pointer-events-none absolute -right-8 -top-5 h-36 w-36 rounded-full bg-pink-100/60 blur-2xl" />
+          <div className="pointer-events-none absolute right-5 top-8">
+            <div className="relative flex h-24 w-24 items-center justify-center">
+              <span className="absolute left-1 top-2 text-lg">💕</span>
+              <span className="absolute right-0 top-0 text-xl">💗</span>
+              <span className="absolute right-3 top-8 text-sm">💞</span>
+              <span className="text-6xl drop-shadow-sm">💌</span>
+            </div>
           </div>
 
-          <div className="relative z-10 pr-20">
+          <div className="relative z-10 max-w-[72%]">
             <p className="text-[11px] font-black tracking-[0.18em] text-pink-400">
               TODAY&apos;S HEART
             </p>
 
-            <h2 className="mt-3 text-[24px] font-black leading-tight">
+            <h2 className="mt-3 text-[22px] font-black leading-tight">
               💌 확인을 기다리고 있어요
             </h2>
 
@@ -771,13 +827,147 @@ export default function VerificationsPage() {
           </div>
         </section>
 
-        {/* OUR MOMENTS SUMMARY */}
+        {/* PENDING VERIFICATIONS */}
 
-        <section className="mt-5 rounded-[26px] border border-purple-100 bg-gradient-to-br from-white to-purple-50/70 p-4 shadow-sm">
+        {pendingItems.length > 0 && (
+          <section className="mt-5">
+            <div className="mb-3 flex items-end justify-between">
+              <div>
+                <p className="text-[11px] font-black tracking-[0.16em] text-pink-400">
+                  WAITING FOR YOU
+                </p>
+
+                <h2 className="mt-1 text-lg font-black">
+                  오늘 도착한 인증
+                </h2>
+              </div>
+
+              <span className="rounded-full bg-pink-50 px-3 py-1.5 text-xs font-black text-pink-500">
+                {pendingItems.length}개
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {pendingItems.map((item) => {
+                const isProcessing =
+                  processingId === item.id;
+
+                return (
+                  <article
+                    key={item.id}
+                    className="overflow-hidden rounded-[28px] border border-pink-100 bg-gradient-to-b from-white to-[#fff9fc] shadow-sm"
+                  >
+                    <div className="p-3 pb-0">
+                      {item.photo_url ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPhotoPreview(
+                              item.photo_url
+                            )
+                          }
+                          className="block w-full overflow-hidden rounded-[22px]"
+                        >
+                          <img
+                            src={item.photo_url}
+                            alt="인증 사진"
+                            className="max-h-[500px] w-full object-cover"
+                          />
+                        </button>
+                      ) : (
+                        <div className="flex h-44 items-center justify-center rounded-[22px] bg-gradient-to-br from-pink-50 to-purple-50 text-sm font-semibold text-gray-400">
+                          📷 사진 없음
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {item.is_joint && (
+                              <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-bold text-pink-500">
+                                💕 우리의 약속
+                              </span>
+                            )}
+
+                            <span className="text-xs font-semibold text-gray-400">
+                              {item.nickname}님의 인증
+                            </span>
+                          </div>
+
+                          <h3 className="mt-2 break-words text-xl font-black">
+                            {item.promise_title}
+                          </h3>
+
+                          <p className="mt-2 text-xs text-gray-400">
+                            {item.verification_date}
+                          </p>
+                        </div>
+
+                        <span className="shrink-0 rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-[10px] font-black text-amber-600">
+                          💌 확인 대기
+                        </span>
+                      </div>
+
+                      {item.message && (
+                        <div className="mt-4 rounded-[20px] border border-purple-100 bg-purple-50/60 px-4 py-3">
+                          <p className="text-[10px] font-black tracking-[0.12em] text-purple-400">
+                            TODAY MESSAGE
+                          </p>
+
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                            “{item.message}”
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="mt-5 grid grid-cols-[0.85fr_1.15fr] gap-3">
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={() =>
+                            handleReject(item.id)
+                          }
+                          className="rounded-2xl border border-pink-100 bg-white px-4 py-3.5 text-sm font-black text-gray-500 shadow-sm transition active:scale-[0.99] disabled:opacity-50"
+                        >
+                          반려하기
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isProcessing}
+                          onClick={() =>
+                            handleApprove(item.id)
+                          }
+                          className="rounded-2xl bg-gradient-to-r from-[#ff8fba] to-[#ef78b8] px-4 py-3.5 text-sm font-black text-white shadow-sm transition active:scale-[0.99] disabled:opacity-50"
+                        >
+                          {isProcessing
+                            ? "처리 중..."
+                            : "💗 인증해주기"}
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {notice && (
+          <div className="mt-4 rounded-2xl border border-pink-100 bg-white/90 px-4 py-3 text-center text-xs font-semibold text-gray-500 shadow-sm">
+            {notice}
+          </div>
+        )}
+
+        {/* COMPLETED SUMMARY */}
+
+        <section className="mt-5 rounded-[26px] border border-purple-100 bg-gradient-to-br from-white via-[#fcf9ff] to-[#f7f0ff] p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-xl">
-                ✅
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-violet-500 text-xl text-white shadow-sm">
+                ✓
               </div>
 
               <div className="min-w-0">
@@ -786,7 +976,7 @@ export default function VerificationsPage() {
                     우리가 함께 지킨 기록
                   </p>
 
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-purple-500 shadow-sm">
+                  <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-black text-purple-500">
                     {completedItems.length}
                   </span>
                 </div>
@@ -823,324 +1013,169 @@ export default function VerificationsPage() {
           completedItems.length > 0 && (
           <section className="mt-3 rounded-[24px] border border-purple-100 bg-purple-50/30 p-2">
             <div className="space-y-2">
-              {completedItems.map(
-                (item) => (
-                  <article
-                    key={item.id}
-                    className="overflow-hidden rounded-[20px] border border-purple-100 bg-white shadow-sm"
-                  >
-                    <div className="flex gap-3 p-3.5">
-                      {item.photo_url ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPhotoPreview(
-                              item.photo_url
-                            )
-                          }
-                          className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl"
-                        >
-                          <img
-                            src={item.photo_url}
-                            alt="인증 사진"
-                            className="h-full w-full object-cover"
-                          />
-                        </button>
-                      ) : (
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#fff8fb] text-lg">
-                          📷
-                        </div>
-                      )}
+              {completedItems.map((item) => (
+                <article
+                  key={item.id}
+                  className="overflow-hidden rounded-[20px] border border-purple-100 bg-white shadow-sm"
+                >
+                  <div className="flex gap-3 p-3.5">
+                    {item.photo_url ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPhotoPreview(
+                            item.photo_url
+                          )
+                        }
+                        className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl"
+                      >
+                        <img
+                          src={item.photo_url}
+                          alt="인증 사진"
+                          className="h-full w-full object-cover"
+                        />
+                      </button>
+                    ) : (
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#fff8fb] text-lg">
+                        📷
+                      </div>
+                    )}
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="truncate font-black">
-                              {item.promise_title}
-                            </p>
-
-                            <p className="mt-1 text-xs text-gray-400">
-                              {item.nickname} · {item.verification_date}
-                            </p>
-                          </div>
-
-                          {item.status === "approved" ? (
-                            <span className="shrink-0 rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-black text-green-600">
-                              ✓ 완료
-                            </span>
-                          ) : (
-                            <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-black text-red-500">
-                              반려
-                            </span>
-                          )}
-                        </div>
-
-                        {item.message && (
-                          <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">
-                            “{item.message}”
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-black">
+                            {item.promise_title}
                           </p>
+
+                          <p className="mt-1 text-xs text-gray-400">
+                            {item.nickname} · {item.verification_date}
+                          </p>
+                        </div>
+
+                        {item.status === "approved" ? (
+                          <span className="shrink-0 rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-black text-green-600">
+                            ✓ 완료
+                          </span>
+                        ) : (
+                          <span className="shrink-0 rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-black text-red-500">
+                            반려
+                          </span>
                         )}
                       </div>
+
+                      {item.message && (
+                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">
+                          “{item.message}”
+                        </p>
+                      )}
+
+                      {item.status ===
+                        "rejected" &&
+                        item.rejection_reason && (
+                          <p className="mt-2 line-clamp-2 text-xs leading-5 text-red-500">
+                            반려 이유: {item.rejection_reason}
+                          </p>
+                        )}
                     </div>
-                  </article>
-                )
-              )}
-            </div>
-          </section>
-        )}
-
-        {notice && (
-          <div className="mt-4 rounded-2xl border border-pink-100 bg-white/90 px-4 py-3 text-center text-xs font-semibold text-gray-500 shadow-sm">
-            {notice}
-          </div>
-        )}
-
-        {pendingItems.length === 0 &&
-        completedItems.length === 0 ? (
-          <section className="mt-6 rounded-[30px] border border-dashed border-pink-200 bg-white p-8 text-center shadow-sm">
-            <div className="text-4xl">
-              💌
-            </div>
-
-            <h2 className="mt-4 text-lg font-black">
-              아직 받은 인증이 없어요
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              파트너가 인증을 보내면
-              <br />
-              여기에서 함께 확인할 수 있어요.
-            </p>
-          </section>
-        ) : (
-          <>
-            {pendingItems.length >
-              0 && (
-              <section className="mt-6">
-                <div className="mb-3 flex items-end justify-between">
-                  <div>
-                    <p className="text-xs font-black tracking-[0.18em] text-pink-400">
-                      WAITING FOR YOU
-                    </p>
-
-                    <h2 className="mt-1 text-lg font-black">
-                      오늘의 인증
-                    </h2>
                   </div>
-
-                  <span className="rounded-full bg-pink-50 px-3 py-1.5 text-xs font-black text-pink-500">
-                    {pendingItems.length}개
-                  </span>
-                </div>
-
-                <div className="space-y-5">
-                  {pendingItems.map(
-                    (item) => {
-                      const isProcessing =
-                        processingId ===
-                        item.id;
-
-                      return (
-                        <article
-                          key={item.id}
-                          className="overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-b from-white to-[#fff9fc] shadow-sm"
-                        >
-                          <div className="p-3 pb-0">
-                            {item.photo_url ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPhotoPreview(
-                                    item.photo_url
-                                  )
-                                }
-                                className="block w-full overflow-hidden rounded-[24px]"
-                              >
-                                <img
-                                  src={item.photo_url}
-                                  alt="인증 사진"
-                                  className="max-h-[520px] w-full object-cover"
-                                />
-                              </button>
-                            ) : (
-                              <div className="flex h-48 items-center justify-center rounded-[24px] bg-gradient-to-br from-pink-50 to-purple-50 text-sm font-semibold text-gray-400">
-                                📷 사진 없음
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="p-5">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {item.is_joint && (
-                                    <span className="rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-bold text-pink-500">
-                                      💕 우리의 약속
-                                    </span>
-                                  )}
-
-                                  <span className="text-xs font-semibold text-gray-400">
-                                    {item.nickname}님의 인증
-                                  </span>
-                                </div>
-
-                                <h3 className="mt-2 break-words text-xl font-black">
-                                  {item.promise_title}
-                                </h3>
-
-                                <p className="mt-2 text-xs text-gray-400">
-                                  {item.verification_date}
-                                </p>
-                              </div>
-
-                              <span className="shrink-0 rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-[11px] font-black text-amber-600">
-                                💌 확인 대기
-                              </span>
-                            </div>
-
-                            {item.message && (
-                              <div className="mt-4 rounded-[22px] border border-purple-100 bg-purple-50/60 px-4 py-4">
-                                <p className="text-[10px] font-black tracking-[0.14em] text-purple-400">
-                                  TODAY MESSAGE
-                                </p>
-
-                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
-                                  “{item.message}”
-                                </p>
-                              </div>
-                            )}
-
-                            <div className="mt-4 grid grid-cols-3 gap-2">
-                              <div className="rounded-2xl bg-pink-50 px-3 py-3 text-center">
-                                <p className="text-[10px] font-bold text-gray-400">
-                                  응원
-                                </p>
-                                <p className="mt-1 text-xs font-black text-pink-500">
-                                  💗 함께 성공
-                                </p>
-                              </div>
-
-                              <div className="rounded-2xl bg-amber-50 px-3 py-3 text-center">
-                                <p className="text-[10px] font-bold text-gray-400">
-                                  XP
-                                </p>
-                                <p className="mt-1 text-xs font-black text-amber-600">
-                                  ✨ +10 XP
-                                </p>
-                              </div>
-
-                              <div className="rounded-2xl bg-purple-50 px-3 py-3 text-center">
-                                <p className="text-[10px] font-bold text-gray-400">
-                                  기록
-                                </p>
-                                <p className="mt-1 text-xs font-black text-purple-500">
-                                  📖 자동 저장
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="mt-5 grid grid-cols-[0.85fr_1.15fr] gap-3">
-                              <button
-                                type="button"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleReject(
-                                    item.id
-                                  )
-                                }
-                                className="rounded-2xl border border-pink-100 bg-white px-4 py-3.5 text-sm font-black text-gray-500 shadow-sm transition active:scale-[0.99] disabled:opacity-50"
-                              >
-                                반려하기
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleApprove(
-                                    item.id
-                                  )
-                                }
-                                className="rounded-2xl bg-gradient-to-r from-[#ff8fba] to-[#ef78b8] px-4 py-3.5 text-sm font-black text-white shadow-sm transition active:scale-[0.99] disabled:opacity-50"
-                              >
-                                {isProcessing
-                                  ? "처리 중..."
-                                  : "💗 인증해주기"}
-                              </button>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    }
-                  )}
-                </div>
-              </section>
-            )}
-</>
+                </article>
+              ))}
+            </div>
+          </section>
         )}
-</div>
 
-      <div className="mx-auto max-w-md px-5 pb-28">
+        {/* HOME */}
+
+        <Link
+          href="/couple"
+          prefetch={false}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-[24px] border border-pink-100 bg-white/80 px-4 py-3.5 text-center text-sm font-black text-gray-500 shadow-sm"
+        >
+          <span>🏠</span>
+          홈으로 돌아가기
+        </Link>
+
         {/* RECORD PREVIEW */}
 
-        {completedItems.length > 0 && (
+        {latestCompleted && (
           <section className="mt-5 rounded-[28px] border border-pink-100 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-black tracking-[0.14em] text-pink-400">
-                  ♡ 기록 미리보기
-                </p>
+            <div className="flex items-center gap-3">
+              <p className="shrink-0 text-[11px] font-black tracking-[0.12em] text-pink-400">
+                ♡ 기록 미리보기
+              </p>
 
-                <p className="mt-1 text-sm font-black text-gray-800">
-                  우리가 함께한 하루
-                </p>
-              </div>
+              <div className="h-px flex-1 bg-pink-100" />
 
               <Link
                 href="/us/history"
                 prefetch={false}
-                className="text-xs font-black text-pink-400"
+                className="shrink-0 text-xs font-black text-pink-400"
               >
                 전체보기 ›
               </Link>
             </div>
 
-            <div className="mt-4 rounded-[22px] border border-pink-50 bg-[#fffafd] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-pink-50 text-xl">
-                    ⏰
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-black">
-                      최근 인증 기록
-                    </p>
-
-                    <p className="mt-1 text-xs text-gray-400">
-                      서로의 하루를 함께 확인했어요 ♡
-                    </p>
-                  </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  latestCompleted.photo_url
+                ) {
+                  setPhotoPreview(
+                    latestCompleted.photo_url
+                  );
+                }
+              }}
+              className="mt-4 flex w-full items-center justify-between gap-3 rounded-[22px] border border-pink-50 bg-[#fffafd] p-4 text-left"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pink-50 text-xl">
+                  ⏰
                 </div>
 
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-black">
+                      우리가 함께한 하루
+                    </p>
+
+                    {latestCompleted.status ===
+                      "approved" && (
+                      <span className="text-[10px] text-emerald-500">
+                        ●
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="mt-1 truncate text-xs text-gray-400">
+                    {latestCompleted.status ===
+                    "approved"
+                      ? "인증 성공 · 서로 칭찬했어요 ♡"
+                      : "서로의 인증 기록을 남겼어요 ♡"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2">
                 <span className="text-xs font-black text-pink-400">
-                  {completedItems.length}개
+                  {latestCompletedRelative}
+                </span>
+
+                <span className="text-gray-300">
+                  ›
                 </span>
               </div>
-            </div>
+            </button>
           </section>
         )}
 
         {/* ENCOURAGEMENT */}
 
-        <section className="mt-5 rounded-[28px] border border-pink-100 bg-gradient-to-br from-[#fff8fb] via-white to-[#fff2f7] p-5 shadow-sm">
+        <section className="mt-5 overflow-hidden rounded-[28px] border border-pink-100 bg-gradient-to-br from-[#fff8fb] via-white to-[#fff1f6] p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] font-black tracking-[0.14em] text-pink-400">
+              <p className="text-[11px] font-black tracking-[0.12em] text-pink-400">
                 💌 서로에게 보내는 한마디
               </p>
 
@@ -1149,20 +1184,33 @@ export default function VerificationsPage() {
               </p>
             </div>
 
-            <div className="text-3xl">
-              💕
+            <div className="flex items-end gap-1 text-3xl">
+              <span>🐱</span>
+              <span className="-ml-1 text-2xl">💗</span>
+              <span className="-ml-1">🐶</span>
             </div>
           </div>
 
-          <div className="mt-4 rounded-[22px] bg-white px-4 py-4 text-center text-sm font-black text-pink-500 shadow-sm">
-            + 응원의 메시지 보내기
-          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setNotice(
+                "응원 메시지 기능도 이어서 연결할 수 있어요 ♡"
+              )
+            }
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-[22px] bg-white px-4 py-4 text-center text-sm font-black text-gray-500 shadow-sm"
+          >
+            <span className="text-xl text-pink-500">
+              +
+            </span>
+            응원의 메시지 보내기
+          </button>
         </section>
 
         {/* TIP */}
 
-        <section className="mt-5 rounded-[24px] border border-amber-100 bg-amber-50/60 px-4 py-4">
-          <p className="text-xs font-black text-amber-600">
+        <section className="mt-5 rounded-[24px] border border-pink-100 bg-gradient-to-r from-[#fff7fa] to-[#fffaf6] px-4 py-4">
+          <p className="text-xs font-black text-pink-500">
             ✨ TIP
           </p>
 
