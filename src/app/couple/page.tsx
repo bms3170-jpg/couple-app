@@ -154,6 +154,11 @@ type ItemPosition = {
 };
 
 
+type LevelUpInfo = {
+  previousLevel: number;
+  level: number;
+};
+
 export default function CouplePage() {
   const supabase = useMemo(
     () => createClient(),
