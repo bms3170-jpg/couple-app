@@ -789,12 +789,12 @@ export default function UsHistoryPage() {
             ← 우리로 돌아가기
           </Link>
 
-          <div className="mt-7 flex items-end justify-between gap-4">
+          <div className="mt-7 flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-black tracking-[0.2em] text-pink-400">
                 OUR HISTORY
               </p>
-              <h1 className="mt-2 text-[32px] font-black tracking-tight">우리 기록</h1>
+              <h1 className="mt-2 text-[34px] font-black tracking-[-0.03em]">우리 기록</h1>
               <p className="mt-2 text-sm leading-6 text-gray-500">
                 약속하고, 인증하고, 기억한 모든 순간을
                 <br />
@@ -805,7 +805,7 @@ export default function UsHistoryPage() {
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-pink-100 bg-white text-xl shadow-sm"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[17px] border border-pink-100 bg-white text-lg shadow-[0_5px_16px_rgba(236,72,153,0.08)] transition active:scale-95"
               aria-label="기록 검색"
             >
               🔎
@@ -813,12 +813,12 @@ export default function UsHistoryPage() {
           </div>
         </header>
 
-        <section className="relative mt-6 overflow-hidden rounded-[32px] border border-pink-100 bg-gradient-to-br from-white via-[#fffafd] to-pink-50/70 p-5 shadow-sm">
+        <section className="relative mt-6 overflow-hidden rounded-[32px] border border-pink-100 bg-gradient-to-br from-white via-[#fffafd] to-[#fff1f7] p-5 shadow-[0_10px_28px_rgba(236,72,153,0.07)]">
           <img
             src={HISTORY_IMAGES.story}
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute -right-10 -top-8 h-40 w-48 object-contain opacity-[0.16]"
+            className="pointer-events-none absolute -right-7 -top-5 h-36 w-44 object-contain opacity-[0.11]"
           />
 
           <div className="relative z-10">
@@ -844,7 +844,7 @@ export default function UsHistoryPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-2">
+            <div className="mt-5 grid grid-cols-3 gap-2.5">
               {[
                 { label: "약속", value: totalPromiseCount, emoji: "✅" },
                 { label: "인증", value: approvedCount, emoji: "📸" },
@@ -852,7 +852,7 @@ export default function UsHistoryPage() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-[18px] border border-pink-50 bg-white/80 px-2 py-3 text-center"
+                  className="rounded-[18px] border border-white/90 bg-white/78 px-2 py-3.5 text-center shadow-[0_3px_12px_rgba(236,72,153,0.035)]"
                 >
                   <span className="text-base">{item.emoji}</span>
                   <p className="mt-1 text-lg font-black">{item.value}</p>
@@ -863,7 +863,7 @@ export default function UsHistoryPage() {
           </div>
         </section>
 
-        <section className="mt-4 rounded-[28px] border border-pink-100 bg-white p-4 shadow-sm">
+        <section className="mt-4 rounded-[28px] border border-pink-100 bg-white p-4 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black tracking-[0.16em] text-pink-400">
@@ -871,7 +871,7 @@ export default function UsHistoryPage() {
               </p>
               <h2 className="mt-1 text-base font-black">이번 달 우리 기록</h2>
             </div>
-            <div className="rounded-full bg-pink-50 px-3 py-1.5 text-[11px] font-black text-pink-500">
+            <div className="rounded-full border border-pink-100 bg-pink-50/70 px-3 py-1.5 text-[11px] font-black text-pink-500">
               {currentMonthApproved}번 성공
             </div>
           </div>
@@ -930,11 +930,11 @@ export default function UsHistoryPage() {
 
         <section className="mt-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black">한눈에 보기</h2>
+            <h2 className="text-[19px] font-black tracking-[-0.02em]">한눈에 보기</h2>
             <span className="text-[11px] text-gray-400">우리 기록 요약</span>
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-[28px] border border-pink-100 bg-white p-3 shadow-sm">
+          <div className="mt-3 overflow-hidden rounded-[28px] border border-pink-100 bg-white p-3 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
             <div className="grid grid-cols-2 gap-2">
               {[
                 {
@@ -966,9 +966,9 @@ export default function UsHistoryPage() {
                   tone: "bg-pink-50/70",
                 },
               ].map((item) => (
-                <div key={item.label} className={`rounded-[20px] p-4 ${item.tone}`}>
-                  <span className="text-xl">{item.emoji}</span>
-                  <p className="mt-3 text-xs font-semibold text-gray-500">{item.label}</p>
+                <div key={item.label} className={`min-h-[132px] rounded-[20px] p-4 ${item.tone}`}>
+                  <span className="text-[22px]">{item.emoji}</span>
+                  <p className="mt-2.5 text-xs font-semibold text-gray-500">{item.label}</p>
                   <p className="mt-1 text-2xl font-black">{item.value}</p>
                   <p className="mt-1 text-[10px] text-gray-400">{item.sub}</p>
                 </div>
@@ -994,20 +994,24 @@ export default function UsHistoryPage() {
             {badges.map((badge) => (
               <div
                 key={badge.id}
-                className={`rounded-[24px] border p-4 shadow-sm ${
+                className={`min-h-[150px] rounded-[24px] border p-4 shadow-[0_6px_18px_rgba(236,72,153,0.045)] ${
                   badge.unlocked
                     ? "border-pink-100 bg-white"
-                    : "border-gray-100 bg-white/60 opacity-55"
+                    : "border-gray-100 bg-white/80 opacity-70"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl">{badge.emoji}</span>
-                  <span className="text-[10px] font-black text-pink-400">
+                  <span className="text-[26px]">{badge.emoji}</span>
+                  <span className={`rounded-full px-2 py-1 text-[9px] font-black ${
+                    badge.unlocked
+                      ? "bg-pink-50 text-pink-500"
+                      : "bg-gray-100 text-gray-400"
+                  }`}>
                     {badge.unlocked ? "UNLOCKED" : "LOCKED"}
                   </span>
                 </div>
-                <p className="mt-3 font-black">{badge.title}</p>
-                <p className="mt-1 text-[11px] leading-5 text-gray-400">
+                <p className="mt-3 text-[15px] font-black">{badge.title}</p>
+                <p className="mt-1.5 text-[11px] leading-[1.55] text-gray-400">
                   {badge.description}
                 </p>
               </div>
@@ -1019,8 +1023,8 @@ export default function UsHistoryPage() {
           <h2 className="text-lg font-black">우리의 최고 기록 🔥</h2>
 
           {bestPromise ? (
-            <div className="relative mt-3 overflow-hidden rounded-[30px] border border-pink-100 bg-white p-5 shadow-sm">
-              <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-pink-100/60 blur-2xl" />
+            <div className="relative mt-3 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white via-white to-[#fff3f8] p-5 shadow-[0_9px_26px_rgba(236,72,153,0.06)]">
+              <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-pink-100/45 blur-2xl" />
 
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -1038,7 +1042,7 @@ export default function UsHistoryPage() {
                   </p>
                 </div>
 
-                <div className="shrink-0 rounded-2xl bg-pink-50 px-4 py-2 text-center">
+                <div className="shrink-0 rounded-[18px] border border-pink-100 bg-white/90 px-3.5 py-2.5 text-center shadow-sm">
                   <p className="text-[10px] font-black text-pink-400">BEST</p>
                   <p className="mt-1 font-black text-pink-500">🔥 {bestPromise.best_streak}일</p>
                 </div>
@@ -1173,9 +1177,9 @@ export default function UsHistoryPage() {
                 src={HISTORY_IMAGES.reward}
                 alt=""
                 aria-hidden="true"
-                className="mx-auto h-24 w-36 object-contain"
+                className="mx-auto h-32 w-48 object-contain"
               />
-              <p className="mt-2 text-sm font-black text-gray-500">아직 레벨 보상 추억이 없어요.</p>
+              <p className="mt-1 text-sm font-black text-gray-600">아직 레벨 보상 추억이 없어요.</p>
               <p className="mt-1 text-xs leading-5 text-gray-400">
                 사용한 레벨 보상에 사진이나 한마디를 남기면
                 <br />
@@ -1228,7 +1232,7 @@ export default function UsHistoryPage() {
             </Link>
           </div>
 
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[
               { key: "all" as const, label: "전체" },
               { key: "month" as const, label: "이번 달" },
@@ -1239,7 +1243,7 @@ export default function UsHistoryPage() {
                 key={item.key}
                 type="button"
                 onClick={() => setPeriodFilter(item.key)}
-                className={`shrink-0 rounded-full px-3.5 py-2 text-[11px] font-black ${
+                className={`shrink-0 rounded-full px-3.5 py-2.5 text-[11px] font-black transition active:scale-95 ${
                   periodFilter === item.key
                     ? "bg-pink-500 text-white"
                     : "border border-pink-100 bg-white text-gray-500"
@@ -1250,7 +1254,7 @@ export default function UsHistoryPage() {
             ))}
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-2 rounded-[22px] border border-pink-100 bg-white p-1.5 shadow-sm">
+          <div className="mt-3 grid grid-cols-3 gap-1.5 rounded-[22px] border border-pink-100 bg-white p-1.5 shadow-[0_6px_18px_rgba(236,72,153,0.05)]">
             {[
               { key: "all" as const, label: "전체", count: filteredByPeriodVerifications.length },
               { key: "mine" as const, label: "내 인증", count: mineVerificationCount },
@@ -1262,7 +1266,7 @@ export default function UsHistoryPage() {
                   key={item.key}
                   type="button"
                   onClick={() => setVerificationFilter(item.key)}
-                  className={`rounded-xl px-2 py-3 text-xs font-semibold ${
+                  className={`rounded-[14px] px-2 py-3 text-xs font-semibold transition ${
                     active ? "bg-pink-500 text-white shadow-sm" : "text-gray-400"
                   }`}
                 >
@@ -1283,7 +1287,7 @@ export default function UsHistoryPage() {
               return (
                 <div
                   key={verification.id}
-                  className="overflow-hidden rounded-[24px] border border-pink-100 bg-white shadow-sm"
+                  className="overflow-hidden rounded-[24px] border border-pink-100 bg-white shadow-[0_7px_20px_rgba(236,72,153,0.045)]"
                 >
                   <button
                     type="button"
@@ -1291,7 +1295,7 @@ export default function UsHistoryPage() {
                     className="w-full p-4 text-left"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#fff8fb]">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-[#fff8fb]">
                         {verification.photo_url ? (
                           <img
                             src={verification.photo_url}
@@ -1363,12 +1367,12 @@ export default function UsHistoryPage() {
             </Link>
           </div>
 
-          <div className="relative mt-3 overflow-hidden rounded-[28px] border border-pink-100 bg-white p-5 shadow-sm">
+          <div className="relative mt-3 overflow-hidden rounded-[28px] border border-pink-100 bg-white p-5 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
             <img
               src={HISTORY_IMAGES.reward}
               alt=""
               aria-hidden="true"
-              className="pointer-events-none absolute -right-5 -bottom-6 h-28 w-36 object-contain opacity-[0.12]"
+              className="pointer-events-none absolute -right-3 -bottom-5 h-24 w-32 object-contain opacity-[0.08]"
             />
             <div className="relative z-10 grid grid-cols-3 gap-2">
               <div className="rounded-[18px] bg-[#fff8fb] p-3 text-center">
@@ -1388,7 +1392,7 @@ export default function UsHistoryPage() {
         </section>
 
         {firstSuccess && (
-          <section className="mt-5 rounded-[26px] border border-pink-100 bg-gradient-to-r from-white to-pink-50/60 p-4 shadow-sm">
+          <section className="mt-5 overflow-hidden rounded-[28px] border border-pink-100 bg-gradient-to-r from-white via-white to-[#fff0f6] p-4.5 shadow-[0_8px_24px_rgba(236,72,153,0.055)]">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">🌱</div>
               <div className="min-w-0 flex-1">
