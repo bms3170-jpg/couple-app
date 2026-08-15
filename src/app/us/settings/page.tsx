@@ -27,6 +27,32 @@ type CoupleInfo = {
   relationship_started_at: string | null;
 };
 
+const SETTINGS_IMAGES = {
+  hero: "/images/us-story.PNG",
+  couple: "/images/us-couple-heart.PNG",
+  date: "/images/us-next-day.PNG",
+} as const;
+
+function startOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function getDaysTogether(value: string) {
+  if (!value) return null;
+
+  const started = startOfDay(new Date(`${value}T00:00:00`));
+  const today = startOfDay(new Date());
+
+  const diff = Math.floor(
+    (today.getTime() - started.getTime()) /
+      (1000 * 60 * 60 * 24)
+  );
+
+  return diff >= 0 ? diff + 1 : null;
+}
+
 export default function UsSettingsPage() {
   const router = useRouter();
 
@@ -86,6 +112,38 @@ export default function UsSettingsPage() {
   const [nickname, setNickname] =
     useState("");
 
+  const [
+    avatarPreviewUrl,
+    setAvatarPreviewUrl,
+  ] = useState<string | null>(null);
+
+  const [
+    copiedInvite,
+    setCopiedInvite,
+  ] = useState(false);
+
+  useEffect(() => {
+    if (!message) return;
+
+    const timer = window.setTimeout(() => {
+      setMessage("");
+    }, 2800);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [message]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(
+          avatarPreviewUrl
+        );
+      }
+    };
+  }, [avatarPreviewUrl]);
+
   // =========================================
   // 설정 데이터 불러오기
   // =========================================
@@ -96,8 +154,6 @@ export default function UsSettingsPage() {
     }
 
     if (!user) {
-      // 회원 탈퇴 처리 중에는
-      // 로그인 페이지로 강제 이동하지 않음
       if (deletingAccount) {
         return;
       }
@@ -112,10 +168,6 @@ export default function UsSettingsPage() {
     async function loadSettings() {
       setLoading(true);
       setMessage("");
-
-      // =====================================
-      // 내가 속한 커플
-      // =====================================
 
       const {
         data: membership,
@@ -152,10 +204,6 @@ export default function UsSettingsPage() {
 
       const coupleId =
         membership.couple_id;
-
-      // =====================================
-      // 커플 정보
-      // =====================================
 
       const {
         data: coupleData,
@@ -207,10 +255,6 @@ export default function UsSettingsPage() {
           : ""
       );
 
-      // =====================================
-      // 커플 멤버
-      // =====================================
-
       const {
         data: memberRows,
         error: memberError,
@@ -251,10 +295,6 @@ export default function UsSettingsPage() {
           (item) =>
             item.user_id
         ) ?? [];
-
-      // =====================================
-      // 프로필 조회
-      // =====================================
 
       const {
         data: profileRows,
@@ -365,10 +405,6 @@ export default function UsSettingsPage() {
     deletingAccount,
   ]);
 
-  // =========================================
-  // 함께한 날짜 저장
-  // =========================================
-
   async function saveRelationshipDate(
     e: FormEvent
   ) {
@@ -409,14 +445,9 @@ export default function UsSettingsPage() {
     setSavingDate(false);
 
     if (error) {
-      const errorText =
-        `날짜 저장 오류 | ` +
-        `message=${error.message} | ` +
-        `code=${error.code ?? ""} | ` +
-        `details=${error.details ?? ""} | ` +
-        `hint=${error.hint ?? ""}`;
-
-      setMessage(errorText);
+      setMessage(
+        `날짜를 저장하지 못했어요: ${error.message}`
+      );
       return;
     }
 
@@ -451,10 +482,6 @@ export default function UsSettingsPage() {
       "함께한 날짜를 저장했어요 ♡"
     );
   }
-
-  // =========================================
-  // 닉네임 저장
-  // =========================================
 
   async function saveNickname(
     e: FormEvent
@@ -542,10 +569,6 @@ export default function UsSettingsPage() {
     );
   }
 
-  // =========================================
-  // 프로필 사진 업로드
-  // =========================================
-
   async function handleAvatarChange(
     e: ChangeEvent<HTMLInputElement>
   ) {
@@ -586,6 +609,19 @@ export default function UsSettingsPage() {
       return;
     }
 
+    if (avatarPreviewUrl) {
+      URL.revokeObjectURL(
+        avatarPreviewUrl
+      );
+    }
+
+    const localPreview =
+      URL.createObjectURL(file);
+
+    setAvatarPreviewUrl(
+      localPreview
+    );
+
     const currentMe =
       members.find(
         (member) =>
@@ -623,6 +659,7 @@ export default function UsSettingsPage() {
 
     if (uploadError) {
       setUploadingAvatar(false);
+      setAvatarPreviewUrl(null);
 
       setMessage(
         `사진을 올리지 못했어요: ${uploadError.message}`
@@ -653,6 +690,7 @@ export default function UsSettingsPage() {
         ]);
 
       setUploadingAvatar(false);
+      setAvatarPreviewUrl(null);
 
       setMessage(
         `프로필 사진을 저장하지 못했어요: ${profileError.message}`
@@ -698,14 +736,12 @@ export default function UsSettingsPage() {
     }
 
     setUploadingAvatar(false);
+    setAvatarPreviewUrl(null);
 
     setMessage(
       "프로필 사진을 변경했어요 ♡"
     );
   }
-  // =========================================
-  // 프로필 사진 삭제
-  // =========================================
 
   async function handleDeleteAvatar() {
     if (!user) {
@@ -800,9 +836,30 @@ export default function UsSettingsPage() {
     );
   }
 
-  // =========================================
-  // 로그아웃
-  // =========================================
+  async function copyInviteCode() {
+    if (!couple?.invite_code) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        couple.invite_code
+      );
+
+      setCopiedInvite(true);
+      setMessage(
+        "초대코드를 복사했어요 ♡"
+      );
+
+      window.setTimeout(() => {
+        setCopiedInvite(false);
+      }, 1800);
+    } catch {
+      setMessage(
+        "초대코드를 복사하지 못했어요."
+      );
+    }
+  }
 
   async function handleLogout() {
     const confirmed =
@@ -838,10 +895,6 @@ export default function UsSettingsPage() {
     router.refresh();
   }
 
-  // =========================================
-  // 회원 탈퇴
-  // =========================================
-
   async function handleDeleteAccount() {
     if (!user) {
       router.replace("/login");
@@ -850,7 +903,7 @@ export default function UsSettingsPage() {
 
     const firstConfirmed =
       window.confirm(
-        "정말 회원 탈퇴하시겠어요?\n\n탈퇴하면 내 계정과 개인 데이터가 삭제돼요. 이 작업은 되돌릴 수 없어요."
+        "정말 회원 탈퇴하시겠어요?\n\n삭제되는 항목: 내 계정과 개인 데이터\n유지되는 항목: 상대방이 남아 있다면 공동 공간과 공동 기록\n\n이 작업은 되돌릴 수 없어요."
       );
 
     if (!firstConfirmed) {
@@ -872,8 +925,6 @@ export default function UsSettingsPage() {
       return;
     }
 
-    // 탈퇴가 시작됐다는 것을 먼저 표시
-    // auth 상태가 사라져도 /login으로 이동하지 않게 함
     setDeletingAccount(true);
     setMessage("");
 
@@ -924,15 +975,9 @@ export default function UsSettingsPage() {
       );
     }
 
-    // 회원 탈퇴 완료 후
-    // 로그인 화면이 아닌 OurQuest 첫 화면으로 이동
     router.replace("/");
     router.refresh();
   }
-
-  // =========================================
-  // 로딩
-  // =========================================
 
   if (
     authLoading ||
@@ -940,9 +985,14 @@ export default function UsSettingsPage() {
   ) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#fff8fb]">
-        <p className="text-sm text-gray-500">
-          우리 설정 불러오는 중...
-        </p>
+        <div className="text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-xl shadow-sm">
+            ⚙️
+          </div>
+          <p className="mt-4 text-sm text-gray-500">
+            우리 설정 불러오는 중...
+          </p>
+        </div>
       </main>
     );
   }
@@ -961,53 +1011,78 @@ export default function UsSettingsPage() {
         user?.id
     );
 
-  return (
-    <main className="min-h-screen bg-[#fff8fb] px-5 py-8 text-[#2b2b2b]">
+  const savedRelationshipDate =
+    couple?.relationship_started_at
+      ? couple.relationship_started_at.slice(
+          0,
+          10
+        )
+      : "";
 
+  const isDateDirty =
+    relationshipDate !==
+    savedRelationshipDate;
+
+  const savedNickname =
+    me?.nickname ?? "";
+
+  const isNicknameDirty =
+    nickname.trim() !==
+    savedNickname.trim();
+
+  const daysTogether =
+    getDaysTogether(
+      relationshipDate
+    );
+
+  const currentAvatarUrl =
+    avatarPreviewUrl ??
+    me?.avatar_url ??
+    null;
+
+  return (
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fff8fb_0%,#fffafd_42%,#fff7fb_100%)] px-4 py-7 text-[#2b2b2b] sm:px-5 sm:py-8">
       <div className="mx-auto w-full max-w-md pb-28">
 
-        {/* =====================================
-            헤더
-        ====================================== */}
+        <header className="relative overflow-hidden rounded-[34px] border border-pink-100/70 bg-gradient-to-br from-white via-[#fff9fc] to-[#fff1f7] px-5 pb-6 pt-5 shadow-[0_12px_34px_rgba(236,72,153,0.07)]">
+          <div className="pointer-events-none absolute -right-8 -top-6 h-44 w-44 rounded-full bg-pink-100/55 blur-3xl" />
 
-        <header>
+          <img
+            src={SETTINGS_IMAGES.hero}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute right-0 top-4 h-[150px] w-[185px] object-contain object-right opacity-[0.9]"
+          />
 
-          <Link
-            href="/us"
-            prefetch={false}
-            className="inline-block text-sm font-semibold text-gray-500"
-          >
-            ← 우리로 돌아가기
-          </Link>
+          <div className="relative z-10 max-w-[57%]">
+            <Link
+              href="/us"
+              prefetch={false}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400"
+            >
+              ← 우리로 돌아가기
+            </Link>
 
-          <p className="mt-8 text-sm font-semibold tracking-[0.2em] text-pink-400">
-            OURQUEST
-          </p>
+            <p className="mt-5 text-[10px] font-black tracking-[0.24em] text-pink-400">
+              OURQUEST
+            </p>
 
-          <h1 className="mt-2 text-3xl font-bold">
-            우리 설정 ⚙️
-          </h1>
+            <h1 className="mt-2 text-[33px] font-black tracking-[-0.04em]">
+              우리 설정 ⚙️
+            </h1>
 
-          <p className="mt-3 text-sm leading-6 text-gray-500">
-            우리 둘의 정보와
-            <br />
-            함께한 날짜를 관리해요.
-          </p>
-
+            <p className="mt-2 text-[12px] leading-5 text-gray-500">
+              우리 둘의 정보와
+              <br />
+              함께한 날짜를 관리해요.
+            </p>
+          </div>
         </header>
 
-        {/* =====================================
-            커플 프로필
-        ====================================== */}
-
-        <section className="mt-7 rounded-[32px] bg-white p-6 shadow-sm">
-
+        <section className="mt-4 overflow-hidden rounded-[30px] border border-pink-100/80 bg-white/90 p-5 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
           <div className="flex items-center gap-4">
-
-            <div className="relative h-16 w-20 shrink-0">
-
-              <div className="absolute left-0 top-0 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-pink-50 text-2xl shadow-sm">
-
+            <div className="relative h-16 w-[92px] shrink-0">
+              <div className="absolute left-0 top-0 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-pink-50 to-rose-50 text-2xl shadow-sm">
                 {me?.avatar_url ? (
                   <img
                     src={me.avatar_url}
@@ -1017,11 +1092,9 @@ export default function UsSettingsPage() {
                 ) : (
                   <span>💗</span>
                 )}
-
               </div>
 
-              <div className="absolute right-0 top-2 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-pink-50 text-2xl shadow-sm">
-
+              <div className="absolute right-0 top-2 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-purple-50 to-pink-50 text-2xl shadow-sm">
                 {partner?.avatar_url ? (
                   <img
                     src={partner.avatar_url}
@@ -1031,161 +1104,168 @@ export default function UsSettingsPage() {
                 ) : (
                   <span>♡</span>
                 )}
-
               </div>
-
             </div>
 
-            <div>
-
-              <p className="text-xs font-semibold text-pink-400">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black tracking-[0.18em] text-pink-400">
                 OUR COUPLE
               </p>
 
-              <h2 className="mt-1 text-xl font-bold">
+              <h2 className="mt-1 truncate text-xl font-black">
                 {me?.nickname ?? "나"}{" "}
                 ♡{" "}
                 {partner?.nickname ?? "파트너"}
               </h2>
 
+              <span className="mt-2 inline-flex rounded-full bg-pink-50 px-2.5 py-1 text-[10px] font-bold text-pink-500">
+                연결됨 ♡
+              </span>
             </div>
-
           </div>
-
         </section>
-
-        {/* =====================================
-            함께한 날짜
-        ====================================== */}
 
         <form
           onSubmit={saveRelationshipDate}
-          className="mt-5 w-full min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm"
+          className="relative mt-4 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white via-[#fffafd] to-[#fff5ed] p-5 shadow-[0_8px_24px_rgba(236,72,153,0.05)]"
         >
+          <img
+            src={SETTINGS_IMAGES.date}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-2 top-4 h-28 w-32 object-contain opacity-[0.52]"
+          />
 
-          <div className="flex items-center gap-3">
+          <div className="relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pink-50 text-xl">
+                💕
+              </div>
 
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pink-50 text-xl">
-              💕
+              <div>
+                <h2 className="font-black">
+                  함께한 날짜
+                </h2>
+
+                <p className="mt-1 text-xs text-gray-400">
+                  우리 사이가 시작된 날
+                </p>
+              </div>
             </div>
 
-            <div>
+            {daysTogether !== null && (
+              <div className="mt-4 inline-flex rounded-full border border-pink-100 bg-white/90 px-3 py-2 text-xs font-black text-pink-500 shadow-sm">
+                오늘은 D+{daysTogether} ♡
+              </div>
+            )}
 
-              <h2 className="font-bold">
-                함께한 날짜
-              </h2>
+            <div className="mt-4">
+              <input
+                type="date"
+                value={relationshipDate}
+                onChange={(e) =>
+                  setRelationshipDate(
+                    e.target.value
+                  )
+                }
+                max={
+                  new Date()
+                    .toISOString()
+                    .split("T")[0]
+                }
+                style={{
+                  width: "100%",
+                  maxWidth: "100%",
+                  minWidth: 0,
+                  boxSizing: "border-box",
+                  WebkitAppearance: "none",
+                }}
+                className="block w-full min-w-0 max-w-full rounded-[18px] border border-pink-100 bg-white/85 px-4 py-4 text-base outline-none transition focus:border-pink-400"
+              />
+            </div>
 
-              <p className="mt-1 text-sm text-gray-400">
-                우리 사이가 시작된 날
+            {isDateDirty && (
+              <p className="mt-2 text-[11px] font-semibold text-orange-500">
+                저장되지 않은 변경사항이 있어요.
               </p>
+            )}
 
-            </div>
-
-          </div>
-
-          <div className="mt-5 w-full min-w-0 overflow-hidden">
-
-            <input
-              type="date"
-              value={relationshipDate}
-              onChange={(e) =>
-                setRelationshipDate(
-                  e.target.value
-                )
+            <button
+              type="submit"
+              disabled={
+                savingDate ||
+                !isDateDirty
               }
-              max={
-                new Date()
-                  .toISOString()
-                  .split("T")[0]
-              }
-              style={{
-                width: "100%",
-                maxWidth: "100%",
-                minWidth: 0,
-                boxSizing: "border-box",
-                WebkitAppearance: "none",
-              }}
-              className="block w-full min-w-0 max-w-full rounded-2xl border border-pink-100 bg-[#fff8fb] px-4 py-4 text-base outline-none transition focus:border-pink-400"
-            />
-
+              className="mt-3 w-full rounded-[18px] bg-gradient-to-r from-pink-500 to-fuchsia-500 px-5 py-4 font-black text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {savingDate
+                ? "저장 중..."
+                : isDateDirty
+                ? "함께한 날짜 저장"
+                : "저장 완료 ♡"}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={savingDate}
-            className="mt-3 w-full rounded-2xl bg-pink-500 px-5 py-4 font-semibold text-white transition hover:bg-pink-600 disabled:opacity-50"
-          >
-            {savingDate
-              ? "저장 중..."
-              : relationshipDate
-              ? "함께한 날짜 저장"
-              : "날짜 설정하기"}
-          </button>
-
         </form>
-
-        {/* =====================================
-            내 프로필
-        ====================================== */}
 
         <form
           onSubmit={saveNickname}
-          className="mt-5 rounded-3xl bg-white p-5 shadow-sm"
+          className="mt-4 rounded-[30px] border border-pink-100 bg-white/95 p-5 shadow-[0_8px_24px_rgba(236,72,153,0.05)]"
         >
-
           <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pink-50 text-xl">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-xl">
               👤
             </div>
 
             <div>
-
-              <h2 className="font-bold">
+              <h2 className="font-black">
                 내 프로필
               </h2>
 
-              <p className="mt-1 text-sm text-gray-400">
-                내 닉네임을 변경할 수 있어요.
+              <p className="mt-1 text-xs text-gray-400">
+                사진과 닉네임을 관리해요.
               </p>
-
             </div>
-
           </div>
 
           <div className="mt-5 flex flex-col items-center">
+            <div className="relative">
+              <button
+                type="button"
+                className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-pink-50 to-purple-50 text-4xl shadow-[0_8px_24px_rgba(236,72,153,0.12)]"
+                aria-label="내 프로필 사진"
+              >
+                {currentAvatarUrl ? (
+                  <img
+                    src={currentAvatarUrl}
+                    alt={`${me?.nickname ?? "내"} 프로필 사진`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span>👤</span>
+                )}
+              </button>
 
-            <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-pink-50 text-4xl shadow-sm">
-
-              {me?.avatar_url ? (
-                <img
-                  src={me.avatar_url}
-                  alt={`${me.nickname} 프로필 사진`}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span>👤</span>
+              {uploadingAvatar && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/35 text-xs font-black text-white backdrop-blur-sm">
+                  업로드 중...
+                </div>
               )}
-
             </div>
 
-            <p className="mt-3 text-xs text-gray-400">
+            <p className="mt-3 text-[10px] text-gray-400">
               JPG · PNG · WEBP / 최대 5MB
             </p>
 
             <div className="mt-3 grid w-full grid-cols-2 gap-2">
-
               <label
-                className={`flex cursor-pointer items-center justify-center rounded-2xl border border-pink-200 bg-white px-4 py-3 text-sm font-semibold text-pink-500 transition hover:bg-pink-50 ${
+                className={`flex cursor-pointer items-center justify-center rounded-[16px] border border-pink-200 bg-white px-4 py-3 text-sm font-black text-pink-500 transition active:scale-[0.99] ${
                   uploadingAvatar ||
                   deletingAvatar
                     ? "pointer-events-none opacity-50"
                     : ""
                 }`}
               >
-                {uploadingAvatar
-                  ? "사진 올리는 중..."
-                  : me?.avatar_url
+                {me?.avatar_url
                   ? "사진 변경"
                   : "사진 추가"}
 
@@ -1201,7 +1281,6 @@ export default function UsSettingsPage() {
                     handleAvatarChange
                   }
                 />
-
               </label>
 
               <button
@@ -1214,18 +1293,16 @@ export default function UsSettingsPage() {
                   uploadingAvatar ||
                   deletingAvatar
                 }
-                className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-400 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-[16px] border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-400 transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {deletingAvatar
                   ? "삭제 중..."
                   : "사진 삭제"}
               </button>
-
             </div>
-
           </div>
 
-          <label className="mt-6 block text-sm font-semibold">
+          <label className="mt-6 block text-sm font-black">
             닉네임
           </label>
 
@@ -1239,59 +1316,58 @@ export default function UsSettingsPage() {
             }
             maxLength={20}
             placeholder="닉네임"
-            className="mt-2 w-full rounded-2xl border border-pink-100 bg-[#fff8fb] px-4 py-4 outline-none transition focus:border-pink-400"
+            className="mt-2 w-full rounded-[18px] border border-pink-100 bg-[#fff8fb] px-4 py-4 outline-none transition focus:border-pink-400"
           />
 
-          <div className="mt-2 flex justify-end">
+          <div className="mt-2 flex items-center justify-between">
+            <p className={`text-[11px] font-semibold ${
+              isNicknameDirty
+                ? "text-orange-500"
+                : "text-transparent"
+            }`}>
+              저장되지 않은 변경사항
+            </p>
 
             <p className="text-xs text-gray-400">
               {nickname.length} / 20
             </p>
-
           </div>
 
           <button
             type="submit"
-            disabled={savingNickname}
-            className="mt-3 w-full rounded-2xl border border-pink-200 bg-white px-5 py-4 font-semibold text-pink-500 transition hover:bg-pink-50 disabled:opacity-50"
+            disabled={
+              savingNickname ||
+              !isNicknameDirty
+            }
+            className="mt-3 w-full rounded-[18px] border border-pink-200 bg-gradient-to-r from-white to-pink-50 px-5 py-4 font-black text-pink-500 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
           >
             {savingNickname
               ? "변경 중..."
-              : "닉네임 변경"}
+              : isNicknameDirty
+              ? "닉네임 변경"
+              : "변경 완료 ♡"}
           </button>
-
         </form>
 
-        {/* =====================================
-            상대방
-        ====================================== */}
-
-        <section className="mt-5 rounded-3xl bg-white p-5 shadow-sm">
-
+        <section className="mt-4 rounded-[30px] border border-purple-100 bg-gradient-to-br from-white via-[#fcf9ff] to-purple-50/60 p-5 shadow-[0_8px_24px_rgba(139,92,246,0.05)]">
           <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pink-50 text-xl">
-              ♡
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-50 text-xl">
+              💜
             </div>
 
             <div>
-
-              <h2 className="font-bold">
+              <h2 className="font-black">
                 상대방
               </h2>
 
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-xs text-gray-400">
                 연결된 파트너 정보
               </p>
-
             </div>
-
           </div>
 
-          <div className="mt-5 flex items-center gap-4 rounded-2xl bg-[#fff8fb] px-4 py-4">
-
+          <div className="mt-5 flex items-center gap-4 rounded-[22px] border border-white bg-white/70 px-4 py-4 shadow-sm">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-2xl shadow-sm">
-
               {partner?.avatar_url ? (
                 <img
                   src={partner.avatar_url}
@@ -1301,171 +1377,162 @@ export default function UsSettingsPage() {
               ) : (
                 <span>♡</span>
               )}
-
             </div>
 
             <div>
-
               <p className="text-xs text-gray-400">
                 닉네임
               </p>
 
-              <p className="mt-1 font-bold">
+              <p className="mt-1 font-black">
                 {partner?.nickname ??
                   "파트너"}
               </p>
 
+              <span className="mt-2 inline-flex rounded-full bg-purple-50 px-2.5 py-1 text-[10px] font-bold text-purple-500">
+                연결된 파트너 ♡
+              </span>
             </div>
-
           </div>
-
         </section>
 
-        {/* =====================================
-            커플 정보
-        ====================================== */}
+        <section className="relative mt-4 overflow-hidden rounded-[30px] border border-emerald-100 bg-gradient-to-br from-white via-[#fbfffd] to-emerald-50/60 p-5 shadow-[0_8px_24px_rgba(16,185,129,0.05)]">
+          <div className="pointer-events-none absolute -right-6 -bottom-6 h-28 w-28 rounded-full bg-emerald-100/45 blur-2xl" />
 
-        <section className="mt-5 rounded-3xl bg-white p-5 shadow-sm">
+          <div className="relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50 text-xl">
+                🔗
+              </div>
 
-          <div className="flex items-center gap-3">
+              <div>
+                <h2 className="font-black">
+                  커플 정보
+                </h2>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pink-50 text-xl">
-              🔗
+                <p className="mt-1 text-xs text-gray-400">
+                  현재 연결된 우리 정보
+                </p>
+              </div>
             </div>
 
-            <div>
-
-              <h2 className="font-bold">
-                커플 정보
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-400">
-                현재 연결된 우리 정보
+            <div className="mt-5 rounded-[22px] border border-white bg-white/78 px-4 py-5 text-center shadow-sm">
+              <p className="text-[10px] font-bold tracking-[0.14em] text-emerald-500">
+                초대 코드
               </p>
 
+              <p className="mt-2 text-xl font-black tracking-[0.2em]">
+                {couple?.invite_code ??
+                  "-"}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  void copyInviteCode();
+                }}
+                className="mt-3 rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-600 transition active:scale-95"
+              >
+                {copiedInvite
+                  ? "복사 완료 ✓"
+                  : "초대코드 복사"}
+              </button>
             </div>
-
           </div>
-
-          <div className="mt-5 rounded-2xl bg-[#fff8fb] px-4 py-5 text-center">
-
-            <p className="text-xs text-gray-400">
-              초대 코드
-            </p>
-
-            <p className="mt-2 text-xl font-bold tracking-[0.2em]">
-              {couple?.invite_code ??
-                "-"}
-            </p>
-
-          </div>
-
         </section>
 
-        {/* =====================================
-            상태 메시지
-        ====================================== */}
+        <section className="mt-4 rounded-[28px] border border-gray-100 bg-white/95 p-5 shadow-[0_7px_20px_rgba(0,0,0,0.035)]">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-50 text-xl">
+                🚪
+              </div>
+
+              <div>
+                <h2 className="font-black">
+                  계정
+                </h2>
+
+                <p className="mt-1 text-xs text-gray-400">
+                  현재 계정에서 로그아웃해요.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={loggingOut}
+              onClick={handleLogout}
+              className="shrink-0 rounded-[16px] border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-500 transition active:scale-95 disabled:opacity-50"
+            >
+              {loggingOut
+                ? "로그아웃 중..."
+                : "로그아웃"}
+            </button>
+          </div>
+        </section>
+
+        <section className="relative mt-4 overflow-hidden rounded-[30px] border border-red-100 bg-gradient-to-br from-white via-[#fffafa] to-red-50/65 p-5 shadow-[0_8px_24px_rgba(239,68,68,0.045)]">
+          <div className="pointer-events-none absolute -right-8 -bottom-8 h-28 w-28 rounded-full bg-red-100/40 blur-2xl" />
+
+          <div className="relative z-10">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-xl">
+                ⚠️
+              </div>
+
+              <div>
+                <h2 className="font-black text-red-500">
+                  회원 탈퇴
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-gray-400">
+                  계정과 내 개인 데이터를 삭제해요.
+                  <br />
+                  탈퇴 후에는 되돌릴 수 없어요.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-[18px] border border-red-100/70 bg-white/70 px-4 py-4 text-xs leading-5 text-red-400">
+              상대방이 남아 있으면 둘의 공간과 공동 기록은 유지되고,
+              내 계정과 내 개인 데이터만 정리돼요.
+            </div>
+
+            <button
+              type="button"
+              disabled={
+                deletingAccount ||
+                loggingOut
+              }
+              onClick={
+                handleDeleteAccount
+              }
+              className="mt-4 w-full rounded-[18px] border border-red-200 bg-white px-5 py-4 font-black text-red-500 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {deletingAccount
+                ? "회원 탈퇴 처리 중..."
+                : "회원 탈퇴"}
+            </button>
+          </div>
+        </section>
+
+        <Link
+          href="/us"
+          prefetch={false}
+          className="mt-5 block w-full rounded-[18px] border border-pink-100 bg-gradient-to-r from-white via-[#fffafd] to-pink-50/60 px-4 py-3.5 text-center text-xs font-black text-gray-400 shadow-sm"
+        >
+          우리 페이지로 돌아가기
+        </Link>
 
         {message && (
-          <div className="mt-5 rounded-2xl bg-white px-4 py-3 text-center text-sm text-gray-600 shadow-sm">
+          <div className="fixed inset-x-4 bottom-24 z-[120] mx-auto max-w-sm rounded-full border border-pink-100 bg-white/95 px-4 py-3 text-center text-xs font-black text-gray-600 shadow-xl backdrop-blur">
             {message}
           </div>
         )}
 
-        {/* =====================================
-            로그아웃
-        ====================================== */}
-
-        <section className="mt-5 rounded-3xl bg-white p-5 shadow-sm">
-
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-50 text-xl">
-              🚪
-            </div>
-
-            <div>
-
-              <h2 className="font-bold">
-                계정
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-400">
-                현재 계정에서 로그아웃해요.
-              </p>
-
-            </div>
-
-          </div>
-
-          <button
-            type="button"
-            disabled={loggingOut}
-            onClick={handleLogout}
-            className="mt-5 w-full rounded-2xl border border-gray-200 bg-white px-5 py-4 font-semibold text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
-          >
-            {loggingOut
-              ? "로그아웃 중..."
-              : "로그아웃"}
-          </button>
-
-        </section>
-
-        {/* =====================================
-            회원 탈퇴
-        ====================================== */}
-
-        <section className="mt-5 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
-
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-xl">
-              ⚠️
-            </div>
-
-            <div>
-
-              <h2 className="font-bold text-red-500">
-                회원 탈퇴
-              </h2>
-
-              <p className="mt-1 text-sm leading-6 text-gray-400">
-                계정과 내 개인 데이터를 삭제해요.
-                <br />
-                탈퇴 후에는 되돌릴 수 없어요.
-              </p>
-
-            </div>
-
-          </div>
-
-          <div className="mt-4 rounded-2xl bg-red-50/60 px-4 py-4 text-sm leading-6 text-red-400">
-            상대방이 남아 있으면 둘의 공간과 공동 기록은 유지되고,
-            내 계정과 내 개인 데이터만 정리돼요.
-          </div>
-
-          <button
-            type="button"
-            disabled={
-              deletingAccount ||
-              loggingOut
-            }
-            onClick={
-              handleDeleteAccount
-            }
-            className="mt-4 w-full rounded-2xl border border-red-200 bg-white px-5 py-4 font-semibold text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {deletingAccount
-              ? "회원 탈퇴 처리 중..."
-              : "회원 탈퇴"}
-          </button>
-
-        </section>
-
         <BottomNav />
-
       </div>
-
     </main>
   );
 }
