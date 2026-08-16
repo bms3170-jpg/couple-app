@@ -552,7 +552,7 @@ export default function UsMemoriesPage() {
             className="h-auto w-full object-contain"
           />
 
-          <div className="absolute right-4 top-4 rounded-full border border-white/90 bg-white/88 px-3 py-2 text-xs font-bold text-pink-500 shadow-sm backdrop-blur">
+          <div className="absolute right-[5.5%] top-[10%] z-10 flex min-w-[64px] items-center justify-center rounded-full border border-pink-100 bg-white/95 px-3.5 py-2 text-sm font-black text-pink-500 shadow-[0_4px_14px_rgba(236,72,153,0.12)] backdrop-blur">
             {memories.length}개
           </div>
         </header>
