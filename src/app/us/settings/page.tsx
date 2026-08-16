@@ -41,6 +41,7 @@ const SETTINGS_IMAGES = {
   memoryCamera: "/images/settings/memory-camera.PNG",
   anniversary100Days: "/images/settings/anniversary-100days.PNG",
   coupleDiary: "/images/settings/couple-diary.PNG",
+  settingsGear: "/images/settings/settings-gear.PNG",
 } as const;
 
 function startOfDay(date: Date) {
