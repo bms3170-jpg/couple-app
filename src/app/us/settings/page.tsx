@@ -28,9 +28,19 @@ type CoupleInfo = {
 };
 
 const SETTINGS_IMAGES = {
-  hero: "/images/us-story.PNG",
-  couple: "/images/us-couple-heart.PNG",
-  date: "/images/us-next-day.PNG",
+  header: "/images/settings/settings-header.PNG",
+  coupleHearts: "/images/settings/couple-hearts.PNG",
+  togetherDayCalendar: "/images/settings/together-day-calendar.PNG",
+  profileAvatar: "/images/settings/profile-avatar.PNG",
+  catAvatar: "/images/settings/cat-avatar.PNG",
+  dogAvatar: "/images/settings/dog-avatar.PNG",
+  loveLetter: "/images/settings/love-letter.PNG",
+  rewardGift: "/images/settings/reward-gift.PNG",
+  dateEditCalendar: "/images/settings/date-edit-calendar.PNG",
+  coupleLock: "/images/settings/couple-lock.PNG",
+  memoryCamera: "/images/settings/memory-camera.PNG",
+  anniversary100Days: "/images/settings/anniversary-100days.PNG",
+  coupleDiary: "/images/settings/couple-diary.PNG",
 } as const;
 
 function startOfDay(date: Date) {
@@ -1048,7 +1058,7 @@ export default function UsSettingsPage() {
           <div className="pointer-events-none absolute -right-8 -top-6 h-44 w-44 rounded-full bg-pink-100/55 blur-3xl" />
 
           <img
-            src={SETTINGS_IMAGES.hero}
+            src={SETTINGS_IMAGES.header}
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute right-0 top-4 h-[150px] w-[185px] object-contain object-right opacity-[0.9]"
@@ -1080,7 +1090,14 @@ export default function UsSettingsPage() {
         </header>
 
         <section className="mt-4 overflow-hidden rounded-[30px] border border-pink-100/80 bg-white/90 p-5 shadow-[0_8px_24px_rgba(236,72,153,0.05)]">
-          <div className="flex items-center gap-4">
+          <div className="relative flex items-center gap-4">
+            <img
+              src={SETTINGS_IMAGES.coupleHearts}
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-3 -top-4 h-20 w-24 object-contain opacity-[0.18]"
+            />
+
             <div className="relative h-16 w-[92px] shrink-0">
               <div className="absolute left-0 top-0 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gradient-to-br from-pink-50 to-rose-50 text-2xl shadow-sm">
                 {me?.avatar_url ? (
@@ -1090,7 +1107,12 @@ export default function UsSettingsPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span>💗</span>
+                  <img
+                    src={SETTINGS_IMAGES.catAvatar}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-full w-full object-cover"
+                  />
                 )}
               </div>
 
@@ -1102,7 +1124,12 @@ export default function UsSettingsPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span>♡</span>
+                  <img
+                    src={SETTINGS_IMAGES.dogAvatar}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-full w-full object-cover"
+                  />
                 )}
               </div>
             </div>
@@ -1130,7 +1157,7 @@ export default function UsSettingsPage() {
           className="relative mt-4 overflow-hidden rounded-[30px] border border-pink-100 bg-gradient-to-br from-white via-[#fffafd] to-[#fff5ed] p-5 shadow-[0_8px_24px_rgba(236,72,153,0.05)]"
         >
           <img
-            src={SETTINGS_IMAGES.date}
+            src={SETTINGS_IMAGES.anniversary100Days}
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute -right-2 top-4 h-28 w-32 object-contain opacity-[0.52]"
@@ -1138,8 +1165,13 @@ export default function UsSettingsPage() {
 
           <div className="relative z-10">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pink-50 text-xl">
-                💕
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pink-50">
+                <img
+                  src={SETTINGS_IMAGES.togetherDayCalendar}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-9 w-9 object-contain"
+                />
               </div>
 
               <div>
@@ -1159,7 +1191,14 @@ export default function UsSettingsPage() {
               </div>
             )}
 
-            <div className="mt-4">
+            <div className="relative mt-4">
+              <img
+                src={SETTINGS_IMAGES.dateEditCalendar}
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-1/2 h-8 w-8 -translate-y-1/2 object-contain opacity-45"
+              />
+
               <input
                 type="date"
                 value={relationshipDate}
@@ -1212,8 +1251,13 @@ export default function UsSettingsPage() {
           className="mt-4 rounded-[30px] border border-pink-100 bg-white/95 p-5 shadow-[0_8px_24px_rgba(236,72,153,0.05)]"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-xl">
-              👤
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-50">
+              <img
+                src={SETTINGS_IMAGES.profileAvatar}
+                alt=""
+                aria-hidden="true"
+                className="h-9 w-9 object-contain"
+              />
             </div>
 
             <div>
@@ -1227,7 +1271,14 @@ export default function UsSettingsPage() {
             </div>
           </div>
 
-          <div className="mt-5 flex flex-col items-center">
+          <div className="relative mt-5 flex flex-col items-center">
+            <img
+              src={SETTINGS_IMAGES.memoryCamera}
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none absolute right-2 top-0 h-16 w-20 object-contain opacity-[0.16]"
+            />
+
             <div className="relative">
               <button
                 type="button"
@@ -1241,7 +1292,12 @@ export default function UsSettingsPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span>👤</span>
+                  <img
+                    src={SETTINGS_IMAGES.catAvatar}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-full w-full object-cover"
+                  />
                 )}
               </button>
 
@@ -1351,8 +1407,13 @@ export default function UsSettingsPage() {
 
         <section className="mt-4 rounded-[30px] border border-purple-100 bg-gradient-to-br from-white via-[#fcf9ff] to-purple-50/60 p-5 shadow-[0_8px_24px_rgba(139,92,246,0.05)]">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-50 text-xl">
-              💜
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-purple-50">
+              <img
+                src={SETTINGS_IMAGES.dogAvatar}
+                alt=""
+                aria-hidden="true"
+                className="h-9 w-9 object-contain"
+              />
             </div>
 
             <div>
@@ -1375,7 +1436,12 @@ export default function UsSettingsPage() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span>♡</span>
+                <img
+                  src={SETTINGS_IMAGES.dogAvatar}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-full w-full object-cover"
+                />
               )}
             </div>
 
@@ -1401,8 +1467,13 @@ export default function UsSettingsPage() {
 
           <div className="relative z-10">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50 text-xl">
-                🔗
+              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-emerald-50">
+                <img
+                  src={SETTINGS_IMAGES.coupleLock}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-9 w-9 object-contain"
+                />
               </div>
 
               <div>
@@ -1416,7 +1487,20 @@ export default function UsSettingsPage() {
               </div>
             </div>
 
-            <div className="mt-5 rounded-[22px] border border-white bg-white/78 px-4 py-5 text-center shadow-sm">
+            <div className="relative mt-5 overflow-hidden rounded-[22px] border border-white bg-white/78 px-4 py-5 text-center shadow-sm">
+              <img
+                src={SETTINGS_IMAGES.loveLetter}
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute -left-3 -bottom-2 h-20 w-24 object-contain opacity-[0.16]"
+              />
+
+              <img
+                src={SETTINGS_IMAGES.rewardGift}
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-2 -top-2 h-16 w-20 object-contain opacity-[0.14]"
+              />
               <p className="text-[10px] font-bold tracking-[0.14em] text-emerald-500">
                 초대 코드
               </p>
@@ -1444,8 +1528,13 @@ export default function UsSettingsPage() {
         <section className="mt-4 rounded-[28px] border border-gray-100 bg-white/95 p-5 shadow-[0_7px_20px_rgba(0,0,0,0.035)]">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-50 text-xl">
-                🚪
+              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gray-50">
+                <img
+                  src={SETTINGS_IMAGES.coupleDiary}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-9 w-9 object-contain"
+                />
               </div>
 
               <div>
@@ -1477,8 +1566,13 @@ export default function UsSettingsPage() {
 
           <div className="relative z-10">
             <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-xl">
-                ⚠️
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-red-50">
+                <img
+                  src={SETTINGS_IMAGES.rewardGift}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-9 w-9 object-contain opacity-75"
+                />
               </div>
 
               <div>
@@ -1520,8 +1614,14 @@ export default function UsSettingsPage() {
         <Link
           href="/us"
           prefetch={false}
-          className="mt-5 block w-full rounded-[18px] border border-pink-100 bg-gradient-to-r from-white via-[#fffafd] to-pink-50/60 px-4 py-3.5 text-center text-xs font-black text-gray-400 shadow-sm"
+          className="relative mt-5 flex w-full items-center justify-center overflow-hidden rounded-[18px] border border-pink-100 bg-gradient-to-r from-white via-[#fffafd] to-pink-50/60 px-4 py-3.5 text-center text-xs font-black text-gray-400 shadow-sm"
         >
+          <img
+            src={SETTINGS_IMAGES.coupleDiary}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 h-8 w-10 object-contain opacity-45"
+          />
           우리 페이지로 돌아가기
         </Link>
 
