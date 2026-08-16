@@ -1078,9 +1078,17 @@ export default function UsSettingsPage() {
               OURQUEST
             </p>
 
-            <h1 className="mt-2 text-[33px] font-black tracking-[-0.04em]">
-              우리 설정 ⚙️
+            <div className="mt-2 flex items-center gap-2.5">
+            <h1 className="text-[33px] font-black tracking-[-0.04em]">
+              우리 설정
             </h1>
+
+            <img
+              src={SETTINGS_IMAGES.settingsGear}
+              alt="설정"
+              className="h-10 w-10 shrink-0 object-contain"
+            />
+          </div>
 
             <p className="mt-2 text-[12px] leading-5 text-gray-500">
               우리 둘의 정보와
