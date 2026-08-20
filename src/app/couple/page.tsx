@@ -1527,6 +1527,66 @@ export default function CouplePage() {
       ? 150
       : 162;
 
+
+  function getCharacterBottomOffset(
+    characterType:
+      | CharacterType
+      | null
+  ) {
+    if (!characterType) {
+      return 0;
+    }
+
+    const stage =
+      characterImageLevel === 1
+        ? "baby"
+        : characterImageLevel === 2
+        ? "child"
+        : characterImageLevel === 3
+        ? "teen"
+        : "adult";
+
+    const offsets: Record<
+      CharacterType,
+      Record<
+        "baby" | "child" | "teen" | "adult",
+        number
+      >
+    > = {
+      dog: {
+        baby: 4,
+        child: 4,
+        teen: 4,
+        adult: 4,
+      },
+
+      cat: {
+        baby: 4,
+        child: 4,
+        teen: 4,
+        adult: 4,
+      },
+
+      penguin: {
+        baby: 12,
+        child: 10,
+        teen: 10,
+        adult: 8,
+      },
+
+      red_panda: {
+        baby: 0,
+        child: 0,
+        teen: 0,
+        adult: 0,
+      },
+    };
+
+    return offsets[
+      characterType
+    ][stage];
+  }
+
   function getMemberCharacterType(
     userId: string
   ) {
@@ -1871,6 +1931,11 @@ export default function CouplePage() {
         member
       );
 
+    const bottomOffset =
+      getCharacterBottomOffset(
+        characterType
+      );
+
     const hat =
       getUserItem(
         member.user_id,
@@ -1898,6 +1963,8 @@ export default function CouplePage() {
               style={{
                 width:
                   `${characterDisplayWidth}px`,
+                transform:
+                  `translateY(${bottomOffset}px)`,
               }}
             >
               <img
